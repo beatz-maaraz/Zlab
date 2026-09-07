@@ -29,38 +29,51 @@ export function downloadInteractivePrototypeHtml(
     (el) => el.parentId === 'mobile-app-view' || el.id === 'mobile-app-view'
   );
 
-    function renderHtmlNodes(parentId: string, targetX: number, targetY: number): string {
+    function renderHtmlNodes(nodeId: string, targetX: number, targetY: number): string {
+      const el = elements[nodeId];
+      if (!el || el.visible === false) return '';
+      
+      const elX = el.x - targetX;
+      const elY = el.y - targetY;
+      
+      let styles = `position: absolute; left: ${elX}px; top: ${elY}px; width: ${el.width}px; height: ${el.height}px;`;
+      if (el.fill) styles += ` background-color: ${el.fill};`;
+      if (el.fillOpacity !== undefined) styles += ` opacity: ${el.fillOpacity / 100};`;
+      if (el.borderRadius) styles += ` border-radius: ${el.borderRadius}px;`;
+      if (el.stroke && el.stroke !== 'none') styles += ` border: ${el.strokeWidth || 1}px solid ${el.stroke};`;
+      if (el.shadowBlur) styles += ` box-shadow: 0px ${el.shadowY || 0}px ${el.shadowBlur}px rgba(0,0,0,0.4);`;
+      if (el.backdropBlur) styles += ` backdrop-filter: blur(${el.backdropBlur}px); -webkit-backdrop-filter: blur(${el.backdropBlur}px);`;
+      if (el.type === 'text' || el.textContent) {
+        styles += ` color: ${el.textColor || (el.type === 'text' ? el.fill : '#fff')}; font-size: ${el.fontSize || 14}px; font-family: sans-serif; display: flex; align-items: ${el.textAlign === 'center' ? 'center' : 'flex-start'}; justify-content: ${el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start')}; padding: 12px; box-sizing: border-box;`;
+      }
+      
+      const innerContent = el.textContent ? escapeHtml(el.textContent) : '';
+      
       const children = Object.values(elements).filter(
-        (el) => el.parentId === parentId && el.visible !== false
+        (child) => child.parentId === nodeId && child.visible !== false
       );
       
-      return children.map((el) => {
-        const elX = el.x - targetX;
-        const elY = el.y - targetY;
-        
-        let styles = `position: absolute; left: ${elX}px; top: ${elY}px; width: ${el.width}px; height: ${el.height}px;`;
-        if (el.fill) styles += ` background-color: ${el.fill};`;
-        if (el.fillOpacity !== undefined) styles += ` opacity: ${el.fillOpacity / 100};`;
-        if (el.borderRadius) styles += ` border-radius: ${el.borderRadius}px;`;
-        if (el.stroke && el.stroke !== 'none') styles += ` border: ${el.strokeWidth || 1}px solid ${el.stroke};`;
-        if (el.shadowBlur) styles += ` box-shadow: 0px ${el.shadowY || 0}px ${el.shadowBlur}px rgba(0,0,0,0.4);`;
-        if (el.backdropBlur) styles += ` backdrop-filter: blur(${el.backdropBlur}px); -webkit-backdrop-filter: blur(${el.backdropBlur}px);`;
-        if (el.type === 'text' || el.textContent) {
-          styles += ` color: ${el.textColor || '#fff'}; font-size: ${el.fontSize || 14}px; font-family: sans-serif; display: flex; align-items: ${el.textAlign === 'center' ? 'center' : 'flex-start'}; justify-content: ${el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start')}; padding: 12px; box-sizing: border-box;`;
-        }
-        
-        const innerContent = el.textContent ? escapeHtml(el.textContent) : '';
-        const nested = renderHtmlNodes(el.id, targetX, targetY);
-        
-        return `<div class="hotspot" style="${styles}">${innerContent}\n${nested}</div>`;
-      }).join('\n');
+      const nested = children.map((child) => renderHtmlNodes(child.id, targetX, targetY)).join('\n');
+      
+      return `<div class="hotspot" style="${styles}">${innerContent}\n${nested}</div>`;
     }
 
     const desktopTarget = elements['desktop-1440'];
     const mobileTarget = elements['mobile-app-view'];
     
-    const desktopHtml = desktopTarget ? renderHtmlNodes('desktop-1440', desktopTarget.x, desktopTarget.y) : '';
-    const mobileHtml = mobileTarget ? renderHtmlNodes('mobile-app-view', mobileTarget.x, mobileTarget.y) : '';
+    // We already have the frames .desktop-frame and .mobile-frame acting as the root targets, 
+    // but the recursive function will now output a DIV for the target itself.
+    // To avoid doubling the background/border for the frame, we can just render its children for the HTML 
+    // since the HTML template natively supports the frame bounds and overflow.
+    function renderHtmlChildren(parentId: string, targetX: number, targetY: number): string {
+      return Object.values(elements)
+        .filter((el) => el.parentId === parentId && el.visible !== false)
+        .map((el) => renderHtmlNodes(el.id, targetX, targetY))
+        .join('\n');
+    }
+
+    const desktopHtml = desktopTarget ? renderHtmlChildren('desktop-1440', desktopTarget.x, desktopTarget.y) : '';
+    const mobileHtml = mobileTarget ? renderHtmlChildren('mobile-app-view', mobileTarget.x, mobileTarget.y) : '';
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -549,32 +562,40 @@ export function downloadSvg(
   const targetX = target?.x || 0;
   const targetY = target?.y || 0;
 
-  function buildSvgNodes(parentId: string): string {
+  function buildSvgNodes(nodeId: string): string {
+    const el = elements[nodeId];
+    if (!el || el.visible === false) return '';
+
+    let nodeSvg = '';
+    // Don't render the root target background again since it's already rendered as the base rect,
+    // unless we want to let the generic renderer handle it. Actually, the base rect handles the background.
+    // But we need the stroke, text, etc.
+    // For simplicity, let's just let the recursive function render it. We can remove the base rect.
+    const fill = el.fill || '#0d99ff';
+    const stroke = el.stroke && el.stroke !== 'none' ? `stroke="${el.stroke}" stroke-width="${el.strokeWidth || 1}"` : '';
+    const rx = el.borderRadius ? `rx="${el.borderRadius}"` : '';
+    const textX = (el.x - targetX) + 12;
+    const textY = (el.y - targetY) + (el.height / 2) + 5;
+    const text = el.textContent ? `<text x="${textX}" y="${textY}" fill="${el.textColor || '#ffffff'}" font-family="sans-serif" font-size="${el.fontSize || 14}px">${escapeHtml(el.textContent)}</text>` : '';
+
+    const rect = `<rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" opacity="${(el.fillOpacity ?? 100) / 100}" ${rx} ${stroke} />`;
+    
+    nodeSvg = `  ${rect}\n  ${text}`;
+
     const children = Object.values(elements).filter(
-      (el) => el.parentId === parentId && el.visible !== false
+      (child) => child.parentId === nodeId && child.visible !== false
     );
     
-    return children.map((el) => {
-      const fill = el.fill || '#0d99ff';
-      const stroke = el.stroke && el.stroke !== 'none' ? `stroke="${el.stroke}" stroke-width="${el.strokeWidth || 1}"` : '';
-      const rx = el.borderRadius ? `rx="${el.borderRadius}"` : '';
-      const textX = (el.x - targetX) + 12;
-      const textY = (el.y - targetY) + (el.height / 2) + 5;
-      const text = el.textContent ? `<text x="${textX}" y="${textY}" fill="${el.textColor || '#ffffff'}" font-family="sans-serif" font-size="${el.fontSize || 14}px">${escapeHtml(el.textContent)}</text>` : '';
-
-      const rect = `<rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" opacity="${(el.fillOpacity ?? 100) / 100}" ${rx} ${stroke} />`;
-      
-      const nested = buildSvgNodes(el.id);
-      return `  ${rect}\n  ${text}\n${nested}`;
-    }).join('\n');
+    const childrenSvg = children.map((child) => buildSvgNodes(child.id)).join('\n');
+    return `${nodeSvg}\n${childrenSvg}`;
   }
 
+  // Generate all SVG content recursively starting from target
   const childrenSvg = target ? buildSvgNodes(target.id) : '';
 
   const svgMarkup = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Generated by ZLab -->
-  <rect width="${w}" height="${h}" fill="${target?.fill || '#131313'}" />
 ${childrenSvg}
 </svg>`;
 
@@ -612,67 +633,74 @@ export function downloadPng(
 
   ctx.scale(scale, scale);
 
-  // Background
-  ctx.fillStyle = target?.fill || '#131313';
-  ctx.fillRect(0, 0, w, h);
-
+  // We won't draw the hardcoded background. The recursive renderer will draw the target's fill.
   const targetX = target?.x || 0;
   const targetY = target?.y || 0;
 
-  function renderNodes(parentId: string) {
+  function renderNodes(nodeId: string) {
+    const el = elements[nodeId];
+    if (!el || el.visible === false || !ctx) return;
+
+    ctx.save();
+    ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
+
+    const elX = el.x - targetX;
+    const elY = el.y - targetY;
+
+    // Rounded rectangle path
+    const r = el.borderRadius || 0;
+    ctx.beginPath();
+    ctx.moveTo(elX + r, elY);
+    ctx.lineTo(elX + el.width - r, elY);
+    ctx.quadraticCurveTo(elX + el.width, elY, elX + el.width, elY + r);
+    ctx.lineTo(elX + el.width, elY + el.height - r);
+    ctx.quadraticCurveTo(elX + el.width, elY + el.height, elX + el.width - r, elY + el.height);
+    ctx.lineTo(elX + r, elY + el.height);
+    ctx.quadraticCurveTo(elX, elY + el.height, elX, elY + el.height - r);
+    ctx.lineTo(elX, elY + r);
+    ctx.quadraticCurveTo(elX, elY, elX + r, elY);
+    ctx.closePath();
+
+    if (el.shadowBlur) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = el.shadowBlur;
+      ctx.shadowOffsetY = el.shadowY || 0;
+    }
+
+    ctx.fillStyle = el.fill || (el.type === 'text' ? 'transparent' : '#0d99ff');
+    ctx.fill();
+
+    if (el.stroke && el.stroke !== 'none') {
+      ctx.strokeStyle = el.stroke;
+      ctx.lineWidth = el.strokeWidth || 1;
+      ctx.stroke();
+    }
+
+    // Text
+    if (el.textContent) {
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = el.textColor || (el.type === 'text' ? el.fill : '#ffffff');
+      ctx.font = `${el.fontSize || 13}px -apple-system, sans-serif`;
+      
+      const textAlign = el.textAlign || (el.id === 'main-hero-title' ? 'center' : 'left');
+      ctx.textAlign = textAlign as CanvasTextAlign;
+      ctx.textBaseline = 'middle';
+      
+      let textPosX = elX + 12;
+      if (textAlign === 'center') textPosX = elX + (el.width / 2);
+      if (textAlign === 'right') textPosX = elX + el.width - 12;
+      
+      ctx.fillText(el.textContent, textPosX, elY + el.height / 2);
+    }
+
+    ctx.restore();
+
     const children = Object.values(elements).filter(
-      (el) => el.parentId === parentId && el.visible !== false
+      (child) => child.parentId === nodeId && child.visible !== false
     );
 
-    for (const el of children) {
-      if (!ctx) continue;
-      ctx.save();
-      ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
-
-      const elX = el.x - targetX;
-      const elY = el.y - targetY;
-
-      // Rounded rectangle path
-      const r = el.borderRadius || 0;
-      ctx.beginPath();
-      ctx.moveTo(elX + r, elY);
-      ctx.lineTo(elX + el.width - r, elY);
-      ctx.quadraticCurveTo(elX + el.width, elY, elX + el.width, elY + r);
-      ctx.lineTo(elX + el.width, elY + el.height - r);
-      ctx.quadraticCurveTo(elX + el.width, elY + el.height, elX + el.width - r, elY + el.height);
-      ctx.lineTo(elX + r, elY + el.height);
-      ctx.quadraticCurveTo(elX, elY + el.height, elX, elY + el.height - r);
-      ctx.lineTo(elX, elY + r);
-      ctx.quadraticCurveTo(elX, elY, elX + r, elY);
-      ctx.closePath();
-
-      if (el.shadowBlur) {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = el.shadowBlur;
-        ctx.shadowOffsetY = el.shadowY || 0;
-      }
-
-      ctx.fillStyle = el.fill || '#0d99ff';
-      ctx.fill();
-
-      if (el.stroke && el.stroke !== 'none') {
-        ctx.strokeStyle = el.stroke;
-        ctx.lineWidth = el.strokeWidth || 1;
-        ctx.stroke();
-      }
-
-      // Text
-      if (el.textContent) {
-        ctx.shadowColor = 'transparent';
-        ctx.fillStyle = el.textColor || '#ffffff';
-        ctx.font = `${el.fontSize || 13}px -apple-system, sans-serif`;
-        ctx.fillText(el.textContent, elX + 12, elY + el.height / 2 + 4);
-      }
-
-      ctx.restore();
-
-      // Render deeper children recursively
-      renderNodes(el.id);
+    for (const child of children) {
+      renderNodes(child.id);
     }
   }
 

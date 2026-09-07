@@ -985,15 +985,27 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
                 <div className="text-[10px] text-[#89919e] flex items-center justify-between pt-1">
                   <span>{filteredComponents.length} components available</span>
-                  <span>Click to insert</span>
+                  <span>Click or drag to insert</span>
                 </div>
 
                 {filteredComponents.map((comp) => {
                   return (
                     <div
                       key={comp.id}
+                      draggable
+                      onDragStart={(e) => {
+                        const payload = {
+                          ...comp.defaultProps,
+                          name: comp.name,
+                          type: comp.defaultProps.type || 'component',
+                          width: comp.defaultProps.width || 200,
+                          height: comp.defaultProps.height || 60,
+                        };
+                        e.dataTransfer.setData('application/zlab-element', JSON.stringify(payload));
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
                       onClick={() => handleInsertComponent(comp)}
-                      className="p-3 bg-[#201f1f] border border-[#353534] rounded-xl hover:border-[#9fcaff] hover:shadow-lg transition-all cursor-pointer group flex flex-col gap-2"
+                      className="p-3 bg-[#201f1f] border border-[#353534] rounded-xl hover:border-[#9fcaff] hover:shadow-lg transition-all cursor-grab active:cursor-grabbing group flex flex-col gap-2"
                     >
                       {/* Component preview box */}
                       <div className="h-16 bg-[#131313] rounded-lg border border-[#2a2a2a] flex items-center justify-center p-2 overflow-hidden relative group-hover:bg-[#181818] transition-colors">

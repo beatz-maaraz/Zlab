@@ -28,6 +28,7 @@ import { DynamicIcon } from './DynamicIcon';
 
 interface CanvasProps {
   zoom: number;
+  setZoom?: (zoom: number | ((prev: number) => number)) => void;
   currentTool: ToolMode;
   setCurrentTool?: (tool: ToolMode) => void;
   devicePreview: 'desktop' | 'mobile';
@@ -39,10 +40,14 @@ interface CanvasProps {
   collaborators: Collaborator[];
   onDuplicateElement?: (id: string) => void;
   onDeleteElement?: (id: string) => void;
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
+  onDropElement?: (el: CanvasElement) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
   zoom,
+  setZoom,
   currentTool,
   setCurrentTool,
   devicePreview,
@@ -54,6 +59,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   collaborators,
   onDuplicateElement,
   onDeleteElement,
+  showGrid = false,
+  onToggleGrid,
+  onDropElement,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1302,10 +1310,71 @@ export const Canvas: React.FC<CanvasProps> = ({
     );
   };
 
+  // Drag-drop handlers for dropping library components onto the artboard
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    try {
+      const raw = e.dataTransfer.getData('application/zlab-element');
+      if (!raw) return;
+      const partial: Partial<CanvasElement> = JSON.parse(raw);
+      const artboardEl = document.getElementById(
+        devicePreview === 'desktop' ? 'artboard-desktop-1440' : 'artboard-mobile-view'
+      );
+      if (!artboardEl) return;
+      const rect = artboardEl.getBoundingClientRect();
+      const dropX = Math.round((e.clientX - rect.left) / zoom);
+      const dropY = Math.round((e.clientY - rect.top) / zoom);
+      const timestamp = Date.now();
+      const dropParentId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+      const newEl: CanvasElement = {
+        // Defaults
+        rotation: 0,
+        shadowSpread: 0,
+        visible: true,
+        locked: false,
+        // Partial overrides (component props)
+        ...partial,
+        // Forced overrides after spread
+        id: `dropped_${partial.type || 'el'}_${timestamp}`,
+        name: partial.name || 'Component',
+        type: (partial.type || 'rectangle') as CanvasElement['type'],
+        x: dropX,
+        y: dropY,
+        width: partial.width || 200,
+        height: partial.height || 48,
+        borderRadius: partial.borderRadius ?? 8,
+        fill: partial.fill || '#0d99ff',
+        fillOpacity: partial.fillOpacity ?? 100,
+        stroke: partial.stroke || 'none',
+        strokeWidth: partial.strokeWidth || 1,
+        shadowBlur: partial.shadowBlur || 0,
+        shadowY: partial.shadowY || 0,
+        parentId: dropParentId,
+      };
+      if (onDropElement) {
+        onDropElement(newEl);
+      } else {
+        const updated = { ...elements, [newEl.id]: newEl };
+        setElements(updated);
+        if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
+        setSelectedElementId(newEl.id);
+      }
+    } catch {
+      // ignore invalid drop data
+    }
+  };
+
   return (
     <div
       ref={containerRef}
       onMouseDown={handleCanvasMouseDown}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       className={`w-full h-full relative overflow-hidden select-none ${
         currentTool === 'hand' || isPanning
           ? 'cursor-grab active:cursor-grabbing'
@@ -1327,6 +1396,57 @@ export const Canvas: React.FC<CanvasProps> = ({
         <span>{Math.round(zoom * 100)}%</span>
         <span>•</span>
         <span className="text-[#9fcaff] capitalize">{currentTool} Tool</span>
+        {showGrid && <span className="text-[#34d399]">[Grid]</span>}
+      </div>
+
+      {/* Bottom-right: Scale Slider + Grid Toggle */}
+      <div className="absolute bottom-10 right-5 z-30 flex items-center gap-2">
+        {/* Grid Toggle */}
+        <button
+          onClick={onToggleGrid}
+          title="Toggle grid lines"
+          className={`p-1.5 rounded-lg border text-[11px] font-medium transition-all shadow ${
+            showGrid
+              ? 'bg-[#34d399]/20 border-[#34d399]/50 text-[#34d399]'
+              : 'bg-[#141416]/90 border-[#353534]/60 text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+
+        {/* Zoom out */}
+        <button
+          onClick={() => setZoom?.((z) => Math.max(0.1, Math.round((z - 0.1) * 10) / 10))}
+          className="w-6 h-6 bg-[#141416]/90 border border-[#353534]/60 rounded text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-sm font-bold shadow"
+        >−</button>
+
+        {/* Zoom Slider */}
+        <input
+          type="range"
+          min={10}
+          max={300}
+          step={5}
+          value={Math.round(zoom * 100)}
+          onChange={(e) => setZoom?.(Number(e.target.value) / 100)}
+          className="w-28 h-1.5 accent-[#0d99ff] cursor-pointer"
+          title={`Zoom: ${Math.round(zoom * 100)}%`}
+        />
+
+        {/* Zoom in */}
+        <button
+          onClick={() => setZoom?.((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10))}
+          className="w-6 h-6 bg-[#141416]/90 border border-[#353534]/60 rounded text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-sm font-bold shadow"
+        >+</button>
+
+        {/* Zoom label */}
+        <span className="text-[11px] font-mono text-[#89919e] bg-[#141416]/90 border border-[#353534]/60 px-2 py-0.5 rounded shadow min-w-[44px] text-center">
+          {Math.round(zoom * 100)}%
+        </span>
       </div>
 
       {/* Main Canvas Stage */}
@@ -1409,6 +1529,25 @@ export const Canvas: React.FC<CanvasProps> = ({
             {/* Hero Canvas Ambient Gradient Background */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#9fcaff]/5 via-transparent to-transparent pointer-events-none" />
 
+            {/* Grid Lines Overlay */}
+            {showGrid && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <pattern id="grid-small" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(159,202,255,0.08)" strokeWidth="0.5"/>
+                  </pattern>
+                  <pattern id="grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <rect width="100" height="100" fill="url(#grid-small)"/>
+                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(159,202,255,0.18)" strokeWidth="0.8"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid-large)"/>
+              </svg>
+            )}
+
             {/* UNIFIED ARTBOARD CHILD ELEMENTS (Fully draggable, resizable, rotatable) */}
             {artboardChildren.map(renderArtboardItem)}
           </div>
@@ -1478,6 +1617,25 @@ export const Canvas: React.FC<CanvasProps> = ({
 
             {/* Mobile Ambient Glow */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#9fcaff]/5 via-transparent to-[#9fcaff]/5 pointer-events-none" />
+
+            {/* Grid Lines Overlay */}
+            {showGrid && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <pattern id="grid-small-m" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(159,202,255,0.08)" strokeWidth="0.5"/>
+                  </pattern>
+                  <pattern id="grid-large-m" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <rect width="100" height="100" fill="url(#grid-small-m)"/>
+                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(159,202,255,0.18)" strokeWidth="0.8"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid-large-m)"/>
+              </svg>
+            )}
 
             {/* Unified Artboard Child Elements */}
             {artboardChildren.map(renderArtboardItem)}

@@ -111,6 +111,9 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isPrototypeModalOpen, setIsPrototypeModalOpen] = useState(false);
 
+  // Grid lines toggle
+  const [showGrid, setShowGrid] = useState(false);
+
   // Left sidebar resizing handler
   const handleStartResizeLeft = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -517,8 +520,9 @@ export default function App() {
             }}
             className="flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
           >
-            <Canvas
+          <Canvas
               zoom={zoom}
+              setZoom={setZoom}
               currentTool={currentTool}
               setCurrentTool={setCurrentTool}
               devicePreview={devicePreview}
@@ -530,6 +534,12 @@ export default function App() {
               collaborators={collaborators}
               onDuplicateElement={handleDuplicateElement}
               onDeleteElement={handleDeleteElement}
+              showGrid={showGrid}
+              onToggleGrid={() => setShowGrid((g) => !g)}
+              onDropElement={(el) => {
+                handleInsertElement(el);
+                setSelectedElementId(el.id);
+              }}
             />
           </div>
 

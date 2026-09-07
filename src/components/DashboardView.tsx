@@ -44,6 +44,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }, 1200);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <div
       id="dashboard-file-browser"
@@ -167,7 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-[#e5e2e1]">
-              Good afternoon, Creator
+              {getGreeting()}, Creator
             </h1>
             <p className="text-xs text-[#bfc7d5]">
               Pick up where you left off or start something entirely new.
@@ -195,123 +202,159 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Recent Files Grid */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#e5e2e1]">Recent Files</h2>
-            <button
-              onClick={() => setActiveNav('recents')}
-              className="text-xs text-[#9fcaff] hover:underline"
-            >
-              View all
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentFiles.map((file) => (
-              <div
-                key={file.id}
-                id={`recent-file-card-${file.id}`}
-                onClick={() => onOpenFile(file)}
-                className="bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer hover:border-[#9fcaff] transition-all shadow-sm"
-              >
-                {/* Visual Thumbnail */}
-                <div className="h-40 bg-[#201f1f] flex items-center justify-center relative overflow-hidden p-4">
-                  <div className="w-full h-full bg-[#131313] rounded-lg shadow-lg flex items-center justify-center text-[#bfc7d5] font-medium text-xs border border-[#353534] group-hover:scale-102 transition-transform">
-                    {file.previewType === 'desktop' && (
-                      <div className="text-center p-2">
-                        <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
-                        <div className="text-[10px] text-[#89919e]">1440 x 900 • Web Artboard</div>
-                      </div>
-                    )}
-                    {file.previewType === 'mobile' && (
-                      <div className="text-center p-2">
-                        <Smartphone className="w-6 h-6 text-[#9fcaff] mx-auto mb-1" />
-                        <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
-                      </div>
-                    )}
-                    {file.previewType === 'components' && (
-                      <div className="text-center p-2">
-                        <div className="flex gap-1 justify-center mb-1">
-                          <span className="w-3 h-3 bg-[#9fcaff] rounded-sm inline-block"></span>
-                          <span className="w-3 h-3 bg-[#d2bbff] rounded-sm inline-block"></span>
-                          <span className="w-3 h-3 bg-[#c8c6c5] rounded-sm inline-block"></span>
-                        </div>
-                        <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card Info */}
-                <div className="p-4 flex items-center justify-between bg-[#1c1b1b]">
-                  <div>
-                    <h3 className="text-xs font-semibold text-[#e5e2e1] group-hover:text-[#9fcaff] transition-colors">
-                      {file.title}
-                    </h3>
-                    <p className="text-[11px] text-[#bfc7d5] mt-0.5">{file.lastEdited}</p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenFile(file);
-                    }}
-                    className="p-1.5 text-[#bfc7d5] hover:text-[#e5e2e1] rounded hover:bg-[#2a2a2a] transition-colors"
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Templates & Community Grid */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#e5e2e1]">Templates & Community</h2>
-            <button className="text-xs text-[#9fcaff] hover:underline">
-              Explore community
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((tpl) => (
-              <div
-                key={tpl.id}
-                id={`template-card-${tpl.id}`}
-                onClick={() => onSelectTemplate(tpl)}
-                className={`bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer transition-all p-4 space-y-3 ${
-                  tpl.colorVariant === 'secondary'
-                    ? 'hover:border-[#d2bbff]'
-                    : tpl.colorVariant === 'primary'
-                    ? 'hover:border-[#9fcaff]'
-                    : 'hover:border-[#c8c6c5]'
-                }`}
-              >
-                <div
-                  className={`h-32 rounded-lg flex items-center justify-center transition-transform group-hover:scale-102 ${
-                    tpl.colorVariant === 'secondary'
-                      ? 'bg-[#6001d1]/20 text-[#d2bbff]'
-                      : tpl.colorVariant === 'primary'
-                      ? 'bg-[#0d99ff]/20 text-[#9fcaff]'
-                      : 'bg-[#969594]/20 text-[#c8c6c5]'
-                  }`}
+        {(activeNav === 'all' || activeNav === 'recents') && !activeFolder && (
+          <>
+            {/* Files Grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-[#e5e2e1]">
+                  {activeNav === 'all' ? 'All Files' : 'Recent Files'}
+                </h2>
+                <button
+                  onClick={() => setActiveNav('all')}
+                  className="text-xs text-[#9fcaff] hover:underline"
                 >
-                  {tpl.icon === 'dashboard' && <LayoutDashboard className="w-8 h-8" />}
-                  {tpl.icon === 'phone_iphone' && <Smartphone className="w-8 h-8" />}
-                  {tpl.icon === 'shopping_cart' && <ShoppingCart className="w-8 h-8" />}
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-[#e5e2e1]">{tpl.title}</h3>
-                  <p className="text-[11px] text-[#bfc7d5] mt-1 leading-relaxed">
-                    {tpl.description}
-                  </p>
-                </div>
+                  View all
+                </button>
               </div>
-            ))}
+
+              {recentFiles.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {recentFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      id={`recent-file-card-${file.id}`}
+                      onClick={() => onOpenFile(file)}
+                      className="bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer hover:border-[#9fcaff] transition-all shadow-sm"
+                    >
+                      {/* Visual Thumbnail */}
+                      <div className="h-40 bg-[#201f1f] flex items-center justify-center relative overflow-hidden p-4">
+                        <div className="w-full h-full bg-[#131313] rounded-lg shadow-lg flex items-center justify-center text-[#bfc7d5] font-medium text-xs border border-[#353534] group-hover:scale-102 transition-transform">
+                          {file.previewType === 'desktop' && (
+                            <div className="text-center p-2">
+                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                              <div className="text-[10px] text-[#89919e]">1440 x 900 • Web Artboard</div>
+                            </div>
+                          )}
+                          {file.previewType === 'mobile' && (
+                            <div className="text-center p-2">
+                              <Smartphone className="w-6 h-6 text-[#9fcaff] mx-auto mb-1" />
+                              <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
+                            </div>
+                          )}
+                          {file.previewType === 'components' && (
+                            <div className="text-center p-2">
+                              <div className="flex gap-1 justify-center mb-1">
+                                <span className="w-3 h-3 bg-[#9fcaff] rounded-sm inline-block"></span>
+                                <span className="w-3 h-3 bg-[#d2bbff] rounded-sm inline-block"></span>
+                                <span className="w-3 h-3 bg-[#c8c6c5] rounded-sm inline-block"></span>
+                              </div>
+                              <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Info */}
+                      <div className="p-4 flex items-center justify-between bg-[#1c1b1b]">
+                        <div>
+                          <h3 className="text-xs font-semibold text-[#e5e2e1] group-hover:text-[#9fcaff] transition-colors">
+                            {file.title}
+                          </h3>
+                          <p className="text-[11px] text-[#bfc7d5] mt-0.5">{file.lastEdited}</p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenFile(file);
+                          }}
+                          className="p-1.5 text-[#bfc7d5] hover:text-[#e5e2e1] rounded hover:bg-[#2a2a2a] transition-colors"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-[#89919e] py-8 text-center bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed">
+                  No files found. Create a new design to get started.
+                </div>
+              )}
+            </div>
+
+            {/* Templates & Community Grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-[#e5e2e1]">Templates & Community</h2>
+                <button className="text-xs text-[#9fcaff] hover:underline">
+                  Explore community
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    id={`template-card-${tpl.id}`}
+                    onClick={() => onSelectTemplate(tpl)}
+                    className={`bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer transition-all p-4 space-y-3 ${
+                      tpl.colorVariant === 'secondary'
+                        ? 'hover:border-[#d2bbff]'
+                        : tpl.colorVariant === 'primary'
+                        ? 'hover:border-[#9fcaff]'
+                        : 'hover:border-[#c8c6c5]'
+                    }`}
+                  >
+                    <div
+                      className={`h-32 rounded-lg flex items-center justify-center transition-transform group-hover:scale-102 ${
+                        tpl.colorVariant === 'secondary'
+                          ? 'bg-[#6001d1]/20 text-[#d2bbff]'
+                          : tpl.colorVariant === 'primary'
+                          ? 'bg-[#0d99ff]/20 text-[#9fcaff]'
+                          : 'bg-[#969594]/20 text-[#c8c6c5]'
+                      }`}
+                    >
+                      {tpl.icon === 'dashboard' && <LayoutDashboard className="w-8 h-8" />}
+                      {tpl.icon === 'phone_iphone' && <Smartphone className="w-8 h-8" />}
+                      {tpl.icon === 'shopping_cart' && <ShoppingCart className="w-8 h-8" />}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold text-[#e5e2e1]">{tpl.title}</h3>
+                      <p className="text-[11px] text-[#bfc7d5] mt-1 leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeNav === 'shared' && !activeFolder && (
+          <div className="flex flex-col items-center justify-center h-64 bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed">
+            <Users className="w-12 h-12 text-[#353534] mb-4" />
+            <h3 className="text-[#e5e2e1] font-medium text-sm mb-1">No shared files</h3>
+            <p className="text-[#89919e] text-xs">Files shared with you will appear here.</p>
           </div>
-        </div>
+        )}
+
+        {activeNav === 'trash' && !activeFolder && (
+          <div className="flex flex-col items-center justify-center h-64 bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed">
+            <Trash2 className="w-12 h-12 text-[#353534] mb-4" />
+            <h3 className="text-[#e5e2e1] font-medium text-sm mb-1">Trash is empty</h3>
+            <p className="text-[#89919e] text-xs">Deleted files will be kept here for 30 days.</p>
+          </div>
+        )}
+
+        {activeFolder && (
+          <div className="flex flex-col items-center justify-center h-64 bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed">
+            <FolderOpen className="w-12 h-12 text-[#353534] mb-4" />
+            <h3 className="text-[#e5e2e1] font-medium text-sm mb-1">Folder: {activeFolder}</h3>
+            <p className="text-[#89919e] text-xs">This folder is currently empty.</p>
+          </div>
+        )}
       </main>
     </div>
   );
