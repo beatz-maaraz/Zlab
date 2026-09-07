@@ -32,6 +32,7 @@ import {
   MoveVertical,
   Bold,
   Layers,
+  LayoutDashboard,
 } from 'lucide-react';
 import { CanvasElement, InspectorTab } from '../types';
 import {
@@ -457,20 +458,22 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
                 />
                 <span className="text-[#89919e] text-[10px]">°</span>
               </div>
-              <div className="flex items-center bg-[#201f1f] rounded px-2.5 py-1.5 border border-[#353534]/50">
-                <span className="text-[#89919e] mr-2">R</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={selectedElement.borderRadius ?? 8}
-                  onChange={(e) =>
-                    onUpdateElement({ borderRadius: Math.max(0, Number(e.target.value)) })
-                  }
-                  className="w-full bg-transparent font-mono text-[#e5e2e1] outline-none"
-                />
-                <span className="text-[#89919e] text-[10px]">px</span>
-              </div>
+              {selectedElement.type !== 'text' && (
+                <div className="flex items-center bg-[#201f1f] rounded px-2.5 py-1.5 border border-[#353534]/50">
+                  <span className="text-[#89919e] mr-2">R</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={selectedElement.borderRadius ?? 8}
+                    onChange={(e) =>
+                      onUpdateElement({ borderRadius: Math.max(0, Number(e.target.value)) })
+                    }
+                    className="w-full bg-transparent font-mono text-[#e5e2e1] outline-none"
+                  />
+                  <span className="text-[#89919e] text-[10px]">px</span>
+                </div>
+              )}
             </div>
 
             {/* Opacity Slider */}
@@ -490,10 +493,71 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
             </div>
           </div>
 
-          {/* Typography Section (if text, button, card, or has textContent) */}
+          {/* Auto Layout Section */}
+          {selectedElement.type === 'frame' && (
+            <div className="space-y-2 border-t border-[#353534]/60 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider flex items-center gap-1.5">
+                  <LayoutDashboard className="w-3.5 h-3.5" /> Auto Layout
+                </span>
+                <select
+                  value={selectedElement.layoutMode || 'none'}
+                  onChange={(e) => onUpdateElement({ layoutMode: e.target.value as any })}
+                  className="bg-[#201f1f] text-xs text-[#e5e2e1] border border-[#353534]/50 rounded px-1.5 py-0.5 outline-none cursor-pointer hover:bg-[#2a2a2a] focus:border-[#0d99ff]"
+                >
+                  <option value="none">None</option>
+                  <option value="horizontal">Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </div>
+              
+              {selectedElement.layoutMode && selectedElement.layoutMode !== 'none' && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center bg-[#201f1f] rounded px-2.5 py-1.5 border border-[#353534]/50">
+                    <span className="text-[#89919e] mr-2" title="Gap between items">↔</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedElement.gap ?? 0}
+                      onChange={(e) => onUpdateElement({ gap: Math.max(0, Number(e.target.value)) })}
+                      className="w-full bg-transparent font-mono text-[#e5e2e1] outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex items-center bg-[#201f1f] rounded px-2.5 py-1.5 border border-[#353534]/50">
+                    <span className="text-[#89919e] mr-2" title="Padding">⚏</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedElement.padding ?? 0}
+                      onChange={(e) => onUpdateElement({ padding: Math.max(0, Number(e.target.value)) })}
+                      className="w-full bg-transparent font-mono text-[#e5e2e1] outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between bg-[#201f1f] rounded px-2.5 py-1.5 border border-[#353534]/50">
+                    <span className="text-[#89919e]">Align Items</span>
+                    <select
+                      value={selectedElement.alignItems || 'start'}
+                      onChange={(e) => onUpdateElement({ alignItems: e.target.value as any })}
+                      className="bg-transparent text-[#e5e2e1] font-mono outline-none cursor-pointer"
+                    >
+                      <option value="start">Start</option>
+                      <option value="center">Center</option>
+                      <option value="end">End</option>
+                      <option value="stretch">Stretch</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Typography Section (if text, button, card, input, or has textContent) */}
           {(selectedElement.type === 'text' ||
             selectedElement.type === 'button' ||
             selectedElement.type === 'card' ||
+            selectedElement.type === 'input' ||
             selectedElement.textContent) && (
             <div className="space-y-2 border-t border-[#353534]/60 pt-3">
               <span className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider">
@@ -580,7 +644,9 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
             </div>
           )}
 
-          {/* Fill Color Section */}
+          {/* Fill Color Section - Hidden for text elements */}
+          {selectedElement.type !== 'text' && (
+          <>
           <div className="space-y-2 border-t border-[#353534]/60 pt-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider">
@@ -938,6 +1004,8 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {/* Quick Export Button */}
           <div className="pt-2 border-t border-[#353534]">

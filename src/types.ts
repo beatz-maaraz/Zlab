@@ -61,6 +61,12 @@ export interface CanvasElement {
   glassEffect?: 'frosted' | 'neon' | 'smoke' | 'prism' | 'none';
   materialPreset?: 'm3' | 'ios' | 'glass' | 'none';
   prototype?: InteractionPrototype;
+  // Auto-Layout Properties
+  layoutMode?: 'none' | 'horizontal' | 'vertical';
+  gap?: number;
+  padding?: number;
+  alignItems?: 'start' | 'center' | 'end' | 'stretch';
+  justifyContent?: 'start' | 'center' | 'end' | 'space-between';
 }
 
 export interface InteractionPrototype {

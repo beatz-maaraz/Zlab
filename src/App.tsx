@@ -36,15 +36,44 @@ import {
   getIOSKitElements,
   getAllMaterialsElements,
 } from './data/designKits';
+import { computeAutoLayouts } from './utils/layoutEngine';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('editor');
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    return window.location.pathname.includes('/editor') ? 'editor' : 'dashboard';
+  });
+
+  useEffect(() => {
+    const path = currentView === 'editor' ? '/editor' : '/';
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentView(window.location.pathname.includes('/editor') ? 'editor' : 'dashboard');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [projectTitle, setProjectTitle] = useState('Untitled Design v2.4');
   const [zoom, setZoom] = useState(0.8);
   const [currentTool, setCurrentTool] = useState<ToolMode>('move');
   const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile'>('desktop');
   const [selectedElementId, setSelectedElementId] = useState<string>('main-hero-title');
-  const [elements, setElements] = useState<Record<string, CanvasElement>>(INITIAL_ELEMENTS);
+  
+  const [elementsRaw, setElementsRaw] = useState<Record<string, CanvasElement>>(INITIAL_ELEMENTS);
+  
+  const setElements = useCallback((value: React.SetStateAction<Record<string, CanvasElement>>) => {
+    setElementsRaw((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      return computeAutoLayouts(next);
+    });
+  }, []);
+
+  const elements = elementsRaw;
 
   const handleDeviceChange = useCallback((mode: 'desktop' | 'mobile') => {
     setDevicePreview(mode);

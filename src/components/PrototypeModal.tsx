@@ -281,7 +281,7 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
             </div>
 
             {/* Desktop Screen Content */}
-            <div className="flex-1 overflow-y-auto bg-[#111113] text-[#e5e2e1] relative">
+            <div className="flex-1 overflow-auto bg-[#111113] text-[#e5e2e1] relative">
               <div className="flex items-center justify-between px-10 py-4 border-b border-[#1f1f23]">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-gradient-to-br from-[#0d99ff] to-[#005299] flex items-center justify-center font-black text-white text-xs shadow border border-[#9fcaff]/30">
@@ -613,7 +613,10 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
                       triggerSmartAnimate('signin');
                     } else {
                       showToast('Successfully signed in! Accessing canvas...');
-                      setTimeout(() => triggerSmartAnimate('welcome'), 1200);
+                      setTimeout(() => {
+                        onClose();
+                        triggerSmartAnimate('welcome');
+                      }, 1200);
                     }
                   }}
                   style={{

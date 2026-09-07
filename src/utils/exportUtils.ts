@@ -29,7 +29,40 @@ export function downloadInteractivePrototypeHtml(
     (el) => el.parentId === 'mobile-app-view' || el.id === 'mobile-app-view'
   );
 
-  const htmlContent = `<!DOCTYPE html>
+    function renderHtmlNodes(parentId: string, targetX: number, targetY: number): string {
+      const children = Object.values(elements).filter(
+        (el) => el.parentId === parentId && el.visible !== false
+      );
+      
+      return children.map((el) => {
+        const elX = el.x - targetX;
+        const elY = el.y - targetY;
+        
+        let styles = `position: absolute; left: ${elX}px; top: ${elY}px; width: ${el.width}px; height: ${el.height}px;`;
+        if (el.fill) styles += ` background-color: ${el.fill};`;
+        if (el.fillOpacity !== undefined) styles += ` opacity: ${el.fillOpacity / 100};`;
+        if (el.borderRadius) styles += ` border-radius: ${el.borderRadius}px;`;
+        if (el.stroke && el.stroke !== 'none') styles += ` border: ${el.strokeWidth || 1}px solid ${el.stroke};`;
+        if (el.shadowBlur) styles += ` box-shadow: 0px ${el.shadowY || 0}px ${el.shadowBlur}px rgba(0,0,0,0.4);`;
+        if (el.backdropBlur) styles += ` backdrop-filter: blur(${el.backdropBlur}px); -webkit-backdrop-filter: blur(${el.backdropBlur}px);`;
+        if (el.type === 'text' || el.textContent) {
+          styles += ` color: ${el.textColor || '#fff'}; font-size: ${el.fontSize || 14}px; font-family: sans-serif; display: flex; align-items: ${el.textAlign === 'center' ? 'center' : 'flex-start'}; justify-content: ${el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start')}; padding: 12px; box-sizing: border-box;`;
+        }
+        
+        const innerContent = el.textContent ? escapeHtml(el.textContent) : '';
+        const nested = renderHtmlNodes(el.id, targetX, targetY);
+        
+        return `<div class="hotspot" style="${styles}">${innerContent}\n${nested}</div>`;
+      }).join('\n');
+    }
+
+    const desktopTarget = elements['desktop-1440'];
+    const mobileTarget = elements['mobile-app-view'];
+    
+    const desktopHtml = desktopTarget ? renderHtmlNodes('desktop-1440', desktopTarget.x, desktopTarget.y) : '';
+    const mobileHtml = mobileTarget ? renderHtmlNodes('mobile-app-view', mobileTarget.x, mobileTarget.y) : '';
+
+    const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -40,7 +73,7 @@ export function downloadInteractivePrototypeHtml(
     body {
       background-color: #0f0f11;
       color: #e5e2e1;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, sans-serif;
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -139,15 +172,15 @@ export function downloadInteractivePrototypeHtml(
     }
     /* Desktop Frame */
     .desktop-frame {
-      width: 960px;
-      height: 640px;
-      background: #18181b;
-      border-radius: 12px;
+      width: ${desktopTarget?.width || 960}px;
+      height: ${desktopTarget?.height || 640}px;
+      background: ${desktopTarget?.fill || '#131313'};
+      border-radius: ${desktopTarget?.borderRadius || 8}px;
       box-shadow: 0 25px 60px -15px rgba(0,0,0,0.7), 0 0 0 1px #27272a;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      position: relative;
     }
     .browser-bar {
       height: 38px;
@@ -157,6 +190,7 @@ export function downloadInteractivePrototypeHtml(
       align-items: center;
       padding: 0 14px;
       gap: 12px;
+      z-index: 1000;
     }
     .browser-dots {
       display: flex;
@@ -182,22 +216,20 @@ export function downloadInteractivePrototypeHtml(
     }
     .screen-content {
       flex: 1;
-      background: #121214;
       position: relative;
-      overflow-y: auto;
+      overflow: hidden;
     }
     /* Mobile Frame */
     .mobile-frame {
-      width: 360px;
-      height: 720px;
-      background: #000;
-      border-radius: 48px;
+      width: ${mobileTarget?.width || 390}px;
+      height: ${mobileTarget?.height || 844}px;
+      background: ${mobileTarget?.fill || '#131313'};
+      border-radius: ${mobileTarget?.borderRadius || 44}px;
       box-shadow: 0 25px 60px -15px rgba(0,0,0,0.8), 0 0 0 4px #27272a;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       position: relative;
-      transition: opacity 0.2s ease, transform 0.2s ease;
     }
     .dynamic-island {
       position: absolute;
@@ -208,7 +240,7 @@ export function downloadInteractivePrototypeHtml(
       height: 26px;
       background: #000;
       border-radius: 20px;
-      z-index: 100;
+      z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -216,6 +248,10 @@ export function downloadInteractivePrototypeHtml(
     }
     .camera-lens { width: 8px; height: 8px; border-radius: 50%; background: #1a1a2e; }
     .mobile-status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
       height: 44px;
       display: flex;
       align-items: flex-end;
@@ -224,13 +260,13 @@ export function downloadInteractivePrototypeHtml(
       font-size: 12px;
       font-weight: 600;
       color: #fafafa;
-      z-index: 90;
+      z-index: 990;
+      pointer-events: none;
     }
     .mobile-content {
       flex: 1;
-      background: #141417;
       position: relative;
-      overflow-y: auto;
+      overflow: hidden;
     }
     .mobile-home-indicator {
       position: absolute;
@@ -241,12 +277,13 @@ export function downloadInteractivePrototypeHtml(
       height: 4px;
       background: #71717a;
       border-radius: 2px;
-      z-index: 100;
+      z-index: 1000;
+      pointer-events: none;
     }
     /* Hotspot Blue Ripple */
     .hotspot {
       cursor: pointer;
-      position: relative;
+      position: absolute;
       transition: transform 0.1s ease, filter 0.15s ease;
     }
     .hotspot:hover {
@@ -277,7 +314,7 @@ export function downloadInteractivePrototypeHtml(
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       opacity: 0;
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      z-index: 200;
+      z-index: 2000;
     }
     #prototype-toast.show {
       transform: translateX(-50%) translateY(0);
@@ -288,14 +325,14 @@ export function downloadInteractivePrototypeHtml(
 <body>
   <header>
     <div class="brand">
-      <div class="logo-badge">V</div>
+      <div class="logo-badge">Z</div>
       <span>${safeTitle}</span>
-      <span style="font-size: 11px; background: #27272a; color: #a1a1aa; padding: 2px 6px; border-radius: 4px;">Prototype v2.4</span>
+      <span style="font-size: 11px; background: #27272a; color: #a1a1aa; padding: 2px 6px; border-radius: 4px;">ZLab Prototype</span>
     </div>
 
     <div class="pill-switcher">
-      <button id="btn-show-desktop" class="pill-btn ${defaultDevice === 'desktop' ? 'active' : ''}" onclick="switchView('desktop')">Desktop 1440</button>
-      <button id="btn-show-mobile" class="pill-btn ${defaultDevice === 'mobile' ? 'active' : ''}" onclick="switchView('mobile')">Mobile iOS</button>
+      <button id="btn-show-desktop" class="pill-btn ${defaultDevice === 'desktop' ? 'active' : ''}" onclick="switchView('desktop')">Desktop View</button>
+      <button id="btn-show-mobile" class="pill-btn ${defaultDevice === 'mobile' ? 'active' : ''}" onclick="switchView('mobile')">Mobile View</button>
     </div>
 
     <div class="header-actions">
@@ -318,62 +355,7 @@ export function downloadInteractivePrototypeHtml(
         <div class="address-bar">https://app.zlab.io/preview</div>
       </div>
       <div class="screen-content">
-        <!-- Desktop Nav -->
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; border-bottom: 1px solid #202024;">
-          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #fff;">
-            <span style="background: #0d99ff; color: #00284d; padding: 2px 8px; border-radius: 4px; font-weight: 900;">Z</span>
-            ZLAB
-          </div>
-          <div style="display: flex; gap: 24px; font-size: 13px; color: #a1a1aa;">
-            <span class="hotspot" onclick="triggerAction('Overview clicked')">Overview</span>
-            <span class="hotspot" onclick="triggerAction('Features clicked')">Features</span>
-            <span class="hotspot" onclick="triggerAction('Pricing clicked')">Pricing</span>
-            <span class="hotspot" onclick="switchView('mobile')">Switch to Mobile App ↗</span>
-          </div>
-          <button class="hotspot" onclick="triggerAction('Free trial started!')" style="background: #9fcaff; color: #003259; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer;">
-            Get Started
-          </button>
-        </div>
-
-        <!-- Desktop Hero -->
-        <div style="text-align: center; padding: 60px 40px 40px;">
-          <div style="display: inline-block; background: #27272a; color: #d2bbff; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 16px;">
-            ✨ Next-Gen Vector Engine
-          </div>
-          <h1 style="font-size: 38px; font-weight: 800; color: #fafafa; margin-bottom: 16px; line-height: 1.2;">
-            Design at the speed of thought with infinite precision.
-          </h1>
-          <p style="color: #a1a1aa; max-width: 580px; margin: 0 auto 28px; font-size: 14px; line-height: 1.6;">
-            A high-performance vector creation workspace with real-time multiplayer, smart constraints, and one-click component prototyping.
-          </p>
-          <div style="display: flex; justify-content: center; gap: 14px;">
-            <button class="hotspot" onclick="triggerAction('Primary CTA clicked: Account created!')" style="background: #9fcaff; color: #003259; border: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(159,202,255,0.3);">
-              Start Free Trial →
-            </button>
-            <button class="hotspot" onclick="switchView('mobile')" style="background: #27272a; color: #fafafa; border: 1px solid #3f3f46; padding: 12px 24px; border-radius: 8px; font-weight: 500; font-size: 14px; cursor: pointer;">
-              Preview Mobile iOS View
-            </button>
-          </div>
-        </div>
-
-        <!-- Interactive Grid Cards -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px 40px;">
-          <div class="hotspot" onclick="triggerAction('Opened Vector Pen engine details')" style="background: #1e1e24; border: 1px solid #2d2d35; border-radius: 12px; padding: 20px;">
-            <div style="font-size: 20px; margin-bottom: 8px;">⚡</div>
-            <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">GPU Vector Core</h3>
-            <p style="font-size: 12px; color: #89919e; line-height: 1.5;">Sub-pixel math rendering 100k nodes smoothly at 120 FPS.</p>
-          </div>
-          <div class="hotspot" onclick="triggerAction('Opened Multiplayer Sync details')" style="background: #1e1e24; border: 1px solid #2d2d35; border-radius: 12px; padding: 20px;">
-            <div style="font-size: 20px; margin-bottom: 8px;">👥</div>
-            <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Live Collaboration</h3>
-            <p style="font-size: 12px; color: #89919e; line-height: 1.5;">CRDT synchronization ensuring zero conflicts across your entire team.</p>
-          </div>
-          <div class="hotspot" onclick="triggerAction('Opened Component Library modal')" style="background: #1e1e24; border: 1px solid #2d2d35; border-radius: 12px; padding: 20px;">
-            <div style="font-size: 20px; margin-bottom: 8px;">🧩</div>
-            <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Design Systems</h3>
-            <p style="font-size: 12px; color: #89919e; line-height: 1.5;">Linked components with variants, tokens, and instant code generation.</p>
-          </div>
-        </div>
+        ${desktopHtml}
       </div>
     </div>
 
@@ -386,59 +368,8 @@ export function downloadInteractivePrototypeHtml(
         <span>9:41</span>
         <span>5G 􀛨</span>
       </div>
-      <div class="mobile-content" style="display: flex; flex-direction: column; padding: 20px; position: relative;">
-        <!-- Top Back button (only on signin) -->
-        <div id="proto-back-row" style="opacity: 0; transform: translateY(-10px); transition: all 0.45s cubic-bezier(0, 0, 0.2, 1); pointer-events: none; margin-bottom: 8px;">
-          <button class="hotspot" onclick="smartAnimateTo('welcome')" style="background: #201f1f; border: 1px solid #353534; color: #9fcaff; border-radius: 20px; padding: 6px 14px; font-size: 11px; font-weight: 600; cursor: pointer;">
-            ← Welcome Screen
-          </button>
-        </div>
-
-        <!-- Shared Emblem / Logo (Smart Animate morphing) -->
-        <div id="proto-logo-wrapper" style="display: flex; justify-content: center; transform: translateY(35px); transition: all 0.45s cubic-bezier(0, 0, 0.2, 1); margin: 8px 0;">
-          <div id="proto-logo-box" class="hotspot" onclick="toggleScreenSmartAnimate()" style="width: 100px; height: 100px; border-radius: 26px; background: #0d99ff; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; box-shadow: 0 12px 30px rgba(13, 153, 255, 0.35); transition: all 0.45s cubic-bezier(0, 0, 0.2, 1); cursor: pointer;">
-            <div style="font-size: 26px; font-weight: 800;">✦</div>
-            <div id="proto-logo-text" style="font-size: 13px; font-weight: 700; margin-top: 2px;">ZLab</div>
-          </div>
-        </div>
-
-        <!-- Shared Title & Subtitle -->
-        <div id="proto-title-wrapper" style="text-align: center; transform: translateY(45px); transition: all 0.45s cubic-bezier(0, 0, 0.2, 1);">
-          <h2 id="proto-title" style="font-size: 22px; font-weight: 800; color: #fff; margin: 0; transition: all 0.45s ease;">Welcome to ZLab</h2>
-          <p id="proto-subtitle" style="font-size: 12px; color: #89919e; margin-top: 6px; transition: all 0.45s ease;">Design smoothly with Smart Animate motion</p>
-        </div>
-
-        <!-- Welcome Screen Specific Trigger Card -->
-        <div id="proto-welcome-card" style="margin-top: 55px; background: #1c1c21; border: 1px solid #27272a; border-radius: 14px; padding: 14px; transition: all 0.45s cubic-bezier(0, 0, 0.2, 1);">
-          <div style="font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 4px;">● FIGMA SMART ANIMATE READY</div>
-          <div style="font-size: 11px; color: #89919e; line-height: 1.5;">
-            Trigger: <strong style="color: #9fcaff;">On tap</strong><br>
-            Destination: <strong style="color: #9fcaff;">Sign-In Screen</strong><br>
-            Animation: <strong style="color: #d2bbff;">Smart Animate (450ms)</strong>
-          </div>
-        </div>
-
-        <!-- Sign-In Form Fields (Fade & slide into view) -->
-        <div id="proto-signin-form" style="display: none; opacity: 0; transform: translateY(20px); transition: all 0.45s cubic-bezier(0, 0, 0.2, 1); margin-top: 25px; flex-direction: column; gap: 12px;">
-          <div>
-            <label style="font-size: 11px; color: #89919e; display: block; margin-bottom: 4px;">Email address</label>
-            <input type="text" readonly value="designer@zlab.app" style="width: 100%; box-sizing: border-box; background: #1c1c21; border: 1px solid #2d2d32; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 12px; outline: none;">
-          </div>
-          <div>
-            <label style="font-size: 11px; color: #89919e; display: block; margin-bottom: 4px;">Password</label>
-            <input type="password" readonly value="••••••••••••" style="width: 100%; box-sizing: border-box; background: #1c1c21; border: 1px solid #2d2d32; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 12px; outline: none;">
-          </div>
-        </div>
-
-        <!-- Bottom Primary CTA Button -->
-        <div style="margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
-          <button id="proto-cta-btn" class="hotspot" onclick="toggleScreenSmartAnimate()" style="width: 100%; background: #9fcaff; color: #003259; border: none; border-radius: 14px; padding: 14px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.45s cubic-bezier(0, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(159, 202, 255, 0.3);">
-            ✦ Get Started (On Tap ➔ Smart Animate)
-          </button>
-          <div id="proto-secondary-link" onclick="toggleScreenSmartAnimate()" style="text-align: center; font-size: 11px; color: #89919e; cursor: pointer; padding: 4px;">
-            Already have an account? <span style="color: #9fcaff; text-decoration: underline;">Sign In</span>
-          </div>
-        </div>
+      <div class="mobile-content">
+        ${mobileHtml}
       </div>
       <div class="mobile-home-indicator"></div>
     </div>
@@ -615,26 +546,36 @@ export function downloadSvg(
   const target = selectedElementId ? elements[selectedElementId] : elements['desktop-1440'];
   const w = target?.width || 960;
   const h = target?.height || 640;
+  const targetX = target?.x || 0;
+  const targetY = target?.y || 0;
 
-  // Build SVG child elements
-  const children = Object.values(elements)
-    .filter((el) => el.parentId === target?.id && el.visible !== false)
-    .map((el) => {
+  function buildSvgNodes(parentId: string): string {
+    const children = Object.values(elements).filter(
+      (el) => el.parentId === parentId && el.visible !== false
+    );
+    
+    return children.map((el) => {
       const fill = el.fill || '#0d99ff';
       const stroke = el.stroke && el.stroke !== 'none' ? `stroke="${el.stroke}" stroke-width="${el.strokeWidth || 1}"` : '';
       const rx = el.borderRadius ? `rx="${el.borderRadius}"` : '';
-      const text = el.textContent ? `<text x="${el.x + 12}" y="${el.y + el.height / 2 + 5}" fill="${el.textColor || '#ffffff'}" font-family="sans-serif" font-size="${el.fontSize || 14}px">${escapeHtml(el.textContent)}</text>` : '';
+      const textX = (el.x - targetX) + 12;
+      const textY = (el.y - targetY) + (el.height / 2) + 5;
+      const text = el.textContent ? `<text x="${textX}" y="${textY}" fill="${el.textColor || '#ffffff'}" font-family="sans-serif" font-size="${el.fontSize || 14}px">${escapeHtml(el.textContent)}</text>` : '';
 
-      return `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" fill="${fill}" opacity="${(el.fillOpacity ?? 100) / 100}" ${rx} ${stroke} />
-  ${text}`;
-    })
-    .join('\n');
+      const rect = `<rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" opacity="${(el.fillOpacity ?? 100) / 100}" ${rx} ${stroke} />`;
+      
+      const nested = buildSvgNodes(el.id);
+      return `  ${rect}\n  ${text}\n${nested}`;
+    }).join('\n');
+  }
+
+  const childrenSvg = target ? buildSvgNodes(target.id) : '';
 
   const svgMarkup = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Generated by ZLab -->
   <rect width="${w}" height="${h}" fill="${target?.fill || '#131313'}" />
-${children}
+${childrenSvg}
 </svg>`;
 
   const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
@@ -675,53 +616,68 @@ export function downloadPng(
   ctx.fillStyle = target?.fill || '#131313';
   ctx.fillRect(0, 0, w, h);
 
-  // Render children
-  const children = Object.values(elements).filter(
-    (el) => el.parentId === target?.id && el.visible !== false
-  );
+  const targetX = target?.x || 0;
+  const targetY = target?.y || 0;
 
-  for (const el of children) {
-    ctx.save();
-    ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
+  function renderNodes(parentId: string) {
+    const children = Object.values(elements).filter(
+      (el) => el.parentId === parentId && el.visible !== false
+    );
 
-    // Rounded rectangle path
-    const r = el.borderRadius || 0;
-    ctx.beginPath();
-    ctx.moveTo(el.x + r, el.y);
-    ctx.lineTo(el.x + el.width - r, el.y);
-    ctx.quadraticCurveTo(el.x + el.width, el.y, el.x + el.width, el.y + r);
-    ctx.lineTo(el.x + el.width, el.y + el.height - r);
-    ctx.quadraticCurveTo(el.x + el.width, el.y + el.height, el.x + el.width - r, el.y + el.height);
-    ctx.lineTo(el.x + r, el.y + el.height);
-    ctx.quadraticCurveTo(el.x, el.y + el.height, el.x, el.y + el.height - r);
-    ctx.lineTo(el.x, el.y + r);
-    ctx.quadraticCurveTo(el.x, el.y, el.x + r, el.y);
-    ctx.closePath();
+    for (const el of children) {
+      if (!ctx) continue;
+      ctx.save();
+      ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
 
-    if (el.shadowBlur) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-      ctx.shadowBlur = el.shadowBlur;
-      ctx.shadowOffsetY = el.shadowY || 0;
+      const elX = el.x - targetX;
+      const elY = el.y - targetY;
+
+      // Rounded rectangle path
+      const r = el.borderRadius || 0;
+      ctx.beginPath();
+      ctx.moveTo(elX + r, elY);
+      ctx.lineTo(elX + el.width - r, elY);
+      ctx.quadraticCurveTo(elX + el.width, elY, elX + el.width, elY + r);
+      ctx.lineTo(elX + el.width, elY + el.height - r);
+      ctx.quadraticCurveTo(elX + el.width, elY + el.height, elX + el.width - r, elY + el.height);
+      ctx.lineTo(elX + r, elY + el.height);
+      ctx.quadraticCurveTo(elX, elY + el.height, elX, elY + el.height - r);
+      ctx.lineTo(elX, elY + r);
+      ctx.quadraticCurveTo(elX, elY, elX + r, elY);
+      ctx.closePath();
+
+      if (el.shadowBlur) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = el.shadowBlur;
+        ctx.shadowOffsetY = el.shadowY || 0;
+      }
+
+      ctx.fillStyle = el.fill || '#0d99ff';
+      ctx.fill();
+
+      if (el.stroke && el.stroke !== 'none') {
+        ctx.strokeStyle = el.stroke;
+        ctx.lineWidth = el.strokeWidth || 1;
+        ctx.stroke();
+      }
+
+      // Text
+      if (el.textContent) {
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = el.textColor || '#ffffff';
+        ctx.font = `${el.fontSize || 13}px -apple-system, sans-serif`;
+        ctx.fillText(el.textContent, elX + 12, elY + el.height / 2 + 4);
+      }
+
+      ctx.restore();
+
+      // Render deeper children recursively
+      renderNodes(el.id);
     }
+  }
 
-    ctx.fillStyle = el.fill || '#0d99ff';
-    ctx.fill();
-
-    if (el.stroke && el.stroke !== 'none') {
-      ctx.strokeStyle = el.stroke;
-      ctx.lineWidth = el.strokeWidth || 1;
-      ctx.stroke();
-    }
-
-    // Text
-    if (el.textContent) {
-      ctx.shadowColor = 'transparent';
-      ctx.fillStyle = el.textColor || '#ffffff';
-      ctx.font = `${el.fontSize || 13}px -apple-system, sans-serif`;
-      ctx.fillText(el.textContent, el.x + 12, el.y + el.height / 2 + 4);
-    }
-
-    ctx.restore();
+  if (target) {
+    renderNodes(target.id);
   }
 
   canvas.toBlob((blob) => {

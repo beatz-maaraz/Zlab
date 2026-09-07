@@ -112,42 +112,45 @@ export const Header: React.FC<HeaderProps> = ({
                 Studio
               </span>
             </span>
-            {isEditingTitle ? (
-              <input
-                id="input-project-title"
-                type="text"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                onBlur={() => {
-                  setProjectTitle(tempTitle || 'Untitled Design v2.4');
-                  setIsEditingTitle(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+            {currentView === 'editor' && (
+              isEditingTitle ? (
+                <input
+                  id="input-project-title"
+                  type="text"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  onBlur={() => {
                     setProjectTitle(tempTitle || 'Untitled Design v2.4');
                     setIsEditingTitle(false);
-                  }
-                }}
-                autoFocus
-                className="text-[11px] bg-[#2a2a2a] text-[#bfc7d5] px-1 py-0.5 rounded outline-none border border-[#0d99ff]"
-              />
-            ) : (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTempTitle(projectTitle);
-                  setIsEditingTitle(true);
-                }}
-                className="text-[11px] text-[#bfc7d5] hover:text-[#e5e2e1] cursor-pointer"
-                title="Click to rename design"
-              >
-                {projectTitle}
-              </span>
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setProjectTitle(tempTitle || 'Untitled Design v2.4');
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  autoFocus
+                  className="text-[11px] bg-[#2a2a2a] text-[#bfc7d5] px-1 py-0.5 rounded outline-none border border-[#0d99ff]"
+                />
+              ) : (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTempTitle(projectTitle);
+                    setIsEditingTitle(true);
+                  }}
+                  className="text-[11px] text-[#bfc7d5] hover:text-[#e5e2e1] cursor-pointer"
+                  title="Click to rename design"
+                >
+                  {projectTitle}
+                </span>
+              )
             )}
           </div>
         </button>
 
         {/* Menu Bar Dropdowns */}
+        {currentView === 'editor' && (
         <nav ref={menuRef} className="hidden lg:flex items-center gap-1 ml-6 relative">
           {/* File Menu */}
           <div className="relative">
@@ -495,10 +498,13 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </nav>
+        )}
       </div>
 
       {/* Right actions: Undo, Redo, Zoom, Device Preview, Export, User */}
       <div className="flex items-center gap-3">
+        {currentView === 'editor' && (
+        <>
         {/* Undo/Redo/Zoom/Device pill bar */}
         <div className="flex items-center gap-1 bg-[#201f1f] px-2 py-1 rounded-lg border border-[#353534]/50">
           <button
@@ -620,6 +626,8 @@ export const Header: React.FC<HeaderProps> = ({
           <Share2 className="w-4 h-4" />
           <span>{exportNotice ? 'Exported!' : 'Export'}</span>
         </button>
+        </>
+        )}
 
         {/* User Profile Avatar */}
         <button
