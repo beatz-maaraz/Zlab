@@ -1,0 +1,6 @@
+{
+  "name": "ZLab",
+  "description": "Next-generation professional vector design studio and collaborative canvas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
