@@ -74,8 +74,11 @@ interface ProjectStoreState {
   ) => void;
   deleteProject: (id: string) => void;
   duplicateProject: (id: string) => Project;
-  addPage: (name: string) => void;
+  addPage: (name?: string) => void;
   setActivePage: (pageId: string) => void;
+  renamePage: (pageId: string, name: string) => void;
+  duplicatePage: (pageId: string) => void;
+  deletePage: (pageId: string) => void;
   getRecentProjectsList: () => Project[];
 }
 
@@ -217,9 +220,15 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         const resolved = typeof value === 'function' ? value(current.elements) : value;
         const computed = computeAutoLayouts(resolved);
 
+        const pageElements = {
+          ...(current.pageElements || {}),
+          [current.activePageId]: computed,
+        };
+
         const updated: Project = {
           ...current,
           elements: computed,
+          pageElements,
           updatedAt: new Date().toISOString(),
         };
 
@@ -285,19 +294,58 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       return cloned;
     },
 
-    addPage: (name: string) => {
+    addPage: (name?: string) => {
       set((state) => {
         const current = state.projects[state.activeProjectId];
         if (!current) return state;
 
+        const pageNumber = current.pages.length + 1;
         const pageId = `page-${Date.now()}`;
-        const newPage: ProjectPage = { id: pageId, name };
-        const updatedPages = [...current.pages, newPage];
+        const pageName = name?.trim() || `Page ${pageNumber}`;
+        const newPage: ProjectPage = { id: pageId, name: pageName };
+
+        const isMobile = current.previewType === 'mobile';
+        const defaultArtboardId = isMobile ? 'mobile-app-view' : 'desktop-1440';
+
+        const initialPageElements: Record<string, CanvasElement> = {
+          [defaultArtboardId]: {
+            id: defaultArtboardId,
+            name: isMobile ? 'Mobile App View' : 'Desktop - 1440',
+            type: 'frame',
+            x: 0,
+            y: 0,
+            width: isMobile ? 390 : 1440,
+            height: isMobile ? 844 : 900,
+            rotation: 0,
+            borderRadius: isMobile ? 28 : 8,
+            fill: '#131313',
+            fillOpacity: 100,
+            stroke: '#3f4753',
+            strokeWidth: 1,
+            shadowBlur: 24,
+            shadowY: 8,
+            shadowSpread: 0,
+            visible: true,
+            locked: false,
+          },
+        };
+
+        const existingPageElements = current.pageElements || {
+          [current.activePageId]: current.elements,
+        };
+
+        const updatedPageElements = {
+          ...existingPageElements,
+          [current.activePageId]: current.elements,
+          [pageId]: initialPageElements,
+        };
 
         const updated: Project = {
           ...current,
-          pages: updatedPages,
+          pages: [...current.pages, newPage],
           activePageId: pageId,
+          elements: initialPageElements,
+          pageElements: updatedPageElements,
           updatedAt: new Date().toISOString(),
         };
 
@@ -310,11 +358,153 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     setActivePage: (pageId: string) => {
       set((state) => {
         const current = state.projects[state.activeProjectId];
-        if (!current) return state;
+        if (!current || current.activePageId === pageId) return state;
+
+        const existingPageElements = current.pageElements || {
+          [current.activePageId]: current.elements,
+        };
+
+        // Save current elements to outgoing page
+        const savedPageElements = {
+          ...existingPageElements,
+          [current.activePageId]: current.elements,
+        };
+
+        const isMobile = current.previewType === 'mobile';
+        const defaultArtboardId = isMobile ? 'mobile-app-view' : 'desktop-1440';
+
+        // Load new page elements or fallback
+        const targetElements = savedPageElements[pageId] || {
+          [defaultArtboardId]: {
+            id: defaultArtboardId,
+            name: isMobile ? 'Mobile App View' : 'Desktop - 1440',
+            type: 'frame',
+            x: 0,
+            y: 0,
+            width: isMobile ? 390 : 1440,
+            height: isMobile ? 844 : 900,
+            rotation: 0,
+            borderRadius: isMobile ? 28 : 8,
+            fill: '#131313',
+            fillOpacity: 100,
+            stroke: '#3f4753',
+            strokeWidth: 1,
+            shadowBlur: 24,
+            shadowY: 8,
+            shadowSpread: 0,
+            visible: true,
+            locked: false,
+          },
+        };
 
         const updated: Project = {
           ...current,
           activePageId: pageId,
+          elements: targetElements,
+          pageElements: savedPageElements,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const next = { ...state.projects, [state.activeProjectId]: updated };
+        persistProjects(next);
+        return { projects: next };
+      });
+    },
+
+    renamePage: (pageId: string, name: string) => {
+      set((state) => {
+        const current = state.projects[state.activeProjectId];
+        if (!current) return state;
+
+        const updatedPages = current.pages.map((p) =>
+          p.id === pageId ? { ...p, name: name.trim() || p.name } : p
+        );
+
+        const updated: Project = {
+          ...current,
+          pages: updatedPages,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const next = { ...state.projects, [state.activeProjectId]: updated };
+        persistProjects(next);
+        return { projects: next };
+      });
+    },
+
+    duplicatePage: (pageId: string) => {
+      set((state) => {
+        const current = state.projects[state.activeProjectId];
+        if (!current) return state;
+
+        const targetPage = current.pages.find((p) => p.id === pageId);
+        if (!targetPage) return state;
+
+        const newId = `page-${Date.now()}`;
+        const newPage: ProjectPage = {
+          id: newId,
+          name: `${targetPage.name} (Copy)`,
+        };
+
+        const existingPageElements = current.pageElements || {
+          [current.activePageId]: current.elements,
+        };
+
+        const sourceElements =
+          pageId === current.activePageId
+            ? current.elements
+            : existingPageElements[pageId] || current.elements;
+
+        const clonedElements = JSON.parse(JSON.stringify(sourceElements));
+
+        const updatedPageElements = {
+          ...existingPageElements,
+          [current.activePageId]: current.elements,
+          [newId]: clonedElements,
+        };
+
+        const updated: Project = {
+          ...current,
+          pages: [...current.pages, newPage],
+          activePageId: newId,
+          elements: clonedElements,
+          pageElements: updatedPageElements,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const next = { ...state.projects, [state.activeProjectId]: updated };
+        persistProjects(next);
+        return { projects: next };
+      });
+    },
+
+    deletePage: (pageId: string) => {
+      set((state) => {
+        const current = state.projects[state.activeProjectId];
+        if (!current || current.pages.length <= 1) return state;
+
+        const updatedPages = current.pages.filter((p) => p.id !== pageId);
+        let nextActiveId = current.activePageId;
+        let nextElements = current.elements;
+
+        const updatedPageElements = { ...(current.pageElements || {}) };
+        delete updatedPageElements[pageId];
+
+        if (current.activePageId === pageId) {
+          nextActiveId = updatedPages[0].id;
+          nextElements =
+            updatedPageElements[nextActiveId] ||
+            Object.values(updatedPageElements)[0] ||
+            current.elements;
+        }
+
+        const updated: Project = {
+          ...current,
+          pages: updatedPages,
+          activePageId: nextActiveId,
+          elements: nextElements,
+          pageElements: updatedPageElements,
+          updatedAt: new Date().toISOString(),
         };
 
         const next = { ...state.projects, [state.activeProjectId]: updated };

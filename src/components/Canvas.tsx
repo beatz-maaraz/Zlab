@@ -952,6 +952,35 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
+    // 5.5 Vector Icon Elements
+    if (el.type === 'icon') {
+      const iconSize = Math.max(14, Math.round(Math.min(el.width, el.height) * 0.65));
+      return (
+        <div
+          style={{
+            backgroundColor: el.fill || 'transparent',
+            borderRadius: `${el.borderRadius ?? 10}px`,
+            border:
+              el.stroke && el.stroke !== 'none'
+                ? `${el.strokeWidth ?? 1}px solid ${el.stroke}`
+                : 'none',
+            boxShadow: el.shadowBlur
+              ? `0px ${el.shadowY ?? 2}px ${el.shadowBlur}px rgba(0,0,0,0.3)`
+              : undefined,
+            color: el.textColor || '#9fcaff',
+            opacity: (el.fillOpacity ?? 100) / 100,
+          }}
+          className="w-full h-full flex items-center justify-center overflow-hidden select-none p-1 transition-colors"
+        >
+          <DynamicIcon
+            name={el.iconName || 'Sparkles'}
+            style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
+            className="shrink-0 transition-transform"
+          />
+        </div>
+      );
+    }
+
     // 6. Cards & Surfaces
     if (el.type === 'card') {
       const isGlass = el.glassEffect && el.glassEffect !== 'none' || el.materialPreset === 'glass' || el.variant?.includes('glass');

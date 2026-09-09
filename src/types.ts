@@ -149,6 +149,7 @@ export interface Project {
   name: string;
   ownerId?: string;
   elements: Record<string, CanvasElement>;
+  pageElements?: Record<string, Record<string, CanvasElement>>;
   pages: ProjectPage[];
   activePageId: string;
   previewType: 'desktop' | 'mobile';

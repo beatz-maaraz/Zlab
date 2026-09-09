@@ -51,6 +51,11 @@ export default function App() {
     updateActiveProjectElements,
     deleteProject,
     duplicateProject,
+    addPage,
+    setActivePage,
+    renamePage,
+    duplicatePage,
+    deletePage,
     getRecentProjectsList,
   } = useProjectStore();
 
@@ -747,6 +752,16 @@ export default function App() {
               onStartResize={handleStartResizeLeft}
               isCollapsed={isLeftSidebarCollapsed}
               onToggleCollapse={toggleLeftSidebar}
+              pages={activeProject.pages || []}
+              activePageId={activePageId}
+              onAddPage={(name) => addPage(name)}
+              onSelectPage={(pageId) => {
+                setActivePage(pageId);
+                setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+              }}
+              onRenamePage={(pageId, name) => renamePage(pageId, name)}
+              onDuplicatePage={(pageId) => duplicatePage(pageId)}
+              onDeletePage={(pageId) => deletePage(pageId)}
             />
 
             {/* Floating Toolbar */}

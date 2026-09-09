@@ -13,6 +13,7 @@ import {
 import { CanvasElement, InspectorTab } from '../../types';
 import { PositionSection } from './PositionSection';
 import { TypographySection } from './TypographySection';
+import { IconSection } from './IconSection';
 import { FillSection } from './FillSection';
 import { BorderSection } from './BorderSection';
 import { ShadowSection } from './ShadowSection';
@@ -213,6 +214,12 @@ export const Inspector: React.FC<InspectorProps> = ({
             />
 
             <TypographySection
+              element={selectedElement}
+              onUpdate={onUpdateElement}
+              disabled={isLocked}
+            />
+
+            <IconSection
               element={selectedElement}
               onUpdate={onUpdateElement}
               disabled={isLocked}

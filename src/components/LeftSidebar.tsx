@@ -22,6 +22,8 @@ import {
   Plus,
   Trash2,
   Copy,
+  Edit3,
+  FileText,
   Sparkles,
   Palette,
   Circle,
@@ -36,7 +38,7 @@ import {
   Sliders,
   ArrowRight,
 } from 'lucide-react';
-import { CanvasElement, AppView, LibraryComponentItem } from '../types';
+import { CanvasElement, AppView, LibraryComponentItem, ProjectPage } from '../types';
 import {
   LIBRARY_COMPONENTS,
   COMPONENT_CATEGORIES,
@@ -67,6 +69,14 @@ interface LeftSidebarProps {
   onStartResize?: (e: React.MouseEvent) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Pages
+  pages?: ProjectPage[];
+  activePageId?: string;
+  onAddPage?: (name?: string) => void;
+  onSelectPage?: (pageId: string) => void;
+  onRenamePage?: (pageId: string, name: string) => void;
+  onDuplicatePage?: (pageId: string) => void;
+  onDeletePage?: (pageId: string) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -88,6 +98,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onStartResize,
   isCollapsed = false,
   onToggleCollapse,
+  pages = [],
+  activePageId = 'page-1',
+  onAddPage,
+  onSelectPage,
+  onRenamePage,
+  onDuplicatePage,
+  onDeletePage,
 }) => {
   // Navigation tabs: 'layers' | 'components' | 'assets'
   const [activeNavTab, setActiveNavTab] = useState<'layers' | 'components' | 'assets'>('layers');
@@ -109,6 +126,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   // Inline rename state for layer item
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
+
+  // Pages management state
+  const [isPagesExpanded, setIsPagesExpanded] = useState(true);
+  const [renamingPageId, setRenamingPageId] = useState<string | null>(null);
+  const [tempPageName, setTempPageName] = useState('');
+  const [isAddingPage, setIsAddingPage] = useState(false);
+  const [newPageName, setNewPageName] = useState('');
 
   // Feedback notification when item is inserted
   const [insertNotice, setInsertNotice] = useState<string | null>(null);
@@ -380,7 +404,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     if (el.type === 'button') return <MousePointerClick className="w-3.5 h-3.5 text-[#d2bbff] shrink-0" />;
     if (el.type === 'text') return <Type className="w-3.5 h-3.5 text-[#9fcaff] shrink-0" />;
     if (el.type === 'grid' || el.type === 'card') return <Grid className="w-3.5 h-3.5 text-[#c8c6c5] shrink-0" />;
-    if (el.type === 'icon') return <Sparkles className="w-3.5 h-3.5 text-[#9fcaff] shrink-0" />;
+    if (el.type === 'icon') {
+      return (
+        <DynamicIcon
+          name={el.iconName || 'Sparkles'}
+          className="w-3.5 h-3.5 text-[#9fcaff] shrink-0"
+        />
+      );
+    }
     if (el.type === 'input') return <Sliders className="w-3.5 h-3.5 text-[#34d399] shrink-0" />;
     if (el.type === 'badge') return <Shield className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />;
     if (el.type === 'avatar') return <Users className="w-3.5 h-3.5 text-[#d2bbff] shrink-0" />;
@@ -590,6 +621,173 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           {/* TAB 1: CANVAS LAYERS */}
           {activeNavTab === 'layers' && (
             <div className="flex-1 flex flex-col overflow-hidden">
+              {/* PAGES MANAGEMENT SECTION */}
+              <div className="border-b border-[#2d2d32] pb-1.5 bg-[#141416]/50">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <button
+                    onClick={() => setIsPagesExpanded(!isPagesExpanded)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#bfc7d5] hover:text-white transition-colors"
+                  >
+                    <span className="text-[#89919e]">
+                      {isPagesExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </span>
+                    <span className="tracking-wide uppercase text-[10px] text-[#89919e]">Pages</span>
+                    <span className="text-[9px] font-mono bg-[#2a2a2a] text-[#89919e] px-1.5 py-0.5 rounded-full">
+                      {(pages.length || 1)}
+                    </span>
+                  </button>
+
+                  <button
+                    id="btn-layer-add-page"
+                    onClick={() => setIsAddingPage(true)}
+                    className="px-2 py-1 bg-[#201f1f] hover:bg-[#2a2a2a] border border-[#353534] hover:border-[#0d99ff] text-[#9fcaff] hover:text-white rounded flex items-center gap-1 text-[11px] font-medium transition-all shadow-sm"
+                    title="Add new page to project"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Page</span>
+                  </button>
+                </div>
+
+                {/* Pages List */}
+                {isPagesExpanded && (
+                  <div className="px-2 space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                    {(pages.length > 0 ? pages : [{ id: activePageId || 'page-1', name: 'Page 1 — Main Canvas' }]).map((p) => {
+                      const isActive = p.id === activePageId;
+                      const isRenaming = renamingPageId === p.id;
+
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => onSelectPage?.(p.id)}
+                          onDoubleClick={() => {
+                            setRenamingPageId(p.id);
+                            setTempPageName(p.name);
+                          }}
+                          className={`flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs cursor-pointer group transition-all ${
+                            isActive
+                              ? 'bg-[#0d99ff]/15 text-[#9fcaff] font-medium ring-1 ring-[#0d99ff]/30'
+                              : 'text-[#bfc7d5] hover:bg-[#201f1f] hover:text-[#e5e2e1]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                isActive ? 'text-[#0d99ff]' : 'text-[#89919e]'
+                              }`}
+                            />
+                            {isRenaming ? (
+                              <input
+                                type="text"
+                                value={tempPageName}
+                                onChange={(e) => setTempPageName(e.target.value)}
+                                onBlur={() => {
+                                  if (tempPageName.trim()) {
+                                    onRenamePage?.(p.id, tempPageName);
+                                  }
+                                  setRenamingPageId(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    if (tempPageName.trim()) {
+                                      onRenamePage?.(p.id, tempPageName);
+                                    }
+                                    setRenamingPageId(null);
+                                  } else if (e.key === 'Escape') {
+                                    setRenamingPageId(null);
+                                  }
+                                }}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-[#141416] text-[#e5e2e1] px-1.5 py-0.5 rounded text-xs outline-none border border-[#0d99ff] w-full"
+                              />
+                            ) : (
+                              <span className="truncate text-[11px]">{p.name}</span>
+                            )}
+                          </div>
+
+                          {/* Action buttons on hover */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenamingPageId(p.id);
+                                setTempPageName(p.name);
+                              }}
+                              className="p-0.5 text-[#89919e] hover:text-[#e5e2e1] rounded"
+                              title="Rename Page"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicatePage?.(p.id);
+                              }}
+                              className="p-0.5 text-[#89919e] hover:text-[#9fcaff] rounded"
+                              title="Duplicate Page"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                            {pages.length > 1 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeletePage?.(p.id);
+                                }}
+                                className="p-0.5 text-[#89919e] hover:text-[#ffb4ab] rounded"
+                                title="Delete Page"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Inline Adding Page Input */}
+                    {isAddingPage && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181717] rounded border border-[#0d99ff] mt-1">
+                        <FileText className="w-3.5 h-3.5 text-[#0d99ff] shrink-0" />
+                        <input
+                          type="text"
+                          value={newPageName}
+                          onChange={(e) => setNewPageName(e.target.value)}
+                          placeholder={`Page ${(pages.length || 1) + 1}`}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              onAddPage?.(newPageName.trim() || `Page ${(pages.length || 1) + 1}`);
+                              setNewPageName('');
+                              setIsAddingPage(false);
+                            } else if (e.key === 'Escape') {
+                              setIsAddingPage(false);
+                              setNewPageName('');
+                            }
+                          }}
+                          className="flex-1 bg-transparent text-xs text-[#e5e2e1] outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            onAddPage?.(newPageName.trim() || `Page ${(pages.length || 1) + 1}`);
+                            setNewPageName('');
+                            setIsAddingPage(false);
+                          }}
+                          className="p-0.5 text-[#0d99ff] hover:text-white"
+                          title="Create Page"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Layer search */}
               <div className="p-2 border-b border-[#353534]/50">
                 <div className="relative">
@@ -598,7 +796,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     type="text"
                     value={layerSearch}
                     onChange={(e) => setLayerSearch(e.target.value)}
-                    placeholder="Filter layer names..."
+                    placeholder="Filter layers..."
                     className="w-full bg-[#201f1f] border border-[#353534] rounded px-7 py-1 text-xs text-[#e5e2e1] placeholder-[#89919e] outline-none focus:border-[#0d99ff]"
                   />
                 </div>
@@ -1292,9 +1490,31 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     {filteredIcons.map((icon) => (
                       <button
                         key={icon.name}
+                        draggable
+                        onDragStart={(e) => {
+                          const payload = {
+                            name: `${icon.label} Icon`,
+                            type: 'icon',
+                            width: 48,
+                            height: 48,
+                            borderRadius: 10,
+                            fill: '#201f1f',
+                            fillOpacity: 100,
+                            stroke: '#9fcaff',
+                            strokeWidth: 1.5,
+                            shadowBlur: 10,
+                            shadowY: 3,
+                            shadowSpread: 0,
+                            iconName: icon.name,
+                            textContent: icon.label,
+                            textColor: '#9fcaff',
+                          };
+                          e.dataTransfer.setData('application/zlab-element', JSON.stringify(payload));
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
                         onClick={() => handleInsertIcon(icon.name, icon.label)}
-                        className="p-2.5 bg-[#201f1f] border border-[#353534] rounded-lg hover:border-[#9fcaff] hover:bg-[#2a2a2a] flex flex-col items-center justify-center text-center group transition-all"
-                        title={`Insert ${icon.label} Icon`}
+                        className="p-2.5 bg-[#201f1f] border border-[#353534] rounded-lg hover:border-[#9fcaff] hover:bg-[#2a2a2a] flex flex-col items-center justify-center text-center group transition-all cursor-grab active:cursor-grabbing"
+                        title={`Insert or drag ${icon.label} Icon`}
                       >
                         <DynamicIcon
                           name={icon.name}
