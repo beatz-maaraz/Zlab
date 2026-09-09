@@ -549,61 +549,102 @@ export function downloadInteractivePrototypeHtml(
 }
 
 /**
- * Generates and downloads a clean, scalable SVG file of the design artwork.
+ * Generates and downloads a clean, scalable, and editable SVG file of the design artwork.
  */
 export function downloadSvg(
   projectTitle: string,
   elements: Record<string, CanvasElement>,
-  selectedElementId?: string
+  selectedElementId?: string,
+  options?: {
+    transparentBackground?: boolean;
+    includeIds?: boolean;
+    editableText?: boolean;
+  }
 ) {
   const target = selectedElementId ? elements[selectedElementId] : elements['desktop-1440'];
   const w = target?.width || 960;
   const h = target?.height || 640;
   const targetX = target?.x || 0;
   const targetY = target?.y || 0;
+  const transparentBg = options?.transparentBackground ?? false;
 
   function buildSvgNodes(nodeId: string): string {
     const el = elements[nodeId];
     if (!el || el.visible === false) return '';
 
+    const isRootTarget = nodeId === target?.id;
     let nodeSvg = '';
-    // Don't render the root target background again since it's already rendered as the base rect,
-    // unless we want to let the generic renderer handle it. Actually, the base rect handles the background.
-    // But we need the stroke, text, etc.
-    // For simplicity, let's just let the recursive function render it. We can remove the base rect.
-    const fill = el.fill || '#0d99ff';
+
+    const fill = isRootTarget && transparentBg ? 'none' : (el.fill || (el.type === 'text' ? 'none' : '#0d99ff'));
     const stroke = el.stroke && el.stroke !== 'none' ? `stroke="${el.stroke}" stroke-width="${el.strokeWidth || 1}"` : '';
     const rx = el.borderRadius ? `rx="${el.borderRadius}"` : '';
-    const textX = (el.x - targetX) + 12;
-    const textY = (el.y - targetY) + (el.height / 2) + 5;
-    const text = el.textContent ? `<text x="${textX}" y="${textY}" fill="${el.textColor || '#ffffff'}" font-family="sans-serif" font-size="${el.fontSize || 14}px">${escapeHtml(el.textContent)}</text>` : '';
-
-    const rect = `<rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" opacity="${(el.fillOpacity ?? 100) / 100}" ${rx} ${stroke} />`;
+    const opacity = el.fillOpacity !== undefined && el.fillOpacity !== 100 ? `opacity="${el.fillOpacity / 100}"` : '';
     
-    nodeSvg = `  ${rect}\n  ${text}`;
+    // Draw element background / shape if not transparent text
+    if (fill !== 'none' || stroke !== '') {
+      nodeSvg += `  <rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" ${stroke} ${rx} ${opacity} />\n`;
+    }
+
+    // Editable Text
+    if (el.textContent) {
+      let textAnchor = 'start';
+      let textX = (el.x - targetX) + 12;
+      const textY = (el.y - targetY) + (el.height / 2);
+
+      if (el.textAlign === 'center' || el.id === 'main-hero-title') {
+        textAnchor = 'middle';
+        textX = (el.x - targetX) + (el.width / 2);
+      } else if (el.textAlign === 'right') {
+        textAnchor = 'end';
+        textX = (el.x - targetX) + el.width - 12;
+      }
+
+      const fontSize = el.fontSize || 14;
+      const fontWeight = el.fontWeight || (el.type === 'button' ? '600' : 'normal');
+      const textColor = el.textColor || (el.type === 'text' ? el.fill : '#ffffff');
+
+      nodeSvg += `  <text x="${textX}" y="${textY}" fill="${textColor}" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}px" font-weight="${fontWeight}" text-anchor="${textAnchor}" dominant-baseline="central">${escapeHtml(el.textContent)}</text>\n`;
+    }
+
+    // Subtext if present
+    if (el.subText) {
+      const subX = (el.x - targetX) + (el.textAlign === 'center' ? el.width / 2 : 12);
+      const subY = (el.y - targetY) + (el.height / 2) + 20;
+      const textAnchor = el.textAlign === 'center' ? 'middle' : 'start';
+      nodeSvg += `  <text x="${subX}" y="${subY}" fill="#89919e" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="12px" text-anchor="${textAnchor}" dominant-baseline="central">${escapeHtml(el.subText)}</text>\n`;
+    }
 
     const children = Object.values(elements).filter(
       (child) => child.parentId === nodeId && child.visible !== false
     );
     
     const childrenSvg = children.map((child) => buildSvgNodes(child.id)).join('\n');
-    return `${nodeSvg}\n${childrenSvg}`;
+    const cleanId = escapeHtml(el.id.replace(/[^a-zA-Z0-9-_]/g, '_'));
+    const cleanName = escapeHtml(el.name);
+
+    return `<g id="${cleanId}" data-name="${cleanName}">\n${nodeSvg}${childrenSvg}</g>`;
   }
 
   // Generate all SVG content recursively starting from target
-  const childrenSvg = target ? buildSvgNodes(target.id) : '';
+  const contentSvg = target ? buildSvgNodes(target.id) : '';
 
   const svgMarkup = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Generated by ZLab -->
-${childrenSvg}
+  <defs>
+    <style>
+      text { user-select: none; }
+    </style>
+  </defs>
+  <!-- Generated by ZLab: Editable Vector Export -->
+${contentSvg}
 </svg>`;
 
   const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.svg`;
+  const targetSlug = (target?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}.svg`;
   link.download = fileName;
   document.body.appendChild(link);
   link.click();
@@ -612,34 +653,41 @@ ${childrenSvg}
 }
 
 /**
- * Generates and downloads a raster PNG image using offscreen HTML5 canvas.
+ * Generates and downloads a raster PNG image using offscreen HTML5 canvas at high resolution (1x, 2x, 3x, 4x).
  */
 export function downloadPng(
   projectTitle: string,
   elements: Record<string, CanvasElement>,
-  selectedElementId?: string
+  selectedElementId?: string,
+  scale: number = 2,
+  options?: {
+    transparentBackground?: boolean;
+  }
 ) {
   const target = selectedElementId ? elements[selectedElementId] : elements['desktop-1440'];
   const w = target?.width || 960;
   const h = target?.height || 640;
-  const scale = 2; // 2x Retina
+  const transparentBg = options?.transparentBackground ?? false;
 
   const canvas = document.createElement('canvas');
-  canvas.width = w * scale;
-  canvas.height = h * scale;
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
   const ctx = canvas.getContext('2d');
 
   if (!ctx) return;
 
   ctx.scale(scale, scale);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
-  // We won't draw the hardcoded background. The recursive renderer will draw the target's fill.
   const targetX = target?.x || 0;
   const targetY = target?.y || 0;
 
   function renderNodes(nodeId: string) {
     const el = elements[nodeId];
     if (!el || el.visible === false || !ctx) return;
+
+    const isRootTarget = nodeId === target?.id;
 
     ctx.save();
     ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
@@ -667,8 +715,11 @@ export function downloadPng(
       ctx.shadowOffsetY = el.shadowY || 0;
     }
 
-    ctx.fillStyle = el.fill || (el.type === 'text' ? 'transparent' : '#0d99ff');
-    ctx.fill();
+    // Fill logic
+    if (!(isRootTarget && transparentBg)) {
+      ctx.fillStyle = el.fill || (el.type === 'text' ? 'transparent' : '#0d99ff');
+      ctx.fill();
+    }
 
     if (el.stroke && el.stroke !== 'none') {
       ctx.strokeStyle = el.stroke;
@@ -676,11 +727,12 @@ export function downloadPng(
       ctx.stroke();
     }
 
-    // Text
+    // Text content
     if (el.textContent) {
       ctx.shadowColor = 'transparent';
       ctx.fillStyle = el.textColor || (el.type === 'text' ? el.fill : '#ffffff');
-      ctx.font = `${el.fontSize || 13}px -apple-system, sans-serif`;
+      const weight = el.fontWeight || (el.type === 'button' ? '600' : 'normal');
+      ctx.font = `${weight} ${el.fontSize || 13}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
       
       const textAlign = el.textAlign || (el.id === 'main-hero-title' ? 'center' : 'left');
       ctx.textAlign = textAlign as CanvasTextAlign;
@@ -691,6 +743,18 @@ export function downloadPng(
       if (textAlign === 'right') textPosX = elX + el.width - 12;
       
       ctx.fillText(el.textContent, textPosX, elY + el.height / 2);
+    }
+
+    // Subtext
+    if (el.subText) {
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = '#89919e';
+      ctx.font = `normal 12px -apple-system, BlinkMacSystemFont, sans-serif`;
+      const textAlign = el.textAlign || 'left';
+      ctx.textAlign = textAlign as CanvasTextAlign;
+      ctx.textBaseline = 'middle';
+      const textPosX = textAlign === 'center' ? elX + el.width / 2 : elX + 12;
+      ctx.fillText(el.subText, textPosX, elY + el.height / 2 + 18);
     }
 
     ctx.restore();
@@ -713,7 +777,8 @@ export function downloadPng(
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+    const targetSlug = (target?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}@${scale}x.png`;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();

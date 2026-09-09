@@ -12,6 +12,8 @@ import {
   Trash2,
   Lock,
   Unlock,
+  Pin,
+  PinOff,
   CornerDownRight,
   Sliders,
   Shield,
@@ -580,6 +582,22 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleRotateHandleMouseDown = (e: React.MouseEvent, el: CanvasElement) => {
     e.stopPropagation();
     if (el.locked) return;
+
+    const domEl = document.getElementById(`canvas-el-${el.id}`);
+    if (domEl) {
+      const r = domEl.getBoundingClientRect();
+      const centerX = r.left + r.width / 2;
+      const centerY = r.top + r.height / 2;
+
+      setRotatingId(el.id);
+      setRotateStart({
+        centerX,
+        centerY,
+        initialRotation: el.rotation || 0,
+      });
+      setCurrentRotationAngle(el.rotation || 0);
+      return;
+    }
 
     const artboardEl = document.getElementById(
       devicePreview === 'desktop' ? 'artboard-desktop-1440' : 'artboard-mobile-view'
@@ -1269,21 +1287,54 @@ export const Canvas: React.FC<CanvasProps> = ({
               className="absolute -top-9 right-0 bg-[#1c1b1b]/95 backdrop-blur border border-[#353534] rounded-md px-1.5 py-0.5 flex items-center gap-1 shadow-xl z-50 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              {onDuplicateElement && (
+              {/* Unfix / Unlock quick action badge if locked/fixed */}
+              {(el.locked || el.fixed || el.pinned) && (
                 <button
-                  onClick={() => onDuplicateElement(el.id)}
-                  className="p-1 rounded text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] transition-colors"
-                  title="Duplicate (⌘D)"
+                  onClick={() => {
+                    const updated = {
+                      ...elements,
+                      [el.id]: { ...el, locked: false, fixed: false, pinned: false },
+                    };
+                    setElements(updated);
+                    if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
+                  }}
+                  className="px-1.5 py-0.5 rounded bg-[#0d99ff]/20 hover:bg-[#0d99ff]/40 text-[#9fcaff] text-[10px] font-bold transition-colors flex items-center gap-1 mr-0.5"
+                  title="Unfix position and unlock element controls"
                 >
-                  <Copy className="w-3 h-3" />
+                  <Unlock className="w-2.5 h-2.5" />
+                  <span>Unfix</span>
                 </button>
               )}
+
+              {/* Pin / Fix Position Toggle */}
               <button
                 onClick={() => {
-                  setElements((prev) => ({
-                    ...prev,
+                  const updated = {
+                    ...elements,
+                    [el.id]: { ...el, fixed: !el.fixed, pinned: !el.fixed },
+                  };
+                  setElements(updated);
+                  if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
+                }}
+                className={`p-1 rounded transition-colors ${
+                  el.fixed || el.pinned
+                    ? 'text-[#0d99ff] bg-[#0d99ff]/20'
+                    : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
+                }`}
+                title={el.fixed || el.pinned ? 'Unfix position (Unpin from viewport)' : 'Fix position (Pin to viewport)'}
+              >
+                {el.fixed || el.pinned ? <Pin className="w-3 h-3" /> : <PinOff className="w-3 h-3" />}
+              </button>
+
+              {/* Lock / Unlock Toggle */}
+              <button
+                onClick={() => {
+                  const updated = {
+                    ...elements,
                     [el.id]: { ...el, locked: !el.locked },
-                  }));
+                  };
+                  setElements(updated);
+                  if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
                 }}
                 className={`p-1 rounded transition-colors ${
                   el.locked
@@ -1294,6 +1345,17 @@ export const Canvas: React.FC<CanvasProps> = ({
               >
                 {el.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
               </button>
+
+              {onDuplicateElement && (
+                <button
+                  onClick={() => onDuplicateElement(el.id)}
+                  className="p-1 rounded text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] transition-colors"
+                  title="Duplicate (⌘D)"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              )}
+
               {onDeleteElement && (
                 <button
                   onClick={() => onDeleteElement(el.id)}

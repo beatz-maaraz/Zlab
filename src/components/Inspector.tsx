@@ -19,6 +19,8 @@ import {
   AlignEndVertical,
   Lock,
   Unlock,
+  Pin,
+  PinOff,
   Play,
   FileCode,
   Globe,
@@ -308,6 +310,19 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Fix / Pin toggle */}
+          <button
+            onClick={() => onUpdateElement({ fixed: !selectedElement.fixed, pinned: !selectedElement.fixed })}
+            className={`p-1.5 rounded transition-colors ${
+              selectedElement.fixed || selectedElement.pinned
+                ? 'text-[#0d99ff] bg-[#0d99ff]/15'
+                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
+            }`}
+            title={selectedElement.fixed || selectedElement.pinned ? 'Unfix position (Unpin from viewport)' : 'Fix position (Pin to viewport)'}
+          >
+            {selectedElement.fixed || selectedElement.pinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+          </button>
+
           {/* Lock toggle */}
           <button
             onClick={() => onUpdateElement({ locked: !selectedElement.locked })}
@@ -335,6 +350,25 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
             )}
         </div>
       </div>
+
+      {/* Locked / Fixed Warning Banner with Instant Unfix Action */}
+      {(selectedElement.locked || selectedElement.fixed || selectedElement.pinned) && (
+        <div className="mx-3.5 mt-2 px-2.5 py-1.5 rounded-lg bg-[#201f1f] border border-[#f59e0b]/40 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-[#f59e0b] text-[11px] truncate">
+            {selectedElement.locked && <Lock className="w-3 h-3 shrink-0" />}
+            {Boolean(selectedElement.fixed || selectedElement.pinned) && <Pin className="w-3 h-3 shrink-0" />}
+            <span className="truncate">
+              {selectedElement.locked ? 'Element is locked' : 'Fixed position'}
+            </span>
+          </div>
+          <button
+            onClick={() => onUpdateElement({ locked: false, fixed: false, pinned: false })}
+            className="text-[10px] font-bold text-[#9fcaff] hover:text-white bg-[#0d99ff]/20 hover:bg-[#0d99ff]/40 px-2 py-0.5 rounded transition-colors shrink-0"
+          >
+            Unfix & Unlock
+          </button>
+        </div>
+      )}
 
       {/* TAB 1: DESIGN PROPERTIES */}
       {activeTab === 'design' && (
@@ -672,7 +706,7 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
                 />
                 <input
                   type="text"
-                  value={selectedElement.fill.toUpperCase()}
+                  value={(selectedElement.fill || '#131313').toUpperCase()}
                   onChange={(e) => {
                     setFillColor(e.target.value);
                     onUpdateElement({ fill: e.target.value });
@@ -709,7 +743,7 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
                   }}
                   style={{ backgroundColor: c }}
                   className={`w-4 h-4 rounded-full border border-[#353534] transition-transform hover:scale-125 ${
-                    selectedElement.fill.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-[#9fcaff]' : ''
+                    (selectedElement.fill || '').toLowerCase() === c.toLowerCase() ? 'ring-2 ring-[#9fcaff]' : ''
                   }`}
                   title={c}
                 />
@@ -749,7 +783,7 @@ export const ${selectedElement.name.replace(/[^a-zA-Z0-9]/g, '')} = () => (
                   />
                   <input
                     type="text"
-                    value={selectedElement.stroke.toUpperCase()}
+                    value={(selectedElement.stroke || '#353534').toUpperCase()}
                     onChange={(e) => {
                       setStrokeColor(e.target.value);
                       onUpdateElement({ stroke: e.target.value });

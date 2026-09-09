@@ -12,8 +12,11 @@ import {
   Palette,
   User,
   Sliders,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import { SettingsTab, UserSettings } from '../types';
+import { ALL_COMMANDS } from './ShortcutsModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -24,6 +27,8 @@ interface SettingsModalProps {
   settings: UserSettings;
   setSettings?: (newSettings: UserSettings) => void;
   onSaveSettings?: (newSettings: UserSettings) => void;
+  onOpenShortcutsOverlay?: () => void;
+  onExecuteAction?: (actionId: string) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -35,11 +40,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   setSettings,
   onSaveSettings,
+  onOpenShortcutsOverlay,
+  onExecuteAction,
 }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<SettingsTab>(
     activeTabProp || initialTab
   );
   const activeTab = activeTabProp || internalActiveTab;
+  const [shortcutCategory, setShortcutCategory] = useState<string>('All');
 
   const handleSelectTab = (tab: SettingsTab) => {
     setInternalActiveTab(tab);
@@ -130,14 +138,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               id="settings-nav-shortcuts"
               onClick={() => handleSelectTab('shortcuts')}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
                 activeTab === 'shortcuts'
                   ? 'bg-[#6001d1] text-[#c9aeff] font-medium'
                   : 'text-[#bfc7d5] hover:bg-[#2a2a2a] hover:text-[#e5e2e1]'
               }`}
             >
-              <Keyboard className="w-3.5 h-3.5" />
-              <span>Shortcuts</span>
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-3.5 h-3.5" />
+                <span>Shortcuts</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2a2a2a] text-[#89919e] font-mono">
+                {ALL_COMMANDS.length}
+              </span>
             </button>
 
             <button
@@ -435,35 +448,168 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             {/* SHORTCUTS TAB */}
-            {activeTab === 'shortcuts' && (
-              <div className="space-y-3">
-                <div className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider">
-                  Key Bindings
-                </div>
-                <div className="space-y-1.5">
-                  {[
-                    { key: 'V', desc: 'Move Tool' },
-                    { key: 'F', desc: 'Frame Tool' },
-                    { key: 'R', desc: 'Rectangle Tool' },
-                    { key: 'T', desc: 'Text Tool' },
-                    { key: 'H / Space', desc: 'Hand Tool (Pan Canvas)' },
-                    { key: 'C', desc: 'Add Comment' },
-                    { key: '⌘ + / ⌘ -', desc: 'Zoom In / Zoom Out' },
-                    { key: '⌘ 0', desc: 'Reset Zoom to 100%' },
-                  ].map((s) => (
-                    <div
-                      key={s.key}
-                      className="flex items-center justify-between bg-[#201f1f] px-3 py-2 rounded border border-[#353534]/40"
-                    >
-                      <span className="text-xs text-[#e5e2e1]">{s.desc}</span>
-                      <kbd className="bg-[#2a2a2a] px-2 py-0.5 rounded text-[11px] font-mono text-[#9fcaff] border border-[#353534]">
-                        {s.key}
-                      </kbd>
+            {activeTab === 'shortcuts' && (() => {
+              const isMac =
+                typeof window !== 'undefined' &&
+                /(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent || navigator.platform);
+
+              const formatKey = (k: string) => {
+                if (k === '⌘') return isMac ? '⌘' : 'Ctrl';
+                if (k === '⌥') return isMac ? '⌥' : 'Alt';
+                if (k === '⇧') return isMac ? '⇧' : 'Shift';
+                return k;
+              };
+
+              const categories = ['All', 'Tools', 'Edit', 'View & Canvas', 'Prototype & Export', 'General'];
+
+              const filtered = ALL_COMMANDS.filter((cmd) => {
+                const matchesCat = shortcutCategory === 'All' || cmd.category === shortcutCategory;
+                if (!matchesCat) return false;
+
+                if (!searchQuery.trim()) return true;
+
+                const q = searchQuery.trim().toLowerCase();
+                const titleMatch = cmd.title.toLowerCase().includes(q);
+                const descMatch = cmd.description.toLowerCase().includes(q);
+                const categoryMatch = cmd.category.toLowerCase().includes(q);
+                const keysMatch = cmd.keys.some(
+                  (k) =>
+                    k.toLowerCase().includes(q) ||
+                    (k === '⌘' && (q.includes('cmd') || q.includes('ctrl') || q.includes('command'))) ||
+                    (k === '⇧' && q.includes('shift')) ||
+                    (k === '⌥' && (q.includes('alt') || q.includes('opt')))
+                );
+                return titleMatch || descMatch || categoryMatch || keysMatch;
+              });
+
+              return (
+                <div className="space-y-4">
+                  {/* Top Banner with Quick Overlay Trigger */}
+                  <div className="bg-[#201f1f] p-4 rounded-xl border border-[#353534]/60 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-xs text-[#e5e2e1] font-semibold flex items-center gap-2">
+                        <Keyboard className="w-4 h-4 text-[#9fcaff]" />
+                        <span>Application Shortcuts & Commands</span>
+                      </div>
+                      <p className="text-[11px] text-[#bfc7d5] mt-1">
+                        Full searchable directory of keyboard shortcuts for tools, selection, zoom, and exports.
+                      </p>
                     </div>
-                  ))}
+
+                    {onOpenShortcutsOverlay && (
+                      <button
+                        onClick={onOpenShortcutsOverlay}
+                        className="px-3 py-1.5 rounded-lg bg-[#0d99ff] text-[#002f55] hover:bg-[#9fcaff] text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
+                        title="Open interactive overlay modal (? or ⌘/)"
+                      >
+                        <span>Open Cheat-Sheet</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                    {categories.map((cat) => {
+                      const count =
+                        cat === 'All'
+                          ? ALL_COMMANDS.length
+                          : ALL_COMMANDS.filter((c) => c.category === cat).length;
+                      const isActive = shortcutCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setShortcutCategory(cat)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                            isActive
+                              ? 'bg-[#6001d1] text-[#c9aeff] font-semibold'
+                              : 'bg-[#201f1f] text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
+                          }`}
+                        >
+                          <span>{cat}</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                              isActive
+                                ? 'bg-[#c9aeff]/20 text-[#c9aeff]'
+                                : 'bg-[#2a2a2a] text-[#89919e]'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Commands List */}
+                  <div className="space-y-1.5">
+                    {filtered.length > 0 ? (
+                      filtered.map((s) => {
+                        const hasAction = Boolean(s.actionId && onExecuteAction);
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={() => {
+                              if (hasAction && s.actionId && onExecuteAction) {
+                                onExecuteAction(s.actionId);
+                                onClose();
+                              }
+                            }}
+                            className={`flex items-center justify-between bg-[#201f1f] px-3 py-2.5 rounded-lg border border-[#353534]/40 transition-colors group ${
+                              hasAction ? 'hover:bg-[#2a2a2a] cursor-pointer hover:border-[#0d99ff]/30' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <div className="w-6 h-6 rounded-md bg-[#2a2a2a] flex items-center justify-center shrink-0 text-[#89919e] group-hover:text-[#9fcaff]">
+                                {s.icon || <Keyboard className="w-3 h-3" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-[#e5e2e1] font-medium truncate">
+                                    {s.title}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#2a2a2a] text-[#89919e] font-mono shrink-0">
+                                    {s.category}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-[#89919e] truncate mt-0.5">
+                                  {s.description}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-1">
+                                {s.keys.map((k, kIdx) => (
+                                  <kbd
+                                    key={kIdx}
+                                    className="bg-[#2a2a2a] px-2 py-0.5 rounded text-[11px] font-mono text-[#9fcaff] border border-[#353534] shadow-inner inline-flex items-center justify-center min-w-[20px]"
+                                  >
+                                    {formatKey(k)}
+                                  </kbd>
+                                ))}
+                              </div>
+                              {hasAction && (
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-[#9fcaff] flex items-center gap-0.5 ml-1">
+                                  <span>Run</span>
+                                  <ArrowRight className="w-2.5 h-2.5" />
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center text-[#89919e] bg-[#201f1f] rounded-lg border border-[#353534]/40">
+                        <Keyboard className="w-6 h-6 mx-auto mb-2 text-[#353534]" />
+                        <p className="text-xs text-[#e5e2e1]">No shortcuts matching "{searchQuery}"</p>
+                        <p className="text-[11px] text-[#89919e] mt-1">Try searching by command name, tool, or shortcut key.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* PLUGINS TAB */}
             {activeTab === 'plugins' && (

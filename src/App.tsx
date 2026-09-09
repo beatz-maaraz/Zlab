@@ -14,6 +14,7 @@ import { DashboardView } from './components/DashboardView';
 import { SettingsModal } from './components/SettingsModal';
 import { ExportModal } from './components/ExportModal';
 import { PrototypeModal } from './components/PrototypeModal';
+import { ShortcutsModal } from './components/ShortcutsModal';
 import {
   AppView,
   CanvasElement,
@@ -110,6 +111,7 @@ export default function App() {
   // Export and Prototype modals state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isPrototypeModalOpen, setIsPrototypeModalOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Grid lines toggle
   const [showGrid, setShowGrid] = useState(false);
@@ -233,6 +235,99 @@ export default function App() {
     }
   };
 
+  // Direct action executor from Shortcuts & Command Palette cheat-sheet
+  const handleExecuteAction = useCallback(
+    (actionId: string) => {
+      switch (actionId) {
+        case 'tool-move':
+          setCurrentTool('move');
+          break;
+        case 'tool-frame':
+          setCurrentTool('frame');
+          break;
+        case 'tool-rect':
+          setCurrentTool('rect');
+          break;
+        case 'tool-pen':
+          setCurrentTool('pen');
+          break;
+        case 'tool-text':
+          setCurrentTool('text');
+          break;
+        case 'tool-hand':
+          setCurrentTool('hand');
+          break;
+        case 'tool-comment':
+          setCurrentTool('comment');
+          break;
+        case 'undo':
+          handleUndo();
+          break;
+        case 'redo':
+          handleRedo();
+          break;
+        case 'duplicate':
+          if (selectedElementId) {
+            handleDuplicateElement(selectedElementId);
+          }
+          break;
+        case 'delete':
+          if (
+            selectedElementId &&
+            selectedElementId !== 'desktop-1440' &&
+            selectedElementId !== 'hero-bg'
+          ) {
+            handleDeleteElement(selectedElementId);
+          }
+          break;
+        case 'deselect':
+          setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+          break;
+        case 'toggle-grid':
+          setShowGrid((prev) => !prev);
+          break;
+        case 'zoom-in':
+          setZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))));
+          break;
+        case 'zoom-out':
+          setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))));
+          break;
+        case 'zoom-reset':
+          setZoom(1);
+          break;
+        case 'device-desktop':
+          handleDeviceChange('desktop');
+          break;
+        case 'device-mobile':
+          handleDeviceChange('mobile');
+          break;
+        case 'open-prototype':
+          setIsPrototypeModalOpen(true);
+          break;
+        case 'open-export':
+          setIsExportModalOpen(true);
+          break;
+        case 'open-settings':
+          setIsSettingsOpen(true);
+          break;
+        case 'open-shortcuts':
+          setIsShortcutsOpen(true);
+          break;
+        default:
+          break;
+      }
+    },
+    [
+      handleUndo,
+      handleRedo,
+      selectedElementId,
+      devicePreview,
+      handleDuplicateElement,
+      handleDeleteElement,
+      handleDeviceChange,
+    ]
+  );
+
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -241,8 +336,38 @@ export default function App() {
         return;
       }
 
+      // Open / toggle shortcuts cheat-sheet modal (? or Shift+/ or Cmd+/ or Ctrl+/ or Cmd+K or Ctrl+K)
+      if (
+        e.key === '?' ||
+        ((e.metaKey || e.ctrlKey) && (e.key === '/' || e.key.toLowerCase() === 'k'))
+      ) {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+
       if (e.key === 'Escape') {
-        if (isSettingsOpen) setIsSettingsOpen(false);
+        if (isShortcutsOpen) {
+          setIsShortcutsOpen(false);
+          return;
+        }
+        if (isSettingsOpen) {
+          setIsSettingsOpen(false);
+          return;
+        }
+        if (isExportModalOpen) {
+          setIsExportModalOpen(false);
+          return;
+        }
+        if (isPrototypeModalOpen) {
+          setIsPrototypeModalOpen(false);
+          return;
+        }
+        if (currentTool !== 'move') {
+          setCurrentTool('move');
+        } else {
+          setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+        }
         return;
       }
 
@@ -258,7 +383,7 @@ export default function App() {
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
           handleRedo();
@@ -269,7 +394,7 @@ export default function App() {
       }
 
       // Duplicate element shortcut Ctrl+D / Cmd+D
-      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         if (selectedElementId) {
           handleDuplicateElement(selectedElementId);
@@ -277,13 +402,41 @@ export default function App() {
         return;
       }
 
-      // Escape key cancels tool or deselects
-      if (e.key === 'Escape') {
-        if (currentTool !== 'move') {
-          setCurrentTool('move');
-        } else {
-          setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
-        }
+      // Export modal: Cmd+E / Ctrl+E
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setIsExportModalOpen(true);
+        return;
+      }
+
+      // Settings modal: Cmd+, / Ctrl+,
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        setIsSettingsOpen(true);
+        return;
+      }
+
+      // Zoom in / Zoom out / Zoom 100%
+      if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        setZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))));
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))));
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        setZoom(1);
+        return;
+      }
+
+      // Prototype simulator: Shift+P
+      if (e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setIsPrototypeModalOpen(true);
         return;
       }
 
@@ -312,6 +465,16 @@ export default function App() {
         }
       }
 
+      // Device view hotkeys
+      if (e.key === '1') {
+        handleDeviceChange('desktop');
+        return;
+      }
+      if (e.key === '2') {
+        handleDeviceChange('mobile');
+        return;
+      }
+
       switch (e.key.toLowerCase()) {
         case 'v':
           setCurrentTool('move');
@@ -334,12 +497,30 @@ export default function App() {
         case 'c':
           setCurrentTool('comment');
           break;
+        case 'g':
+          setShowGrid((prev) => !prev);
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, isSettingsOpen, selectedElementId, elements, currentTool, devicePreview]);
+  }, [
+    handleUndo,
+    handleRedo,
+    isShortcutsOpen,
+    isSettingsOpen,
+    isExportModalOpen,
+    isPrototypeModalOpen,
+    selectedElementId,
+    elements,
+    currentTool,
+    devicePreview,
+    handleDuplicateElement,
+    handleDeleteElement,
+    handleUpdateSelectedElement,
+    handleDeviceChange,
+  ]);
 
   // Subtle live collaborator cursor simulation
   useEffect(() => {
@@ -476,6 +657,7 @@ export default function App() {
         onRedo={handleRedo}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onImportMaterialKit={handleImportMaterialKit}
         onImportIOSKit={handleImportIOSKit}
         onImportAllMaterials={handleImportAllMaterials}
@@ -499,6 +681,7 @@ export default function App() {
             onImportMaterialKit={handleImportMaterialKit}
             onImportIOSKit={handleImportIOSKit}
             onImportAllMaterials={handleImportAllMaterials}
+            devicePreview={devicePreview}
             width={leftSidebarWidth}
             onStartResize={handleStartResizeLeft}
             isCollapsed={isLeftSidebarCollapsed}
@@ -576,10 +759,7 @@ export default function App() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
-          onOpenShortcuts={() => {
-            setSettingsTab('general');
-            setIsSettingsOpen(true);
-          }}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
         />
       )}
 
@@ -591,6 +771,11 @@ export default function App() {
         setActiveTab={setSettingsTab}
         settings={settings}
         setSettings={setSettings}
+        onOpenShortcutsOverlay={() => {
+          setIsSettingsOpen(false);
+          setIsShortcutsOpen(true);
+        }}
+        onExecuteAction={handleExecuteAction}
       />
 
       {/* Comprehensive Export & Download Modal */}
@@ -610,6 +795,13 @@ export default function App() {
         projectTitle={projectTitle}
         elements={elements}
         initialDevice={devicePreview}
+      />
+
+      {/* Keyboard Shortcuts & Commands Cheat-Sheet Modal */}
+      <ShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+        onExecuteAction={handleExecuteAction}
       />
     </div>
   );

@@ -62,6 +62,7 @@ interface LeftSidebarProps {
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
   onImportAllMaterials?: () => void;
+  devicePreview?: 'desktop' | 'mobile';
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
   isCollapsed?: boolean;
@@ -82,6 +83,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onImportMaterialKit,
   onImportIOSKit,
   onImportAllMaterials,
+  devicePreview = 'desktop',
   width = 300,
   onStartResize,
   isCollapsed = false,
@@ -179,18 +181,50 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     });
   }, [assetSearch]);
 
+  // Target placement helper ensuring elements land correctly in desktop or mobile artboard
+  const getTargetPlacement = (width = 200, height = 60) => {
+    const selectedEl = elements[selectedElementId];
+    const isMobile =
+      (selectedEl && (selectedEl.id === 'mobile-app-view' || selectedEl.parentId === 'mobile-app-view')) ||
+      (devicePreview === 'mobile' && (!selectedEl || selectedEl.id === 'desktop-1440'));
+
+    if (isMobile) {
+      const existing = (Object.values(elements) as CanvasElement[]).filter(
+        (e) => e.parentId === 'mobile-app-view'
+      ).length;
+      return {
+        parentId: 'mobile-app-view',
+        x: Math.max(16, Math.min(390 - width - 16, 24 + (existing % 3) * 15)),
+        y: Math.max(70, Math.min(844 - height - 40, 120 + (existing % 6) * 45)),
+      };
+    }
+
+    const existing = (Object.values(elements) as CanvasElement[]).filter(
+      (e) => e.parentId === 'desktop-1440'
+    ).length;
+    return {
+      parentId: 'desktop-1440',
+      x: 320 + (existing % 6) * 30,
+      y: 180 + (existing % 5) * 35,
+    };
+  };
+
   // Insert a Library Component onto the canvas
   const handleInsertComponent = (comp: LibraryComponentItem) => {
     const timestamp = Date.now();
     const newId = `comp_${comp.id}_${timestamp}`;
+    const w = comp.defaultProps.width || 200;
+    const h = comp.defaultProps.height || 60;
+    const placement = getTargetPlacement(w, h);
+
     const newElement: CanvasElement = {
       id: newId,
       name: comp.name,
       type: comp.defaultProps.type || 'component',
-      x: 340 + (Object.keys(elements).length % 5) * 30,
-      y: 200 + (Object.keys(elements).length % 4) * 35,
-      width: comp.defaultProps.width || 200,
-      height: comp.defaultProps.height || 60,
+      x: placement.x,
+      y: placement.y,
+      width: w,
+      height: h,
       rotation: 0,
       borderRadius: comp.defaultProps.borderRadius ?? 8,
       fill: comp.defaultProps.fill || '#1c1b1b',
@@ -202,7 +236,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       shadowSpread: comp.defaultProps.shadowSpread ?? 0,
       visible: true,
       locked: false,
-      parentId: 'desktop-1440',
+      parentId: placement.parentId,
       textContent: comp.defaultProps.textContent,
       subText: comp.defaultProps.subText,
       textColor: comp.defaultProps.textColor,
@@ -221,12 +255,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const handleInsertIcon = (iconName: string, label: string) => {
     const timestamp = Date.now();
     const newId = `icon_${iconName.toLowerCase()}_${timestamp}`;
+    const placement = getTargetPlacement(48, 48);
+
     const newElement: CanvasElement = {
       id: newId,
       name: `${label} Icon`,
       type: 'icon',
-      x: 420 + (Object.keys(elements).length % 6) * 25,
-      y: 240 + (Object.keys(elements).length % 5) * 25,
+      x: placement.x,
+      y: placement.y,
       width: 48,
       height: 48,
       rotation: 0,
@@ -240,7 +276,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       shadowSpread: 0,
       visible: true,
       locked: false,
-      parentId: 'desktop-1440',
+      parentId: placement.parentId,
       iconName: iconName,
       textContent: label,
       textColor: '#9fcaff',
@@ -253,12 +289,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const handleInsertShape = (shape: typeof GEOMETRIC_SHAPES_LIST[0]) => {
     const timestamp = Date.now();
     const newId = `shape_${shape.shapeType}_${timestamp}`;
+    const placement = getTargetPlacement(shape.width, shape.height);
+
     const newElement: CanvasElement = {
       id: newId,
       name: shape.name,
       type: 'shape',
-      x: 380 + (Object.keys(elements).length % 5) * 25,
-      y: 220 + (Object.keys(elements).length % 4) * 25,
+      x: placement.x,
+      y: placement.y,
       width: shape.width,
       height: shape.height,
       rotation: 0,
@@ -272,7 +310,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       shadowSpread: 0,
       visible: true,
       locked: false,
-      parentId: 'desktop-1440',
+      parentId: placement.parentId,
       variant: shape.shapeType,
     };
     onInsertElement(newElement);
@@ -283,12 +321,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const handleInsertBrandAsset = (asset: typeof BRAND_ASSETS[0]) => {
     const timestamp = Date.now();
     const newId = `brand_${asset.id}_${timestamp}`;
+    const placement = getTargetPlacement(asset.width, asset.height);
+
     const newElement: CanvasElement = {
       id: newId,
       name: asset.name,
       type: 'component',
-      x: 360,
-      y: 200,
+      x: placement.x,
+      y: placement.y,
       width: asset.width,
       height: asset.height,
       rotation: 0,
@@ -302,7 +342,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       shadowSpread: 0,
       visible: true,
       locked: false,
-      parentId: 'desktop-1440',
+      parentId: placement.parentId,
       textContent: asset.textContent,
       textColor: asset.textColor,
       tag: asset.type,

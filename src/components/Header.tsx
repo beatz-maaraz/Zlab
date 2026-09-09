@@ -17,6 +17,7 @@ import {
   Sparkles,
   Eye,
   Play,
+  Keyboard,
 } from 'lucide-react';
 import { AppView } from '../types';
 import { ZLabLogo } from './ZLabLogo';
@@ -37,6 +38,7 @@ interface HeaderProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onOpenShortcuts?: () => void;
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
   onImportAllMaterials?: () => void;
@@ -58,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRedo,
   canUndo,
   canRedo,
+  onOpenShortcuts,
   onImportMaterialKit,
   onImportIOSKit,
   onImportAllMaterials,
@@ -406,6 +409,20 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Toggle Device Preview</span>
                   <span className="text-[10px] text-[#89919e]">⌘D</span>
                 </button>
+                <div className="h-[1px] bg-[#353534] my-1" />
+                <button
+                  onClick={() => {
+                    if (onOpenShortcuts) onOpenShortcuts();
+                    setActiveMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#2a2a2a] text-[#9fcaff]"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Keyboard className="w-3.5 h-3.5" />
+                    Shortcuts Cheat-Sheet
+                  </span>
+                  <span className="text-[10px] text-[#89919e]">⌘/</span>
+                </button>
               </div>
             )}
           </div>
@@ -613,6 +630,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Prototype</span>
+          </button>
+        )}
+
+        {/* Keyboard Shortcuts Cheat-Sheet Button */}
+        {onOpenShortcuts && (
+          <button
+            id="btn-header-shortcuts"
+            onClick={onOpenShortcuts}
+            className="p-1.5 rounded-lg bg-[#201f1f] text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] border border-[#353534]/60 transition-colors shadow-sm"
+            title="Keyboard Shortcuts & Commands Cheat-Sheet (⌘/ or ?)"
+          >
+            <Keyboard className="w-4 h-4" />
           </button>
         )}
 

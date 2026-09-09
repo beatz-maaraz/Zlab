@@ -46,6 +46,8 @@ export interface CanvasElement {
   shadowSpread: number;
   visible: boolean;
   locked: boolean;
+  fixed?: boolean;
+  pinned?: boolean;
   parentId?: string;
   children?: CanvasElement[];
   textContent?: string;
