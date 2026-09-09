@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -25,8 +25,13 @@ import {
   RotateCw,
   LayoutDashboard,
 } from 'lucide-react';
-import { CanvasElement, Collaborator, ToolMode, CanvasComment } from '../types';
+import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
 import { DynamicIcon } from './DynamicIcon';
+import { usePreviewScale } from '../features/editor/hooks/usePreviewScale';
+import { CanvasViewport } from '../features/editor/components/CanvasViewport';
+import { PreviewStage } from '../features/editor/components/PreviewStage';
+import { DeviceFrame } from '../features/editor/components/DeviceFrame';
+import { Artboard } from '../features/editor/components/Artboard';
 
 interface CanvasProps {
   zoom: number;
@@ -66,9 +71,28 @@ export const Canvas: React.FC<CanvasProps> = ({
   onDropElement,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const artboardRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+
+  const {
+    artboardWidth,
+    artboardHeight,
+    previewScale,
+    totalScale,
+    screenToArtboard,
+  } = usePreviewScale({
+    containerRef,
+    devicePreview,
+    zoom,
+    padding: 48,
+  });
+
+  // Reset pan when switching device preview so artboard centers cleanly
+  useEffect(() => {
+    setPan({ x: 0, y: 0 });
+  }, [devicePreview]);
 
   // Dragging element state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -139,7 +163,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     } else if (currentTool === 'move') {
       // Clicking empty canvas space deselects elements
-      if (e.target === containerRef.current || (e.target as HTMLElement).id === 'canvas-stage-wrapper') {
+      if (
+        e.target === containerRef.current ||
+        (e.target as HTMLElement).id === 'canvas-viewport' ||
+        (e.target as HTMLElement).id === 'preview-stage'
+      ) {
         setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
         setEditingTextId(null);
       }
@@ -158,17 +186,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
-      // 2. Drag Element
+      // 2. Drag Element (work strictly in unscaled artboard coordinates)
       if (draggingId && dragStart) {
-        const deltaX = (e.clientX - dragStart.mouseX) / zoom;
-        const deltaY = (e.clientY - dragStart.mouseY) / zoom;
+        const deltaX = (e.clientX - dragStart.mouseX) / totalScale;
+        const deltaY = (e.clientY - dragStart.mouseY) / totalScale;
         let newX = Math.round(dragStart.initialX + deltaX);
         let newY = Math.round(dragStart.initialY + deltaY);
 
         const currentEl = elements[draggingId];
-        const artboardWidth = devicePreview === 'mobile' ? 390 : (elements['desktop-1440']?.width || 1440);
-        const artboardHeight = devicePreview === 'mobile' ? 844 : (elements['desktop-1440']?.height || 900);
-
         if (currentEl) {
           const elCenterX = newX + currentEl.width / 2;
           const artboardCenterX = artboardWidth / 2;
@@ -206,10 +231,10 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
-      // 3. Resize Element
+      // 3. Resize Element (work strictly in unscaled artboard coordinates)
       if (resizingId && resizeStart && resizeHandle) {
-        const deltaX = (e.clientX - resizeStart.mouseX) / zoom;
-        const deltaY = (e.clientY - resizeStart.mouseY) / zoom;
+        const deltaX = (e.clientX - resizeStart.mouseX) / totalScale;
+        const deltaY = (e.clientY - resizeStart.mouseY) / totalScale;
 
         setElements((prev) => {
           const el = prev[resizingId];
@@ -291,16 +316,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
 
       // 5. Drawing Preview
-      if (drawingState) {
-        const artboardEl = document.getElementById(
-          devicePreview === 'desktop' ? 'artboard-desktop-1440' : 'artboard-mobile-view'
-        );
-        if (artboardEl) {
-          const rect = artboardEl.getBoundingClientRect();
-          const currX = Math.round((e.clientX - rect.left) / zoom);
-          const currY = Math.round((e.clientY - rect.top) / zoom);
-          setDrawingState((prev) => (prev ? { ...prev, currentX: currX, currentY: currY } : null));
-        }
+      if (drawingState && artboardRef.current) {
+        const rect = artboardRef.current.getBoundingClientRect();
+        const currX = Math.round((e.clientX - rect.left) / totalScale);
+        const currY = Math.round((e.clientY - rect.top) / totalScale);
+        setDrawingState((prev) => (prev ? { ...prev, currentX: currX, currentY: currY } : null));
       }
     };
 
@@ -448,7 +468,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     rotatingId,
     rotateStart,
     drawingState,
-    zoom,
+    totalScale,
+    artboardWidth,
+    artboardHeight,
     elements,
     devicePreview,
     onUpdateElementWithHistory,
@@ -459,13 +481,14 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Artboard mouse down for tool operations
   const handleArtboardMouseDown = (e: React.MouseEvent) => {
+    if (!artboardRef.current) return;
+    const rect = artboardRef.current.getBoundingClientRect();
+    const clickX = Math.round((e.clientX - rect.left) / totalScale);
+    const clickY = Math.round((e.clientY - rect.top) / totalScale);
+
     // Only intercept if a creation tool is active
     if (currentTool === 'text') {
       e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clickX = Math.round((e.clientX - rect.left) / zoom);
-      const clickY = Math.round((e.clientY - rect.top) / zoom);
-
       const newId = `text_${Date.now()}`;
       const newEl: CanvasElement = {
         id: newId,
@@ -503,10 +526,6 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (currentTool === 'rect' || currentTool === 'frame' || currentTool === 'pen') {
       e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clickX = Math.round((e.clientX - rect.left) / zoom);
-      const clickY = Math.round((e.clientY - rect.top) / zoom);
-
       setDrawingState({
         startX: clickX,
         startY: clickY,
@@ -519,10 +538,6 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (currentTool === 'comment') {
       e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clickX = Math.round((e.clientX - rect.left) / zoom);
-      const clickY = Math.round((e.clientY - rect.top) / zoom);
-
       const newC: CanvasComment = {
         id: `c_${Date.now()}`,
         author: 'Alex Creator',
@@ -537,7 +552,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       setComments((prev) => [...prev, newC]);
       setActiveCommentId(newC.id);
       if (setCurrentTool) setCurrentTool('move');
+      return;
     }
+
+    // Default: select active artboard
+    setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
   };
 
   // Start dragging an element
@@ -599,32 +618,69 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
-    const artboardEl = document.getElementById(
-      devicePreview === 'desktop' ? 'artboard-desktop-1440' : 'artboard-mobile-view'
-    );
-    if (!artboardEl) return;
-    const rect = artboardEl.getBoundingClientRect();
-    const centerX = rect.left + (el.x + el.width / 2) * zoom;
-    const centerY = rect.top + (el.y + el.height / 2) * zoom;
+    if (artboardRef.current) {
+      const rect = artboardRef.current.getBoundingClientRect();
+      const centerX = rect.left + (el.x + el.width / 2) * totalScale;
+      const centerY = rect.top + (el.y + el.height / 2) * totalScale;
 
-    setRotatingId(el.id);
-    setRotateStart({
-      centerX,
-      centerY,
-      initialRotation: el.rotation || 0,
-    });
-    setCurrentRotationAngle(el.rotation || 0);
+      setRotatingId(el.id);
+      setRotateStart({
+        centerX,
+        centerY,
+        initialRotation: el.rotation || 0,
+      });
+      setCurrentRotationAngle(el.rotation || 0);
+    }
   };
 
   // Get active artboard elements
   const artboardId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
-  const artboardElement = elements[artboardId];
-  const artboardWidth = artboardElement?.width || (devicePreview === 'desktop' ? 1440 : 390);
-  const artboardHeight = artboardElement?.height || (devicePreview === 'desktop' ? 900 : 844);
 
-  const artboardChildren = (Object.values(elements) as CanvasElement[]).filter(
-    (el) => el.parentId === artboardId && el.id !== artboardId && el.id !== 'hero-bg'
-  );
+  const artboardChildren = useMemo(() => {
+    const allEls = Object.values(elements) as CanvasElement[];
+
+    // 1. Elements directly parented to this active artboard
+    const matching = allEls.filter(
+      (el) =>
+        el.id !== 'desktop-1440' &&
+        el.id !== 'mobile-app-view' &&
+        el.id !== 'default-artboard-frame' &&
+        el.id !== 'hero-bg' &&
+        (el.parentId === artboardId || (!el.parentId && (devicePreview === 'desktop' || !allEls.some((e) => e.parentId === 'mobile-app-view'))))
+    );
+
+    let result = matching;
+    // If no specific children exist for this mode, show all design elements
+    // so nothing vanishes when switching preview
+    if (result.length === 0) {
+      result = allEls.filter(
+        (el) =>
+          el.id !== 'desktop-1440' &&
+          el.id !== 'mobile-app-view' &&
+          el.id !== 'default-artboard-frame' &&
+          el.id !== 'hero-bg'
+      );
+    }
+
+    // Ensure selected element is always visible and interactive
+    if (selectedElementId && elements[selectedElementId]) {
+      const sel = elements[selectedElementId];
+      if (
+        sel.id !== 'desktop-1440' &&
+        sel.id !== 'mobile-app-view' &&
+        !result.some((r) => r.id === sel.id)
+      ) {
+        result = [...result, sel];
+      }
+    }
+
+    return result;
+  }, [elements, artboardId, devicePreview, selectedElementId]);
+
+  const activeArtboardBg =
+    (devicePreview === 'mobile'
+      ? elements['mobile-app-view']?.fill || elements['desktop-1440']?.fill
+      : elements['desktop-1440']?.fill) || '#131313';
 
   // Render individual element content based on its type
   const renderElementContent = (el: CanvasElement) => {
@@ -1384,13 +1440,10 @@ export const Canvas: React.FC<CanvasProps> = ({
       const raw = e.dataTransfer.getData('application/zlab-element');
       if (!raw) return;
       const partial: Partial<CanvasElement> = JSON.parse(raw);
-      const artboardEl = document.getElementById(
-        devicePreview === 'desktop' ? 'artboard-desktop-1440' : 'artboard-mobile-view'
-      );
-      if (!artboardEl) return;
-      const rect = artboardEl.getBoundingClientRect();
-      const dropX = Math.round((e.clientX - rect.left) / zoom);
-      const dropY = Math.round((e.clientY - rect.top) / zoom);
+      if (!artboardRef.current) return;
+      const rect = artboardRef.current.getBoundingClientRect();
+      const dropX = Math.round((e.clientX - rect.left) / totalScale);
+      const dropY = Math.round((e.clientY - rect.top) / totalScale);
       const timestamp = Date.now();
       const dropParentId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
       const newEl: CanvasElement = {
@@ -1431,38 +1484,55 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.05 : 0.95;
+      setZoom?.((z) => Math.max(0.1, Math.min(3, Math.round(z * zoomFactor * 100) / 100)));
+    } else {
+      setPan((p) => ({
+        x: p.x - e.deltaX,
+        y: p.y - e.deltaY,
+      }));
+    }
+  };
+
   return (
-    <div
+    <CanvasViewport
       ref={containerRef}
+      currentTool={currentTool}
+      isPanning={isPanning}
+      showGrid={showGrid}
+      zoom={zoom}
       onMouseDown={handleCanvasMouseDown}
+      onWheel={handleWheel}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`w-full h-full relative overflow-hidden select-none ${
-        currentTool === 'hand' || isPanning
-          ? 'cursor-grab active:cursor-grabbing'
-          : currentTool === 'text'
-          ? 'cursor-text'
-          : currentTool === 'rect' || currentTool === 'frame' || currentTool === 'pen' || currentTool === 'comment'
-          ? 'cursor-crosshair'
-          : 'cursor-default'
-      }`}
-      style={{
-        backgroundColor: '#0c0c0e',
-        backgroundImage: `radial-gradient(circle, #252528 1px, transparent 1px)`,
-        backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
-      }}
     >
-      {/* Zoom / Tool Badge Indicator in Top Left */}
+      {/* Zoom / Artboard Resolution Badge Indicator in Top Left */}
       <div className="absolute top-4 left-4 bg-[#141416]/90 border border-[#353534]/60 px-2.5 py-1 rounded-md text-[11px] font-mono text-[#89919e] z-30 pointer-events-none flex items-center gap-2 shadow-lg backdrop-blur">
-        <span>{Math.round(zoom * 100)}%</span>
+        <span>{Math.round(zoom * 100)}% Zoom</span>
         <span>•</span>
-        <span className="text-[#9fcaff] capitalize">{currentTool} Tool</span>
+        <span className="text-[#e5e2e1] font-semibold">{artboardWidth} × {artboardHeight}</span>
+        <span>•</span>
+        <span className="text-[#9fcaff] capitalize">{devicePreview} ({Math.round(previewScale * 100)}% fit)</span>
         {showGrid && <span className="text-[#34d399]">[Grid]</span>}
       </div>
 
-      {/* Bottom-right: Scale Slider + Grid Toggle */}
-      <div className="absolute bottom-10 right-5 z-30 flex items-center gap-2">
+      {/* Bottom-right: Scale Slider + Reset + Grid Toggle */}
+      <div className="absolute bottom-6 right-5 z-30 flex items-center gap-2">
+        {/* Fit / Reset button */}
+        <button
+          onClick={() => {
+            setZoom?.(1);
+            setPan({ x: 0, y: 0 });
+          }}
+          title="Reset zoom to 100% and center artboard"
+          className="px-2 py-1 bg-[#141416]/90 border border-[#353534]/60 rounded text-[10px] font-mono text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50 transition-all shadow"
+        >
+          Fit View
+        </button>
+
         {/* Grid Toggle */}
         <button
           onClick={onToggleGrid}
@@ -1495,7 +1565,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           step={5}
           value={Math.round(zoom * 100)}
           onChange={(e) => setZoom?.(Number(e.target.value) / 100)}
-          className="w-28 h-1.5 accent-[#0d99ff] cursor-pointer"
+          className="w-24 h-1.5 accent-[#0d99ff] cursor-pointer"
           title={`Zoom: ${Math.round(zoom * 100)}%`}
         />
 
@@ -1511,269 +1581,142 @@ export const Canvas: React.FC<CanvasProps> = ({
         </span>
       </div>
 
-      {/* Main Canvas Stage */}
-      <div
-        id="canvas-stage-wrapper"
-        style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: '0 0',
-          transition: isPanning ? 'none' : 'transform 0.08s ease-out',
-        }}
-        className="relative flex items-center justify-center p-24"
-      >
-        {/* DESKTOP 1440 ARTBOARD FRAME */}
-        {devicePreview === 'desktop' ? (
-          <div
-            id="artboard-desktop-1440"
+      {/* Preview Stage (Translates for panning, centers viewport) */}
+      <PreviewStage pan={pan} isPanning={isPanning}>
+        {/* Device Frame (Applies visual scale transform around center) */}
+        <DeviceFrame
+          devicePreview={devicePreview}
+          totalScale={totalScale}
+          isInteracting={isPanning || !!draggingId || !!resizingId}
+        >
+          {/* Artboard (Renders fixed 1440x900 or 390x844 surface) */}
+          <Artboard
+            ref={artboardRef}
+            id={artboardId}
+            devicePreview={devicePreview}
+            width={artboardWidth}
+            height={artboardHeight}
+            backgroundColor={activeArtboardBg}
+            isSelected={selectedElementId === artboardId}
             onMouseDown={handleArtboardMouseDown}
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedElementId('desktop-1440');
+              setSelectedElementId(artboardId);
             }}
-            style={{
-              width: `${artboardWidth}px`,
-              height: `${artboardHeight}px`,
-              backgroundColor: elements['desktop-1440']?.fill || '#131313',
-            }}
-            className="relative rounded-lg shadow-2xl overflow-hidden ring-1 ring-[#3f4753] transition-all"
-          >
-            {/* Desktop Artboard Selection Highlight */}
-            <div
-              className={`absolute inset-0 border-2 pointer-events-none z-30 transition-colors ${
-                selectedElementId === 'desktop-1440' ? 'border-[#9fcaff]' : 'border-transparent'
-              }`}
-            >
-              {selectedElementId === 'desktop-1440' && (
-                <>
-                  <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#131313] border-2 border-[#9fcaff]" />
-                  <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-[#131313] border-2 border-[#9fcaff]" />
-                  <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-[#131313] border-2 border-[#9fcaff]" />
-                  <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#131313] border-2 border-[#9fcaff]" />
-                  <div className="absolute -bottom-7 right-0 bg-[#9fcaff] text-[#003259] text-[10px] px-2 py-0.5 rounded font-mono font-bold shadow">
-                    {artboardWidth} × {artboardHeight}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            showGrid={showGrid}
+            overlayGuides={
+              <>
+                {/* Smart Snap Center Guidelines */}
+                {snapGuideX !== null && (
+                  <div
+                    style={{ left: `${snapGuideX}px` }}
+                    className="absolute top-0 bottom-0 w-[1px] border-l border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
+                  />
+                )}
+                {snapGuideY !== null && (
+                  <div
+                    style={{ top: `${snapGuideY}px` }}
+                    className="absolute left-0 right-0 h-[1px] border-t border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
+                  />
+                )}
+
+                {/* Canvas Interactive Drawing Preview Box */}
+                {drawingState && (
+                  <div
+                    style={{
+                      left: `${Math.min(drawingState.startX, drawingState.currentX)}px`,
+                      top: `${Math.min(drawingState.startY, drawingState.currentY)}px`,
+                      width: `${Math.abs(drawingState.currentX - drawingState.startX)}px`,
+                      height: `${Math.abs(drawingState.currentY - drawingState.startY)}px`,
+                    }}
+                    className="absolute border-2 border-dashed border-[#0d99ff] bg-[#0d99ff]/15 rounded pointer-events-none z-50"
+                  >
+                    <div className="absolute -bottom-6 left-0 bg-[#0d99ff] text-[#002f55] text-[10px] font-mono px-1.5 py-0.5 rounded font-bold whitespace-nowrap shadow">
+                      {Math.abs(drawingState.currentX - drawingState.startX)} ×{' '}
+                      {Math.abs(drawingState.currentY - drawingState.startY)}
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
-
-            {/* Smart Snap Center Guidelines */}
-            {snapGuideX !== null && (
-              <div
-                style={{ left: `${snapGuideX}px` }}
-                className="absolute top-0 bottom-0 w-[1px] border-l border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
-              />
-            )}
-            {snapGuideY !== null && (
-              <div
-                style={{ top: `${snapGuideY}px` }}
-                className="absolute left-0 right-0 h-[1px] border-t border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
-              />
-            )}
-
-            {/* Canvas Interactive Drawing Preview Box */}
-            {drawingState && (
-              <div
-                style={{
-                  left: `${Math.min(drawingState.startX, drawingState.currentX)}px`,
-                  top: `${Math.min(drawingState.startY, drawingState.currentY)}px`,
-                  width: `${Math.abs(drawingState.currentX - drawingState.startX)}px`,
-                  height: `${Math.abs(drawingState.currentY - drawingState.startY)}px`,
-                }}
-                className="absolute border-2 border-dashed border-[#0d99ff] bg-[#0d99ff]/15 rounded pointer-events-none z-50"
-              >
-                <div className="absolute -bottom-6 left-0 bg-[#0d99ff] text-[#002f55] text-[10px] font-mono px-1.5 py-0.5 rounded font-bold whitespace-nowrap shadow">
-                  {Math.abs(drawingState.currentX - drawingState.startX)} ×{' '}
-                  {Math.abs(drawingState.currentY - drawingState.startY)}
-                </div>
-              </div>
-            )}
-
-            {/* Hero Canvas Ambient Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#9fcaff]/5 via-transparent to-transparent pointer-events-none" />
-
-            {/* Grid Lines Overlay */}
-            {showGrid && (
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none z-10"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <pattern id="grid-small" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(159,202,255,0.08)" strokeWidth="0.5"/>
-                  </pattern>
-                  <pattern id="grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
-                    <rect width="100" height="100" fill="url(#grid-small)"/>
-                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(159,202,255,0.18)" strokeWidth="0.8"/>
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid-large)"/>
-              </svg>
-            )}
-
-            {/* UNIFIED ARTBOARD CHILD ELEMENTS (Fully draggable, resizable, rotatable) */}
-            {artboardChildren.map(renderArtboardItem)}
-          </div>
-        ) : (
-          /* MOBILE APP VIEW ARTBOARD (Fully interactive draggable, resizable elements) */
-          <div
-            id="artboard-mobile-view"
-            onMouseDown={handleArtboardMouseDown}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedElementId('mobile-app-view');
-            }}
-            style={{
-              width: `${artboardWidth}px`,
-              height: `${artboardHeight}px`,
-              backgroundColor: elements['mobile-app-view']?.fill || '#131313',
-            }}
-            className="relative rounded-[44px] shadow-2xl overflow-hidden ring-2 ring-[#3f4753] border-4 border-[#201f1f]"
+                )}
+              </>
+            }
           >
-            {/* Top iOS Dynamic Island */}
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-40 pointer-events-none flex items-center justify-between px-3">
-              <div className="w-2 h-2 rounded-full bg-[#1c1b1b]" />
-              <div className="w-2.5 h-2.5 rounded-full bg-[#0d99ff]/30 ring-1 ring-[#0d99ff]" />
-            </div>
-
-            {/* Bottom iOS Home Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full z-40 pointer-events-none" />
-
-            {/* Mobile Selection Highlight */}
-            <div
-              className={`absolute inset-0 rounded-[40px] pointer-events-none z-30 transition-colors ${
-                selectedElementId === 'mobile-app-view' ? 'border-2 border-[#9fcaff]' : ''
-              }`}
-            />
-
-            {/* Smart Snap Center Guidelines */}
-            {snapGuideX !== null && (
-              <div
-                style={{ left: `${snapGuideX}px` }}
-                className="absolute top-0 bottom-0 w-[1px] border-l border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
-              />
-            )}
-            {snapGuideY !== null && (
-              <div
-                style={{ top: `${snapGuideY}px` }}
-                className="absolute left-0 right-0 h-[1px] border-t border-dashed border-[#00f0ff] pointer-events-none z-50 shadow-[0_0_8px_#00f0ff]"
-              />
-            )}
-
-            {/* Canvas Interactive Drawing Preview Box */}
-            {drawingState && (
-              <div
-                style={{
-                  left: `${Math.min(drawingState.startX, drawingState.currentX)}px`,
-                  top: `${Math.min(drawingState.startY, drawingState.currentY)}px`,
-                  width: `${Math.abs(drawingState.currentX - drawingState.startX)}px`,
-                  height: `${Math.abs(drawingState.currentY - drawingState.startY)}px`,
-                }}
-                className="absolute border-2 border-dashed border-[#0d99ff] bg-[#0d99ff]/15 rounded pointer-events-none z-50"
-              >
-                <div className="absolute -bottom-6 left-0 bg-[#0d99ff] text-[#002f55] text-[10px] font-mono px-1.5 py-0.5 rounded font-bold whitespace-nowrap shadow">
-                  {Math.abs(drawingState.currentX - drawingState.startX)} ×{' '}
-                  {Math.abs(drawingState.currentY - drawingState.startY)}
-                </div>
-              </div>
-            )}
-
-            {/* Mobile Ambient Glow */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#9fcaff]/5 via-transparent to-[#9fcaff]/5 pointer-events-none" />
-
-            {/* Grid Lines Overlay */}
-            {showGrid && (
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none z-10"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <pattern id="grid-small-m" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(159,202,255,0.08)" strokeWidth="0.5"/>
-                  </pattern>
-                  <pattern id="grid-large-m" width="100" height="100" patternUnits="userSpaceOnUse">
-                    <rect width="100" height="100" fill="url(#grid-small-m)"/>
-                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(159,202,255,0.18)" strokeWidth="0.8"/>
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid-large-m)"/>
-              </svg>
-            )}
-
             {/* Unified Artboard Child Elements */}
             {artboardChildren.map(renderArtboardItem)}
-          </div>
-        )}
 
-        {/* Live Multiplayer Collaborator Cursors */}
-        {collaborators.map((c) => (
-          <div
-            key={c.id}
-            style={{
-              position: 'absolute',
-              left: `${c.cursorX}px`,
-              top: `${c.cursorY}px`,
-              transition: 'all 0.4s ease-out',
-            }}
-            className="pointer-events-none z-40 flex items-start gap-1"
-          >
-            <MousePointer2
-              className="w-4 h-4 drop-shadow-md"
-              style={{ color: c.color, fill: c.color }}
-            />
-            <div
-              style={{ backgroundColor: c.color }}
-              className="text-[10px] font-bold text-[#002f55] px-1.5 py-0.5 rounded-full shadow-md whitespace-nowrap"
-            >
-              {c.name}
-            </div>
-          </div>
-        ))}
-
-        {/* Interactive Canvas Comments */}
-        {comments.map((cm) => (
-          <div
-            key={cm.id}
-            style={{ position: 'absolute', left: `${cm.x}px`, top: `${cm.y}px` }}
-            className="z-50"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setActiveCommentId(activeCommentId === cm.id ? null : cm.id)}
-              style={{ backgroundColor: cm.avatarColor }}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[#003259] ring-2 ring-[#131313] shadow-lg hover:scale-110 transition-transform"
-            >
-              {cm.initials}
-            </button>
-
-            {activeCommentId === cm.id && (
-              <div className="absolute left-7 top-0 w-64 bg-[#1c1b1b] border border-[#353534] rounded-xl shadow-2xl p-3 z-50 text-xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-semibold text-[#e5e2e1]">{cm.author}</span>
-                  <span className="text-[10px] text-[#89919e]">{cm.timestamp}</span>
-                </div>
-                <p className="text-[#bfc7d5] mb-2">{cm.text}</p>
-                <div className="flex items-center justify-between border-t border-[#353534] pt-2">
-                  <button
-                    onClick={() => {
-                      setComments((prev) => prev.filter((item) => item.id !== cm.id));
-                      setActiveCommentId(null);
-                    }}
-                    className="text-[10px] text-[#9fcaff] hover:underline flex items-center gap-1"
-                  >
-                    <CheckCircle2 className="w-3 h-3" /> Resolve
-                  </button>
-                  <button
-                    onClick={() => setActiveCommentId(null)}
-                    className="text-[10px] text-[#89919e] hover:text-[#e5e2e1]"
-                  >
-                    Close
-                  </button>
+            {/* Live Multiplayer Collaborator Cursors inside Artboard */}
+            {collaborators.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  position: 'absolute',
+                  left: `${c.cursorX}px`,
+                  top: `${c.cursorY}px`,
+                  transition: 'all 0.4s ease-out',
+                }}
+                className="pointer-events-none z-40 flex items-start gap-1"
+              >
+                <MousePointer2
+                  className="w-4 h-4 drop-shadow-md"
+                  style={{ color: c.color, fill: c.color }}
+                />
+                <div
+                  style={{ backgroundColor: c.color }}
+                  className="text-[10px] font-bold text-[#002f55] px-1.5 py-0.5 rounded-full shadow-md whitespace-nowrap"
+                >
+                  {c.name}
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+            ))}
+
+            {/* Interactive Canvas Comments inside Artboard */}
+            {comments.map((cm) => (
+              <div
+                key={cm.id}
+                style={{ position: 'absolute', left: `${cm.x}px`, top: `${cm.y}px` }}
+                className="z-50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setActiveCommentId(activeCommentId === cm.id ? null : cm.id)}
+                  style={{ backgroundColor: cm.avatarColor }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[#003259] ring-2 ring-[#131313] shadow-lg hover:scale-110 transition-transform"
+                >
+                  {cm.initials}
+                </button>
+
+                {activeCommentId === cm.id && (
+                  <div className="absolute left-7 top-0 w-64 bg-[#1c1b1b] border border-[#353534] rounded-xl shadow-2xl p-3 z-50 text-xs">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-semibold text-[#e5e2e1]">{cm.author}</span>
+                      <span className="text-[10px] text-[#89919e]">{cm.timestamp}</span>
+                    </div>
+                    <p className="text-[#bfc7d5] mb-2">{cm.text}</p>
+                    <div className="flex items-center justify-between border-t border-[#353534] pt-2">
+                      <button
+                        onClick={() => {
+                          setComments((prev) => prev.filter((item) => item.id !== cm.id));
+                          setActiveCommentId(null);
+                        }}
+                        className="text-[10px] text-[#9fcaff] hover:underline flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3" /> Resolve
+                      </button>
+                      <button
+                        onClick={() => setActiveCommentId(null)}
+                        className="text-[10px] text-[#89919e] hover:text-[#e5e2e1]"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </Artboard>
+        </DeviceFrame>
+      </PreviewStage>
+    </CanvasViewport>
   );
 };

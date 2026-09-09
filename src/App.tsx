@@ -121,29 +121,21 @@ export default function App() {
     }
   }, [route, projects, activeProjectId, setActiveProject]);
 
-  // Handle device preview change with artboard selection
+  // Handle device preview change while preserving selected elements and document state
   const handleDeviceChange = useCallback(
     (mode: 'desktop' | 'mobile') => {
       setDevicePreview(mode);
       updateProject(activeProject.id, { previewType: mode });
 
-      if (mode === 'desktop') {
-        if (
-          selectedElementId === 'mobile-app-view' ||
-          (selectedElementId && elements[selectedElementId]?.parentId === 'mobile-app-view')
-        ) {
-          setSelectedElementId('desktop-1440');
-        }
-      } else {
-        if (
-          selectedElementId === 'desktop-1440' ||
-          (selectedElementId && elements[selectedElementId]?.parentId === 'desktop-1440')
-        ) {
-          setSelectedElementId('mobile-app-view');
-        }
+      // If the old artboard itself was selected, switch to the new artboard
+      if (mode === 'desktop' && selectedElementId === 'mobile-app-view') {
+        setSelectedElementId('desktop-1440');
+      } else if (mode === 'mobile' && selectedElementId === 'desktop-1440') {
+        setSelectedElementId('mobile-app-view');
       }
+      // If an actual design element is selected, preserve it untouched
     },
-    [activeProject.id, elements, selectedElementId, setDevicePreview, setSelectedElementId, updateProject]
+    [activeProject.id, selectedElementId, setDevicePreview, setSelectedElementId, updateProject]
   );
 
   // Update elements with Undo/Redo history tracking
@@ -766,11 +758,12 @@ export default function App() {
 
             {/* Central Infinite Canvas */}
             <div
+              id="canvas-container"
               style={{
                 marginLeft: `${isLeftSidebarCollapsed ? 56 : leftSidebarWidth}px`,
                 marginRight: `${isInspectorCollapsed ? 0 : inspectorWidth}px`,
               }}
-              className="flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
+              className="canvas-container min-w-0 min-h-0 flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
             >
               <Canvas
                 zoom={zoom}

@@ -4,6 +4,23 @@ export type AppView = 'editor' | 'dashboard';
 
 export type InspectorTab = 'design' | 'prototype' | 'inspect';
 
+export type DevicePreview = 'desktop' | 'mobile';
+
+export const DEVICE_PRESETS = {
+  desktop: {
+    width: 1440,
+    height: 900,
+    label: 'Desktop',
+  },
+  mobile: {
+    width: 390,
+    height: 844,
+    label: 'Mobile',
+  },
+} as const;
+
+export type DevicePresetKey = keyof typeof DEVICE_PRESETS;
+
 export type SettingsTab =
   | 'general'
   | 'account'
