@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Folder,
   Clock,
@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Sparkles,
   FileCode,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { ProjectFile, TemplateItem } from '../types';
 
@@ -23,6 +25,8 @@ interface DashboardViewProps {
   onOpenFile: (file: ProjectFile) => void;
   onNewDesign: () => void;
   onSelectTemplate: (template: TemplateItem) => void;
+  onDuplicateFile?: (id: string) => void;
+  onDeleteFile?: (id: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -31,17 +35,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenFile,
   onNewDesign,
   onSelectTemplate,
+  onDuplicateFile,
+  onDeleteFile,
 }) => {
   const [activeNav, setActiveNav] = useState<'all' | 'recents' | 'shared' | 'trash'>('all');
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [importNotification, setImportNotification] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleImport = () => {
     setImportNotification(true);
     setTimeout(() => {
       setImportNotification(false);
       onNewDesign();
-    }, 1200);
+    }, 1000);
   };
 
   const getGreeting = () => {
@@ -177,7 +195,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {getGreeting()}, Creator
             </h1>
             <p className="text-xs text-[#bfc7d5]">
-              Pick up where you left off or start something entirely new.
+              Pick up where you left off or create a new design project.
             </p>
           </div>
 
@@ -185,7 +203,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               id="btn-dashboard-new-design"
               onClick={onNewDesign}
-              className="bg-[#9fcaff] text-[#003259] px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#0d99ff] hover:text-[#002f55] transition-all shadow-lg shadow-[#9fcaff]/20 hover:scale-102"
+              className="bg-[#9fcaff] text-[#003259] px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#0d99ff] hover:text-[#002f55] transition-all shadow-lg shadow-[#9fcaff]/20 hover:scale-102 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New design</span>
@@ -197,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="bg-[#201f1f] hover:bg-[#2a2a2a] text-[#e5e2e1] px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-[#353534] transition-colors"
             >
               <Upload className="w-4 h-4 text-[#9fcaff]" />
-              <span>{importNotification ? 'Importing...' : 'Import'}</span>
+              <span>{importNotification ? 'Opening...' : 'Import JSON'}</span>
             </button>
           </div>
         </div>
@@ -208,13 +226,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold text-[#e5e2e1]">
-                  {activeNav === 'all' ? 'All Files' : 'Recent Files'}
+                  {activeNav === 'all' ? 'All Designs' : 'Recent Files'}
                 </h2>
                 <button
                   onClick={() => setActiveNav('all')}
                   className="text-xs text-[#9fcaff] hover:underline"
                 >
-                  View all
+                  {recentFiles.length} {recentFiles.length === 1 ? 'project' : 'projects'}
                 </button>
               </div>
 
@@ -225,7 +243,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       key={file.id}
                       id={`recent-file-card-${file.id}`}
                       onClick={() => onOpenFile(file)}
-                      className="bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer hover:border-[#9fcaff] transition-all shadow-sm"
+                      className="bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group cursor-pointer hover:border-[#9fcaff] transition-all shadow-sm relative"
                     >
                       {/* Visual Thumbnail */}
                       <div className="h-40 bg-[#201f1f] flex items-center justify-center relative overflow-hidden p-4">
@@ -233,52 +251,105 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {file.previewType === 'desktop' && (
                             <div className="text-center p-2">
                               <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
-                              <div className="text-[10px] text-[#89919e]">1440 x 900 • Web Artboard</div>
+                              <div className="text-[10px] text-[#89919e]">1440 × 900 • Desktop Canvas</div>
                             </div>
                           )}
                           {file.previewType === 'mobile' && (
                             <div className="text-center p-2">
                               <Smartphone className="w-6 h-6 text-[#9fcaff] mx-auto mb-1" />
-                              <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
+                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                              <div className="text-[10px] text-[#89919e]">390 × 844 • Mobile Screen</div>
                             </div>
                           )}
                           {file.previewType === 'components' && (
                             <div className="text-center p-2">
-                              <div className="flex gap-1 justify-center mb-1">
+                              <div className="flex gap-1.5 justify-center mb-1.5">
                                 <span className="w-3 h-3 bg-[#9fcaff] rounded-sm inline-block"></span>
                                 <span className="w-3 h-3 bg-[#d2bbff] rounded-sm inline-block"></span>
                                 <span className="w-3 h-3 bg-[#c8c6c5] rounded-sm inline-block"></span>
                               </div>
-                              <div className="text-[10px] text-[#e5e2e1]">{file.title}</div>
+                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                              <div className="text-[10px] text-[#89919e]">Component Library</div>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Card Info */}
-                      <div className="p-4 flex items-center justify-between bg-[#1c1b1b]">
+                      <div className="p-4 flex items-center justify-between bg-[#1c1b1b] relative">
                         <div>
                           <h3 className="text-xs font-semibold text-[#e5e2e1] group-hover:text-[#9fcaff] transition-colors">
                             {file.title}
                           </h3>
-                          <p className="text-[11px] text-[#bfc7d5] mt-0.5">{file.lastEdited}</p>
+                          <p className="text-[11px] text-[#89919e] mt-0.5">{file.lastEdited}</p>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenFile(file);
-                          }}
-                          className="p-1.5 text-[#bfc7d5] hover:text-[#e5e2e1] rounded hover:bg-[#2a2a2a] transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+
+                        {/* More Menu */}
+                        <div className="relative" ref={openMenuId === file.id ? menuRef : null}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === file.id ? null : file.id);
+                            }}
+                            className="p-1.5 text-[#bfc7d5] hover:text-[#e5e2e1] rounded hover:bg-[#2a2a2a] transition-colors"
+                            title="File Options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {openMenuId === file.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-0 bottom-full mb-1 w-44 bg-[#201f1f] border border-[#353534] rounded-lg shadow-2xl py-1 z-50 text-xs text-[#e5e2e1]"
+                            >
+                              <button
+                                onClick={() => {
+                                  onOpenFile(file);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#2a2a2a]"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 text-[#9fcaff]" /> Open in Editor
+                              </button>
+                              {onDuplicateFile && (
+                                <button
+                                  onClick={() => {
+                                    onDuplicateFile(file.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#2a2a2a]"
+                                >
+                                  <Copy className="w-3.5 h-3.5 text-[#d2bbff]" /> Duplicate Project
+                                </button>
+                              )}
+                              {onDeleteFile && (
+                                <button
+                                  onClick={() => {
+                                    onDeleteFile(file.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#2a2a2a] text-[#ffb4ab]"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete Project
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-[#89919e] py-8 text-center bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed">
-                  No files found. Create a new design to get started.
+                <div className="text-sm text-[#89919e] py-12 text-center bg-[#1c1b1b] rounded-xl border border-[#353534] border-dashed space-y-3">
+                  <FolderOpen className="w-8 h-8 text-[#353534] mx-auto" />
+                  <div>No projects found. Create a new design to get started!</div>
+                  <button
+                    onClick={onNewDesign}
+                    className="px-4 py-2 bg-[#9fcaff] text-[#003259] rounded-lg text-xs font-semibold hover:bg-[#0d99ff] transition-colors"
+                  >
+                    Create New Design
+                  </button>
                 </div>
               )}
             </div>
@@ -286,10 +357,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Templates & Community Grid */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-[#e5e2e1]">Templates & Community</h2>
-                <button className="text-xs text-[#9fcaff] hover:underline">
-                  Explore community
-                </button>
+                <h2 className="text-base font-semibold text-[#e5e2e1]">Templates & Starter Kits</h2>
+                <span className="text-xs text-[#89919e]">Click any template to start</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -320,7 +389,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {tpl.icon === 'shopping_cart' && <ShoppingCart className="w-8 h-8" />}
                     </div>
                     <div>
-                      <h3 className="text-xs font-semibold text-[#e5e2e1]">{tpl.title}</h3>
+                      <h3 className="text-xs font-semibold text-[#e5e2e1] group-hover:text-[#9fcaff] transition-colors">
+                        {tpl.title}
+                      </h3>
                       <p className="text-[11px] text-[#bfc7d5] mt-1 leading-relaxed">
                         {tpl.description}
                       </p>

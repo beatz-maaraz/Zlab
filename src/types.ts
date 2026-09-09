@@ -122,6 +122,26 @@ export interface CanvasComment {
   resolved: boolean;
 }
 
+export interface ProjectPage {
+  id: string;
+  name: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  ownerId?: string;
+  elements: Record<string, CanvasElement>;
+  pages: ProjectPage[];
+  activePageId: string;
+  previewType: 'desktop' | 'mobile';
+  createdAt: string;
+  updatedAt: string;
+  thumbnail?: string;
+  category?: string;
+  tag?: string;
+}
+
 export interface ProjectFile {
   id: string;
   title: string;

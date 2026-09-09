@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { LeftSidebar } from './components/LeftSidebar';
 import { FloatingToolbar } from './components/FloatingToolbar';
@@ -15,227 +15,317 @@ import { SettingsModal } from './components/SettingsModal';
 import { ExportModal } from './components/ExportModal';
 import { PrototypeModal } from './components/PrototypeModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 import {
-  AppView,
   CanvasElement,
-  Collaborator,
   ProjectFile,
   SettingsTab,
   TemplateItem,
-  ToolMode,
-  UserSettings,
 } from './types';
-import {
-  INITIAL_COLLABORATORS,
-  INITIAL_ELEMENTS,
-  INITIAL_RECENT_FILES,
-  INITIAL_SETTINGS,
-  TEMPLATES,
-} from './mockData';
+import { TEMPLATES } from './mockData';
 import {
   getMaterial3KitElements,
   getIOSKitElements,
   getAllMaterialsElements,
 } from './data/designKits';
-import { computeAutoLayouts } from './utils/layoutEngine';
+
+import { useRouter } from './routes';
+import { useProjectStore } from './store/projectStore';
+import { useEditorStore } from './store/editorStore';
+import { useUIStore } from './store/uiStore';
+import { useHistoryStore } from './store/historyStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>(() => {
-    return window.location.pathname.includes('/editor') ? 'editor' : 'dashboard';
-  });
+  // Routing hook
+  const { route, navigate } = useRouter();
 
+  // Project store
+  const {
+    projects,
+    activeProjectId,
+    getActiveProject,
+    createProject,
+    setActiveProject,
+    updateProject,
+    updateActiveProjectElements,
+    deleteProject,
+    duplicateProject,
+    getRecentProjectsList,
+  } = useProjectStore();
+
+  const activeProject = getActiveProject();
+  const elements = activeProject.elements;
+  const projectTitle = activeProject.name;
+  const activePageId = activeProject.activePageId || 'page-1';
+
+  // Editor store
+  const {
+    zoom,
+    setZoom,
+    resetZoom,
+    currentTool,
+    setCurrentTool,
+    devicePreview,
+    setDevicePreview,
+    selectedElementId,
+    setSelectedElementId,
+    showGrid,
+    setShowGrid,
+    toggleGrid,
+    collaborators,
+    setCollaborators,
+  } = useEditorStore();
+
+  // UI store
+  const {
+    activeModal,
+    openModal,
+    closeModal,
+    settingsTab,
+    setSettingsTab,
+    userSettings,
+    updateUserSettings,
+    leftSidebarWidth,
+    setLeftSidebarWidth,
+    isLeftSidebarCollapsed,
+    toggleLeftSidebar,
+    inspectorWidth,
+    setInspectorWidth,
+    isInspectorCollapsed,
+    toast,
+    showToast,
+  } = useUIStore();
+
+  // History store
+  const {
+    canUndo,
+    canRedo,
+    pushSnapshot,
+    undo,
+    redo,
+    resetHistory,
+  } = useHistoryStore();
+
+  // Initialize history when project changes
   useEffect(() => {
-    const path = currentView === 'editor' ? '/editor' : '/';
-    if (window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
-    }
-  }, [currentView]);
+    resetHistory(elements);
+  }, [activeProject.id]);
 
+  // Sync route param with active project
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentView(window.location.pathname.includes('/editor') ? 'editor' : 'dashboard');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const [projectTitle, setProjectTitle] = useState('Untitled Design v2.4');
-  const [zoom, setZoom] = useState(0.8);
-  const [currentTool, setCurrentTool] = useState<ToolMode>('move');
-  const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile'>('desktop');
-  const [selectedElementId, setSelectedElementId] = useState<string>('main-hero-title');
-  
-  const [elementsRaw, setElementsRaw] = useState<Record<string, CanvasElement>>(INITIAL_ELEMENTS);
-  
-  const setElements = useCallback((value: React.SetStateAction<Record<string, CanvasElement>>) => {
-    setElementsRaw((prev) => {
-      const next = typeof value === 'function' ? value(prev) : value;
-      return computeAutoLayouts(next);
-    });
-  }, []);
-
-  const elements = elementsRaw;
-
-  const handleDeviceChange = useCallback((mode: 'desktop' | 'mobile') => {
-    setDevicePreview(mode);
-    if (mode === 'desktop') {
-      if (
-        selectedElementId === 'mobile-app-view' ||
-        (selectedElementId && elements[selectedElementId]?.parentId === 'mobile-app-view')
-      ) {
-        setSelectedElementId('desktop-1440');
-      }
-    } else {
-      if (
-        selectedElementId === 'desktop-1440' ||
-        (selectedElementId && elements[selectedElementId]?.parentId === 'desktop-1440')
-      ) {
-        setSelectedElementId('mobile-app-view');
+    if ((route.type === 'editor' || route.type === 'prototype') && route.projectId) {
+      if (projects[route.projectId] && route.projectId !== activeProjectId) {
+        setActiveProject(route.projectId);
       }
     }
-  }, [elements, selectedElementId]);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>(INITIAL_COLLABORATORS);
-  const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
-  const [recentFiles, setRecentFiles] = useState<ProjectFile[]>(INITIAL_RECENT_FILES);
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 3;
+  }, [route, projects, activeProjectId, setActiveProject]);
 
-  // Sidebar and Inspector resizing state
-  const [leftSidebarWidth, setLeftSidebarWidth] = useState(300);
-  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
-  const [inspectorWidth, setInspectorWidth] = useState(288);
-  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+  // Handle device preview change with artboard selection
+  const handleDeviceChange = useCallback(
+    (mode: 'desktop' | 'mobile') => {
+      setDevicePreview(mode);
+      updateProject(activeProject.id, { previewType: mode });
 
-  // Export and Prototype modals state
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isPrototypeModalOpen, setIsPrototypeModalOpen] = useState(false);
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+      if (mode === 'desktop') {
+        if (
+          selectedElementId === 'mobile-app-view' ||
+          (selectedElementId && elements[selectedElementId]?.parentId === 'mobile-app-view')
+        ) {
+          setSelectedElementId('desktop-1440');
+        }
+      } else {
+        if (
+          selectedElementId === 'desktop-1440' ||
+          (selectedElementId && elements[selectedElementId]?.parentId === 'desktop-1440')
+        ) {
+          setSelectedElementId('mobile-app-view');
+        }
+      }
+    },
+    [activeProject.id, elements, selectedElementId, setDevicePreview, setSelectedElementId, updateProject]
+  );
 
-  // Grid lines toggle
-  const [showGrid, setShowGrid] = useState(false);
-
-  // Left sidebar resizing handler
-  const handleStartResizeLeft = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = leftSidebarWidth;
-
-    const onMouseMove = (moveEv: MouseEvent) => {
-      const newWidth = Math.min(500, Math.max(200, startW + (moveEv.clientX - startX)));
-      setLeftSidebarWidth(newWidth);
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  // Right inspector resizing handler
-  const handleStartResizeInspector = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = inspectorWidth;
-
-    const onMouseMove = (moveEv: MouseEvent) => {
-      const newWidth = Math.min(460, Math.max(240, startW - (moveEv.clientX - startX)));
-      setInspectorWidth(newWidth);
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  // History stack for Undo/Redo
-  const [history, setHistory] = useState<Record<string, CanvasElement>[]>([INITIAL_ELEMENTS]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-
+  // Update elements with Undo/Redo history tracking
   const updateElementsWithHistory = useCallback(
     (newElements: Record<string, CanvasElement>) => {
-      setElements(newElements);
-      setHistory((prev) => {
-        const upToCurrent = prev.slice(0, historyIndex + 1);
-        return [...upToCurrent, newElements];
-      });
-      setHistoryIndex((prev) => prev + 1);
+      updateActiveProjectElements(newElements);
+      pushSnapshot(newElements);
     },
-    [historyIndex]
+    [updateActiveProjectElements, pushSnapshot]
+  );
+
+  // Wrapped setElements function for components expecting Dispatch<SetStateAction<...>>
+  const setElementsWrapper = useCallback(
+    (value: React.SetStateAction<Record<string, CanvasElement>>) => {
+      const resolved = typeof value === 'function' ? value(elements) : value;
+      updateElementsWithHistory(resolved);
+    },
+    [elements, updateElementsWithHistory]
   );
 
   const handleUndo = useCallback(() => {
-    if (historyIndex > 0) {
-      setHistoryIndex((idx) => idx - 1);
-      setElements(history[historyIndex - 1]);
+    const previousSnapshot = undo();
+    if (previousSnapshot) {
+      updateActiveProjectElements(previousSnapshot);
     }
-  }, [history, historyIndex]);
+  }, [undo, updateActiveProjectElements]);
 
   const handleRedo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex((idx) => idx + 1);
-      setElements(history[historyIndex + 1]);
+    const nextSnapshot = redo();
+    if (nextSnapshot) {
+      updateActiveProjectElements(nextSnapshot);
     }
-  }, [history, historyIndex]);
+  }, [redo, updateActiveProjectElements]);
 
-  const handleUpdateSelectedElement = (updates: Partial<CanvasElement>) => {
-    if (!elements[selectedElementId]) return;
-    const updated = {
-      ...elements,
-      [selectedElementId]: {
-        ...elements[selectedElementId],
-        ...updates,
-      },
-    };
+  const handleUpdateSelectedElement = useCallback(
+    (updates: Partial<CanvasElement>) => {
+      if (!elements[selectedElementId]) return;
+      const updated = {
+        ...elements,
+        [selectedElementId]: {
+          ...elements[selectedElementId],
+          ...updates,
+        },
+      };
+      updateElementsWithHistory(updated);
+    },
+    [elements, selectedElementId, updateElementsWithHistory]
+  );
+
+  const handleInsertElement = useCallback(
+    (element: CanvasElement) => {
+      const updated = {
+        ...elements,
+        [element.id]: element,
+      };
+      updateElementsWithHistory(updated);
+      setSelectedElementId(element.id);
+    },
+    [elements, updateElementsWithHistory, setSelectedElementId]
+  );
+
+  const handleDeleteElement = useCallback(
+    (id: string) => {
+      if (id === 'desktop-1440' || id === 'mobile-app-view' || id === 'hero-bg') return;
+      const next = { ...elements };
+      delete next[id];
+      updateElementsWithHistory(next);
+      setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+    },
+    [elements, devicePreview, updateElementsWithHistory, setSelectedElementId]
+  );
+
+  const handleDuplicateElement = useCallback(
+    (id: string) => {
+      const el = elements[id];
+      if (!el) return;
+      const newId = `${el.id}_copy_${Date.now()}`;
+      const duplicated: CanvasElement = {
+        ...el,
+        id: newId,
+        name: `${el.name} Copy`,
+        x: el.x + 24,
+        y: el.y + 24,
+      };
+      handleInsertElement(duplicated);
+    },
+    [elements, handleInsertElement]
+  );
+
+  const handleApplyColor = useCallback(
+    (color: string) => {
+      if (selectedElementId && elements[selectedElementId]) {
+        handleUpdateSelectedElement({ fill: color });
+      }
+    },
+    [selectedElementId, elements, handleUpdateSelectedElement]
+  );
+
+  // Design kits import
+  const handleImportMaterialKit = useCallback(() => {
+    const m3Kit = getMaterial3KitElements();
+    const updated = { ...elements, ...m3Kit };
     updateElementsWithHistory(updated);
-  };
+    setSelectedElementId('m3-kit-frame');
+    updateProject(activeProject.id, { name: 'Material Design 3 (M3) System' });
+    showToast('Material Design 3 Kit imported successfully!', 'success');
+  }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
 
-  const handleInsertElement = (element: CanvasElement) => {
-    const updated = {
-      ...elements,
-      [element.id]: element,
-    };
+  const handleImportIOSKit = useCallback(() => {
+    const iosKit = getIOSKitElements();
+    const updated = { ...elements, ...iosKit };
     updateElementsWithHistory(updated);
-    setSelectedElementId(element.id);
-  };
+    setSelectedElementId('ios-kit-frame');
+    updateProject(activeProject.id, { name: 'Apple iOS 18 (HIG) System' });
+    showToast('iOS 18 Design Kit imported successfully!', 'success');
+  }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
 
-  const handleDeleteElement = (id: string) => {
-    if (id === 'desktop-1440' || id === 'hero-bg') return;
-    const next = { ...elements };
-    delete next[id];
-    updateElementsWithHistory(next);
-    setSelectedElementId('desktop-1440');
-  };
+  const handleImportAllMaterials = useCallback(() => {
+    const allKits = getAllMaterialsElements();
+    const updated = { ...elements, ...allKits };
+    updateElementsWithHistory(updated);
+    setSelectedElementId('m3-kit-frame');
+    updateProject(activeProject.id, { name: 'Material Design 3 & iOS 18 System' });
+    showToast('Design Systems imported successfully!', 'success');
+  }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
 
-  const handleDuplicateElement = (id: string) => {
-    const el = elements[id];
-    if (!el) return;
-    const newId = `${el.id}_copy_${Date.now()}`;
-    const duplicated: CanvasElement = {
-      ...el,
-      id: newId,
-      name: `${el.name} Copy`,
-      x: el.x + 24,
-      y: el.y + 24,
-    };
-    handleInsertElement(duplicated);
-  };
+  // Project creation & loading
+  const handleNewDesign = useCallback(() => {
+    const newProj = createProject(undefined, undefined, devicePreview);
+    navigate({ type: 'editor', projectId: newProj.id });
+    setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+    showToast(`Created new project "${newProj.name}"`, 'success');
+  }, [createProject, devicePreview, navigate, setSelectedElementId, showToast]);
 
-  const handleApplyColor = (color: string) => {
-    if (selectedElementId && elements[selectedElementId]) {
-      handleUpdateSelectedElement({ fill: color });
-    }
-  };
+  const handleOpenFile = useCallback(
+    (file: ProjectFile) => {
+      if (projects[file.id]) {
+        setActiveProject(file.id);
+        navigate({ type: 'editor', projectId: file.id });
+        if (file.previewType === 'mobile') {
+          setDevicePreview('mobile');
+          setSelectedElementId('mobile-app-view');
+        } else {
+          setDevicePreview('desktop');
+          setSelectedElementId('desktop-1440');
+        }
+      }
+    },
+    [projects, setActiveProject, navigate, setDevicePreview, setSelectedElementId]
+  );
 
-  // Direct action executor from Shortcuts & Command Palette cheat-sheet
+  const handleSelectTemplate = useCallback(
+    (template: TemplateItem) => {
+      if (template.id === 'm3-full-kit') {
+        const proj = createProject('Material 3 Design System', getMaterial3KitElements(), 'desktop');
+        navigate({ type: 'editor', projectId: proj.id });
+        setSelectedElementId('m3-kit-frame');
+        return;
+      }
+      if (template.id === 'ios-full-kit') {
+        const proj = createProject('iOS 18 Design System', getIOSKitElements(), 'mobile');
+        navigate({ type: 'editor', projectId: proj.id });
+        setSelectedElementId('ios-kit-frame');
+        return;
+      }
+      if (template.id === 'all-materials-kit') {
+        const proj = createProject('Complete Design Systems', getAllMaterialsElements(), 'desktop');
+        navigate({ type: 'editor', projectId: proj.id });
+        setSelectedElementId('m3-kit-frame');
+        return;
+      }
+
+      const isMobile = template.id === 'ios-starter';
+      const proj = createProject(`${template.title} Draft`, undefined, isMobile ? 'mobile' : 'desktop');
+      navigate({ type: 'editor', projectId: proj.id });
+      setDevicePreview(isMobile ? 'mobile' : 'desktop');
+      setSelectedElementId(isMobile ? 'mobile-app-view' : 'desktop-1440');
+    },
+    [createProject, navigate, setDevicePreview, setSelectedElementId]
+  );
+
+  // Command palette & shortcuts execution
   const handleExecuteAction = useCallback(
     (actionId: string) => {
       switch (actionId) {
@@ -275,6 +365,7 @@ export default function App() {
           if (
             selectedElementId &&
             selectedElementId !== 'desktop-1440' &&
+            selectedElementId !== 'mobile-app-view' &&
             selectedElementId !== 'hero-bg'
           ) {
             handleDeleteElement(selectedElementId);
@@ -284,7 +375,7 @@ export default function App() {
           setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
           break;
         case 'toggle-grid':
-          setShowGrid((prev) => !prev);
+          toggleGrid();
           break;
         case 'zoom-in':
           setZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))));
@@ -293,7 +384,7 @@ export default function App() {
           setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))));
           break;
         case 'zoom-reset':
-          setZoom(1);
+          resetZoom();
           break;
         case 'device-desktop':
           handleDeviceChange('desktop');
@@ -302,33 +393,39 @@ export default function App() {
           handleDeviceChange('mobile');
           break;
         case 'open-prototype':
-          setIsPrototypeModalOpen(true);
+          openModal('prototype');
           break;
         case 'open-export':
-          setIsExportModalOpen(true);
+          openModal('export');
           break;
         case 'open-settings':
-          setIsSettingsOpen(true);
+          openModal('settings');
           break;
         case 'open-shortcuts':
-          setIsShortcutsOpen(true);
+          openModal('shortcuts');
           break;
         default:
           break;
       }
     },
     [
+      setCurrentTool,
       handleUndo,
       handleRedo,
       selectedElementId,
       devicePreview,
       handleDuplicateElement,
       handleDeleteElement,
+      setSelectedElementId,
+      toggleGrid,
+      setZoom,
+      resetZoom,
       handleDeviceChange,
+      openModal,
     ]
   );
 
-  // Keyboard shortcut listener
+  // Global keyboard shortcuts listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing inside input / textarea
@@ -342,25 +439,17 @@ export default function App() {
         ((e.metaKey || e.ctrlKey) && (e.key === '/' || e.key.toLowerCase() === 'k'))
       ) {
         e.preventDefault();
-        setIsShortcutsOpen((prev) => !prev);
+        if (activeModal === 'shortcuts') {
+          closeModal();
+        } else {
+          openModal('shortcuts');
+        }
         return;
       }
 
       if (e.key === 'Escape') {
-        if (isShortcutsOpen) {
-          setIsShortcutsOpen(false);
-          return;
-        }
-        if (isSettingsOpen) {
-          setIsSettingsOpen(false);
-          return;
-        }
-        if (isExportModalOpen) {
-          setIsExportModalOpen(false);
-          return;
-        }
-        if (isPrototypeModalOpen) {
-          setIsPrototypeModalOpen(false);
+        if (activeModal) {
+          closeModal();
           return;
         }
         if (currentTool !== 'move') {
@@ -376,6 +465,7 @@ export default function App() {
         (e.key === 'Delete' || e.key === 'Backspace') &&
         selectedElementId &&
         selectedElementId !== 'desktop-1440' &&
+        selectedElementId !== 'mobile-app-view' &&
         selectedElementId !== 'hero-bg'
       ) {
         e.preventDefault();
@@ -383,6 +473,7 @@ export default function App() {
         return;
       }
 
+      // Undo / Redo
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -405,14 +496,14 @@ export default function App() {
       // Export modal: Cmd+E / Ctrl+E
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
         e.preventDefault();
-        setIsExportModalOpen(true);
+        openModal('export');
         return;
       }
 
       // Settings modal: Cmd+, / Ctrl+,
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault();
-        setIsSettingsOpen(true);
+        openModal('settings');
         return;
       }
 
@@ -429,14 +520,14 @@ export default function App() {
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '0') {
         e.preventDefault();
-        setZoom(1);
+        resetZoom();
         return;
       }
 
       // Prototype simulator: Shift+P
       if (e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
-        setIsPrototypeModalOpen(true);
+        openModal('prototype');
         return;
       }
 
@@ -498,7 +589,7 @@ export default function App() {
           setCurrentTool('comment');
           break;
         case 'g':
-          setShowGrid((prev) => !prev);
+          toggleGrid();
           break;
       }
     };
@@ -506,20 +597,23 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    handleUndo,
-    handleRedo,
-    isShortcutsOpen,
-    isSettingsOpen,
-    isExportModalOpen,
-    isPrototypeModalOpen,
-    selectedElementId,
-    elements,
+    activeModal,
+    closeModal,
+    openModal,
     currentTool,
+    setCurrentTool,
+    selectedElementId,
     devicePreview,
-    handleDuplicateElement,
+    elements,
     handleDeleteElement,
+    handleRedo,
+    handleUndo,
+    handleDuplicateElement,
+    setZoom,
+    resetZoom,
     handleUpdateSelectedElement,
     handleDeviceChange,
+    toggleGrid,
   ]);
 
   // Subtle live collaborator cursor simulation
@@ -528,281 +622,286 @@ export default function App() {
       setCollaborators((prev) =>
         prev.map((c) => {
           if (c.id === 'you') return c;
-          const deltaX = (Math.random() - 0.5) * 40;
-          const deltaY = (Math.random() - 0.5) * 30;
+          const deltaX = (Math.random() - 0.5) * 36;
+          const deltaY = (Math.random() - 0.5) * 26;
           return {
             ...c,
-            cursorX: Math.max(120, Math.min(880, c.cursorX + deltaX)),
-            cursorY: Math.max(80, Math.min(620, c.cursorY + deltaY)),
+            cursorX: Math.max(120, Math.min(920, c.cursorX + deltaX)),
+            cursorY: Math.max(80, Math.min(640, c.cursorY + deltaY)),
           };
         })
       );
-    }, 3500);
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [setCollaborators]);
 
-  const handleOpenFile = (file: ProjectFile) => {
-    setProjectTitle(file.title);
-    if (file.previewType === 'mobile') {
-      setDevicePreview('mobile');
-      setSelectedElementId('mobile-app-view');
-    } else {
-      setDevicePreview('desktop');
-      setSelectedElementId('main-hero-title');
-    }
-    setCurrentView('editor');
-  };
+  // Sidebar and Inspector resizing handlers
+  const handleStartResizeLeft = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = leftSidebarWidth;
 
-  const handleImportMaterialKit = useCallback(() => {
-    const m3Kit = getMaterial3KitElements();
-    const updated = { ...elements, ...m3Kit };
-    updateElementsWithHistory(updated);
-    setSelectedElementId('m3-kit-frame');
-    setProjectTitle('Material Design 3 (M3) System');
-  }, [elements, updateElementsWithHistory]);
-
-  const handleImportIOSKit = useCallback(() => {
-    const iosKit = getIOSKitElements();
-    const updated = { ...elements, ...iosKit };
-    updateElementsWithHistory(updated);
-    setSelectedElementId('ios-kit-frame');
-    setProjectTitle('Apple iOS 18 (HIG) System');
-  }, [elements, updateElementsWithHistory]);
-
-  const handleImportAllMaterials = useCallback(() => {
-    const allKits = getAllMaterialsElements();
-    const updated = { ...elements, ...allKits };
-    updateElementsWithHistory(updated);
-    setSelectedElementId('m3-kit-frame');
-    setProjectTitle('Material Design 3 & iOS 18 System');
-  }, [elements, updateElementsWithHistory]);
-
-  const handleNewDesign = () => {
-    const newTitle = `Untitled Design v${(Math.random() * 5 + 2).toFixed(1)}`;
-    setProjectTitle(newTitle);
-    setDevicePreview('desktop');
-    setSelectedElementId('desktop-1440');
-    setCurrentView('editor');
-  };
-
-  const handleSelectTemplate = (template: TemplateItem) => {
-    if (template.id === 'm3-full-kit') {
-      handleImportMaterialKit();
-      setCurrentView('editor');
-      return;
-    }
-    if (template.id === 'ios-full-kit') {
-      handleImportIOSKit();
-      setCurrentView('editor');
-      return;
-    }
-    if (template.id === 'all-materials-kit') {
-      handleImportAllMaterials();
-      setCurrentView('editor');
-      return;
-    }
-    setProjectTitle(`${template.title} Draft`);
-    if (template.id === 'ios-starter') {
-      setDevicePreview('mobile');
-      setSelectedElementId('mobile-app-view');
-    } else {
-      setDevicePreview('desktop');
-      setSelectedElementId('main-hero-title');
-    }
-    setCurrentView('editor');
-  };
-
-  const handleExport = () => {
-    const exportData = {
-      project: projectTitle,
-      exportedAt: new Date().toISOString(),
-      elements,
+    const onMouseMove = (moveEv: MouseEvent) => {
+      const newWidth = Math.min(500, Math.max(200, startW + (moveEv.clientX - startX)));
+      setLeftSidebarWidth(newWidth);
     };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${projectTitle.toLowerCase().replace(/\s+/g, '-')}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   };
 
-  const activeElement = elements[selectedElementId] || elements['desktop-1440'];
+  const handleStartResizeInspector = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = inspectorWidth;
+
+    const onMouseMove = (moveEv: MouseEvent) => {
+      const newWidth = Math.min(460, Math.max(240, startW - (moveEv.clientX - startX)));
+      setInspectorWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const recentFilesList = useMemo(() => {
+    return getRecentProjectsList().map((p) => ({
+      id: p.id,
+      title: p.name,
+      lastEdited: new Date(p.updatedAt).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+      }),
+      previewType: (p.previewType || 'desktop') as 'desktop' | 'mobile' | 'components',
+    }));
+  }, [projects, getRecentProjectsList]);
+
+  const activeElement = elements[selectedElementId] || elements['desktop-1440'] || Object.values(elements)[0];
+  const isEditorView = route.type === 'editor' || route.type === 'prototype';
 
   return (
-    <div
-      id="app-root-container"
-      className="flex flex-col h-screen w-screen overflow-hidden bg-[#131313] text-[#e5e2e1] font-sans select-none"
-    >
-      {/* Top Application Header */}
-      <Header
-        projectTitle={projectTitle}
-        setProjectTitle={setProjectTitle}
-        zoom={zoom}
-        setZoom={setZoom}
-        devicePreview={devicePreview}
-        setDevicePreview={handleDeviceChange}
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        onOpenSettings={(tab?: string) => {
-          if (tab) setSettingsTab(tab as SettingsTab);
-          setIsSettingsOpen(true);
-        }}
-        onExport={() => setIsExportModalOpen(true)}
-        onOpenPrototype={() => setIsPrototypeModalOpen(true)}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onOpenShortcuts={() => setIsShortcutsOpen(true)}
-        onImportMaterialKit={handleImportMaterialKit}
-        onImportIOSKit={handleImportIOSKit}
-        onImportAllMaterials={handleImportAllMaterials}
-      />
+    <ErrorBoundary>
+      <div
+        id="app-root-container"
+        className="flex flex-col h-screen w-screen overflow-hidden bg-[#131313] text-[#e5e2e1] font-sans select-none"
+      >
+        {/* Top Application Header */}
+        <Header
+          projectTitle={projectTitle}
+          setProjectTitle={(name) => updateProject(activeProject.id, { name })}
+          zoom={zoom}
+          setZoom={setZoom}
+          devicePreview={devicePreview}
+          setDevicePreview={handleDeviceChange}
+          currentView={isEditorView ? 'editor' : 'dashboard'}
+          setCurrentView={(view) => {
+            if (view === 'dashboard') {
+              navigate({ type: 'dashboard' });
+            } else {
+              navigate({ type: 'editor', projectId: activeProject.id });
+            }
+          }}
+          onOpenSettings={(tab?: string) => {
+            if (tab) setSettingsTab(tab as SettingsTab);
+            openModal('settings');
+          }}
+          onExport={() => openModal('export')}
+          onOpenPrototype={() => openModal('prototype')}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onOpenShortcuts={() => openModal('shortcuts')}
+          onImportMaterialKit={handleImportMaterialKit}
+          onImportIOSKit={handleImportIOSKit}
+          onImportAllMaterials={handleImportAllMaterials}
+          collaborators={collaborators}
+          onNewDesign={handleNewDesign}
+        />
 
-      {/* Main App Layout */}
-      {currentView === 'editor' ? (
-        <div id="editor-workspace" className="flex flex-1 relative overflow-hidden pt-16 pb-8">
-          {/* Left Primary Nav & Secondary Layer / Component / Asset Drawer */}
-          <LeftSidebar
-            currentView={currentView}
-            setCurrentView={setCurrentView}
-            selectedElementId={selectedElementId}
-            setSelectedElementId={setSelectedElementId}
-            elements={elements}
-            setElements={setElements}
-            onInsertElement={handleInsertElement}
-            onDeleteElement={handleDeleteElement}
-            onDuplicateElement={handleDuplicateElement}
-            onApplyColor={handleApplyColor}
-            onImportMaterialKit={handleImportMaterialKit}
-            onImportIOSKit={handleImportIOSKit}
-            onImportAllMaterials={handleImportAllMaterials}
-            devicePreview={devicePreview}
-            width={leftSidebarWidth}
-            onStartResize={handleStartResizeLeft}
-            isCollapsed={isLeftSidebarCollapsed}
-            onToggleCollapse={() => setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed)}
-          />
-
-          {/* Floating Canvas Toolbar */}
-          <FloatingToolbar
-            currentTool={currentTool}
-            setCurrentTool={setCurrentTool}
-            commentCount={1}
-          />
-
-          {/* Central Infinite Canvas (with dynamic margins adapting to resizable sidebar and inspector) */}
-          <div
-            style={{
-              marginLeft: `${isLeftSidebarCollapsed ? 56 : leftSidebarWidth}px`,
-              marginRight: `${isInspectorCollapsed ? 0 : inspectorWidth}px`,
-            }}
-            className="flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
-          >
-          <Canvas
-              zoom={zoom}
-              setZoom={setZoom}
-              currentTool={currentTool}
-              setCurrentTool={setCurrentTool}
-              devicePreview={devicePreview}
+        {/* Main View: Editor Workspace or Dashboard Browser */}
+        {isEditorView ? (
+          <div id="editor-workspace" className="flex flex-1 relative overflow-hidden pt-16 pb-8">
+            {/* Left Sidebar */}
+            <LeftSidebar
+              currentView="editor"
+              setCurrentView={(view) => {
+                if (view === 'dashboard') navigate({ type: 'dashboard' });
+              }}
               selectedElementId={selectedElementId}
               setSelectedElementId={setSelectedElementId}
               elements={elements}
-              setElements={setElements}
-              onUpdateElementWithHistory={updateElementsWithHistory}
-              collaborators={collaborators}
-              onDuplicateElement={handleDuplicateElement}
+              setElements={setElementsWrapper}
+              onInsertElement={handleInsertElement}
               onDeleteElement={handleDeleteElement}
-              showGrid={showGrid}
-              onToggleGrid={() => setShowGrid((g) => !g)}
-              onDropElement={(el) => {
-                handleInsertElement(el);
-                setSelectedElementId(el.id);
+              onDuplicateElement={handleDuplicateElement}
+              onApplyColor={handleApplyColor}
+              onImportMaterialKit={handleImportMaterialKit}
+              onImportIOSKit={handleImportIOSKit}
+              onImportAllMaterials={handleImportAllMaterials}
+              devicePreview={devicePreview}
+              width={leftSidebarWidth}
+              onStartResize={handleStartResizeLeft}
+              isCollapsed={isLeftSidebarCollapsed}
+              onToggleCollapse={toggleLeftSidebar}
+            />
+
+            {/* Floating Toolbar */}
+            <FloatingToolbar
+              currentTool={currentTool}
+              setCurrentTool={setCurrentTool}
+              commentCount={1}
+            />
+
+            {/* Central Infinite Canvas */}
+            <div
+              style={{
+                marginLeft: `${isLeftSidebarCollapsed ? 56 : leftSidebarWidth}px`,
+                marginRight: `${isInspectorCollapsed ? 0 : inspectorWidth}px`,
               }}
+              className="flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
+            >
+              <Canvas
+                zoom={zoom}
+                setZoom={setZoom}
+                currentTool={currentTool}
+                setCurrentTool={setCurrentTool}
+                devicePreview={devicePreview}
+                selectedElementId={selectedElementId}
+                setSelectedElementId={setSelectedElementId}
+                elements={elements}
+                setElements={setElementsWrapper}
+                onUpdateElementWithHistory={updateElementsWithHistory}
+                collaborators={collaborators}
+                onDuplicateElement={handleDuplicateElement}
+                onDeleteElement={handleDeleteElement}
+                showGrid={showGrid}
+                onToggleGrid={toggleGrid}
+                onDropElement={(el) => {
+                  handleInsertElement(el);
+                  setSelectedElementId(el.id);
+                }}
+              />
+            </div>
+
+            {/* Right Inspector Panel */}
+            <Inspector
+              selectedElement={activeElement}
+              allElements={elements}
+              projectTitle={projectTitle}
+              devicePreview={devicePreview}
+              onUpdateElement={handleUpdateSelectedElement}
+              onExportSelected={() => openModal('export')}
+              onOpenPrototype={() => openModal('prototype')}
+              onDeleteElement={handleDeleteElement}
+              onDuplicateElement={handleDuplicateElement}
+              width={isInspectorCollapsed ? 0 : inspectorWidth}
+              onStartResize={handleStartResizeInspector}
             />
           </div>
-
-          {/* Right Inspector Panel */}
-          <Inspector
-            selectedElement={activeElement}
-            allElements={elements}
-            projectTitle={projectTitle}
-            devicePreview={devicePreview}
-            onUpdateElement={handleUpdateSelectedElement}
-            onExportSelected={() => setIsExportModalOpen(true)}
-            onOpenPrototype={() => setIsPrototypeModalOpen(true)}
-            onDeleteElement={handleDeleteElement}
-            onDuplicateElement={handleDuplicateElement}
-            width={isInspectorCollapsed ? 0 : inspectorWidth}
-            onStartResize={handleStartResizeInspector}
+        ) : (
+          /* Full Screen Dashboard / File Browser */
+          <DashboardView
+            recentFiles={recentFilesList}
+            templates={TEMPLATES}
+            onOpenFile={handleOpenFile}
+            onNewDesign={handleNewDesign}
+            onSelectTemplate={handleSelectTemplate}
+            onDuplicateFile={(id) => {
+              const dup = duplicateProject(id);
+              showToast(`Duplicated project "${dup.name}"`, 'success');
+            }}
+            onDeleteFile={(id) => {
+              deleteProject(id);
+              showToast('Project deleted', 'info');
+            }}
           />
-        </div>
-      ) : (
-        /* Full Screen Dashboard / Files Browser */
-        <DashboardView
-          recentFiles={recentFiles}
-          templates={TEMPLATES}
-          onOpenFile={handleOpenFile}
-          onNewDesign={handleNewDesign}
-          onSelectTemplate={handleSelectTemplate}
+        )}
+
+        {/* Bottom Status Bar */}
+        {isEditorView && (
+          <StatusBar
+            collaborators={collaborators}
+            currentPage={activePageId === 'page-1' ? 1 : activePageId === 'page-2' ? 2 : 3}
+            totalPages={activeProject.pages?.length || 3}
+            onPageChange={(page) => {
+              const pageId = `page-${page}`;
+              useProjectStore.getState().setActivePage(pageId);
+            }}
+            onOpenShortcuts={() => openModal('shortcuts')}
+          />
+        )}
+
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={activeModal === 'settings'}
+          onClose={closeModal}
+          activeTab={settingsTab}
+          setActiveTab={setSettingsTab}
+          settings={userSettings}
+          setSettings={updateUserSettings}
+          onOpenShortcutsOverlay={() => openModal('shortcuts')}
+          onExecuteAction={handleExecuteAction}
         />
-      )}
 
-      {/* Bottom Status Bar */}
-      {currentView === 'editor' && (
-        <StatusBar
-          collaborators={collaborators}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        {/* Export Modal */}
+        <ExportModal
+          isOpen={activeModal === 'export'}
+          onClose={closeModal}
+          projectTitle={projectTitle}
+          elements={elements}
+          selectedElementId={selectedElementId}
+          devicePreview={devicePreview}
         />
-      )}
 
-      {/* Global Settings & Preferences Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        activeTab={settingsTab}
-        setActiveTab={setSettingsTab}
-        settings={settings}
-        setSettings={setSettings}
-        onOpenShortcutsOverlay={() => {
-          setIsSettingsOpen(false);
-          setIsShortcutsOpen(true);
-        }}
-        onExecuteAction={handleExecuteAction}
-      />
+        {/* Prototype Simulator Modal */}
+        <PrototypeModal
+          isOpen={activeModal === 'prototype' || route.type === 'prototype'}
+          onClose={() => {
+            closeModal();
+            if (route.type === 'prototype') {
+              navigate({ type: 'editor', projectId: activeProject.id });
+            }
+          }}
+          projectTitle={projectTitle}
+          elements={elements}
+          initialDevice={devicePreview}
+        />
 
-      {/* Comprehensive Export & Download Modal */}
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        projectTitle={projectTitle}
-        elements={elements}
-        selectedElementId={selectedElementId}
-        devicePreview={devicePreview}
-      />
+        {/* Keyboard Shortcuts Modal */}
+        <ShortcutsModal
+          isOpen={activeModal === 'shortcuts'}
+          onClose={closeModal}
+          onExecuteAction={handleExecuteAction}
+        />
 
-      {/* Interactive Prototype Simulator Modal */}
-      <PrototypeModal
-        isOpen={isPrototypeModalOpen}
-        onClose={() => setIsPrototypeModalOpen(false)}
-        projectTitle={projectTitle}
-        elements={elements}
-        initialDevice={devicePreview}
-      />
-
-      {/* Keyboard Shortcuts & Commands Cheat-Sheet Modal */}
-      <ShortcutsModal
-        isOpen={isShortcutsOpen}
-        onClose={() => setIsShortcutsOpen(false)}
-        onExecuteAction={handleExecuteAction}
-      />
-    </div>
+        {/* Toast Notification Alert */}
+        {toast && (
+          <div className="fixed bottom-12 right-6 z-50 flex items-center gap-2 bg-[#201f1f] text-[#e5e2e1] border border-[#353534] px-4 py-2.5 rounded-lg shadow-2xl text-xs">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                toast.type === 'success'
+                  ? 'bg-[#34d399]'
+                  : toast.type === 'warning'
+                  ? 'bg-[#f59e0b]'
+                  : 'bg-[#9fcaff]'
+              }`}
+            />
+            <span>{toast.message}</span>
+          </div>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }

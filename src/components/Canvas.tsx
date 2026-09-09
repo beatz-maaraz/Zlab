@@ -134,7 +134,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Canvas background panning
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (currentTool === 'hand' || e.button === 1 || e.spaceKey) {
+    if (currentTool === 'hand' || e.button === 1) {
       setIsPanning(true);
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     } else if (currentTool === 'move') {
