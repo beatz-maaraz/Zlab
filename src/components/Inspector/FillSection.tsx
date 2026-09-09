@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { CanvasElement } from '../../types';
+import { NumberAdjustInput } from './NumberAdjustInput';
 import {
   MATERIAL_3_PRESETS,
   IOS_MATERIAL_PRESETS,
@@ -54,21 +55,17 @@ export const FillSection: React.FC<FillSectionProps> = ({
         </div>
 
         {/* Opacity % */}
-        <div className="w-16 flex items-center bg-[#141416] px-2 py-1.5 rounded-lg border border-[#353534]">
-          <input
-            type="number"
-            min="0"
-            max="100"
+        <div className="w-24 shrink-0">
+          <NumberAdjustInput
             value={currentOpacity}
+            min={0}
+            max={100}
+            step={1}
+            largeStep={10}
+            suffix="%"
             disabled={disabled}
-            onChange={(e) =>
-              onUpdate({
-                fillOpacity: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)),
-              })
-            }
-            className="bg-transparent text-[#e5e2e1] w-full text-xs font-mono text-right outline-none disabled:opacity-40"
+            onChange={(fillOpacity) => onUpdate({ fillOpacity })}
           />
-          <span className="text-[#89919e] text-[10px] ml-0.5">%</span>
         </div>
       </div>
 

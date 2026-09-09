@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Collaborator } from '../types';
-import { Users, Check } from 'lucide-react';
+import { Users, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface StatusBarProps {
   collaborators?: Collaborator[];
@@ -38,14 +38,32 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
         <div className="h-3 w-[1px] bg-[#3f4753]" />
 
-        {/* Page selector */}
-        <div className="relative">
+        {/* Page selector with decrease/increase */}
+        <div className="relative flex items-center gap-0.5">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1}
+            className="p-0.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-20"
+            title="Previous Page (Decrease)"
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+
           <button
             id="btn-page-selector"
             onClick={() => setShowPageMenu(!showPageMenu)}
-            className="hover:text-[#e5e2e1] transition-colors cursor-pointer text-[11px]"
+            className="hover:text-[#e5e2e1] transition-colors cursor-pointer text-[11px] px-1 py-0.5 rounded hover:bg-[#201f1f]"
           >
             Page {currentPage} of {totalPages}
+          </button>
+
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages}
+            className="p-0.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-20"
+            title="Next Page (Increase)"
+          >
+            <ChevronRight className="w-3 h-3" />
           </button>
           {showPageMenu && (
             <div className="absolute left-0 bottom-full mb-1 w-36 bg-[#1c1b1b] border border-[#353534] rounded-lg shadow-xl py-1 z-50 text-xs">

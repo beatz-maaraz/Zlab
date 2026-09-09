@@ -10,6 +10,7 @@ import {
   CornerDownRight,
 } from 'lucide-react';
 import { CanvasElement } from '../../types';
+import { NumberAdjustInput } from './NumberAdjustInput';
 
 interface PositionSectionProps {
   element: CanvasElement;
@@ -81,81 +82,71 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         </div>
       )}
 
-      {/* Coordinate & Dimension Inputs */}
+      {/* Coordinate & Dimension Inputs with Scrubbers and Steppers */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         {/* X Position */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <span className="text-[#89919e] font-mono w-4">X</span>
-          <input
-            type="number"
-            value={element.x}
-            disabled={disabled || isArtboard}
-            onChange={(e) => onUpdate({ x: parseInt(e.target.value, 10) || 0 })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-        </div>
+        <NumberAdjustInput
+          label="X"
+          labelTitle="Drag to scrub X position"
+          value={element.x}
+          disabled={disabled || isArtboard}
+          onChange={(x) => onUpdate({ x })}
+        />
 
         {/* Y Position */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <span className="text-[#89919e] font-mono w-4">Y</span>
-          <input
-            type="number"
-            value={element.y}
-            disabled={disabled || isArtboard}
-            onChange={(e) => onUpdate({ y: parseInt(e.target.value, 10) || 0 })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-        </div>
+        <NumberAdjustInput
+          label="Y"
+          labelTitle="Drag to scrub Y position"
+          value={element.y}
+          disabled={disabled || isArtboard}
+          onChange={(y) => onUpdate({ y })}
+        />
 
         {/* Width */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <span className="text-[#89919e] font-mono w-4">W</span>
-          <input
-            type="number"
-            value={element.width}
-            disabled={disabled}
-            onChange={(e) => onUpdate({ width: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-        </div>
+        <NumberAdjustInput
+          label="W"
+          labelTitle="Drag to scrub Width"
+          value={element.width}
+          min={1}
+          suffix="px"
+          disabled={disabled}
+          onChange={(width) => onUpdate({ width: Math.max(1, width) })}
+        />
 
         {/* Height */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <span className="text-[#89919e] font-mono w-4">H</span>
-          <input
-            type="number"
-            value={element.height}
-            disabled={disabled}
-            onChange={(e) => onUpdate({ height: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-        </div>
+        <NumberAdjustInput
+          label="H"
+          labelTitle="Drag to scrub Height"
+          value={element.height}
+          min={1}
+          suffix="px"
+          disabled={disabled}
+          onChange={(height) => onUpdate({ height: Math.max(1, height) })}
+        />
 
         {/* Rotation */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <RotateCw className="w-3 h-3 text-[#89919e] mr-1.5 shrink-0" />
-          <input
-            type="number"
-            value={element.rotation || 0}
-            disabled={disabled || isArtboard}
-            onChange={(e) => onUpdate({ rotation: parseInt(e.target.value, 10) || 0 })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-          <span className="text-[#89919e] text-[10px] ml-1">°</span>
-        </div>
+        <NumberAdjustInput
+          label={<RotateCw className="w-3 h-3" />}
+          labelTitle="Drag to scrub Rotation"
+          value={element.rotation || 0}
+          step={1}
+          largeStep={15}
+          suffix="°"
+          disabled={disabled || isArtboard}
+          onChange={(rotation) => onUpdate({ rotation })}
+        />
 
         {/* Corner Radius */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <CornerDownRight className="w-3 h-3 text-[#89919e] mr-1.5 shrink-0" />
-          <input
-            type="number"
-            value={element.borderRadius ?? 0}
-            disabled={disabled}
-            onChange={(e) => onUpdate({ borderRadius: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-          <span className="text-[#89919e] text-[10px] ml-1">px</span>
-        </div>
+        <NumberAdjustInput
+          label={<CornerDownRight className="w-3 h-3" />}
+          labelTitle="Drag to scrub Corner Radius"
+          value={element.borderRadius ?? 0}
+          min={0}
+          max={500}
+          suffix="px"
+          disabled={disabled}
+          onChange={(borderRadius) => onUpdate({ borderRadius: Math.max(0, borderRadius) })}
+        />
       </div>
     </div>
   );

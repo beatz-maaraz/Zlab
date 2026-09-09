@@ -1,5 +1,6 @@
 import React from 'react';
 import { CanvasElement } from '../../types';
+import { NumberAdjustInput } from './NumberAdjustInput';
 
 interface BorderSectionProps {
   element: CanvasElement;
@@ -57,22 +58,18 @@ export const BorderSection: React.FC<BorderSectionProps> = ({
             />
           </div>
 
-          {/* Stroke Width */}
-          <div className="w-16 flex items-center bg-[#141416] px-2 py-1.5 rounded-lg border border-[#353534]">
-            <input
-              type="number"
-              min="1"
-              max="32"
+          {/* Stroke Width with increase/decrease and scrubber */}
+          <div className="w-24 shrink-0">
+            <NumberAdjustInput
               value={element.strokeWidth || 1}
+              min={1}
+              max={64}
+              step={1}
+              largeStep={4}
+              suffix="px"
               disabled={disabled}
-              onChange={(e) =>
-                onUpdate({
-                  strokeWidth: Math.max(1, parseInt(e.target.value, 10) || 1),
-                })
-              }
-              className="bg-transparent text-[#e5e2e1] w-full text-xs font-mono text-right outline-none disabled:opacity-40"
+              onChange={(strokeWidth) => onUpdate({ strokeWidth: Math.max(1, strokeWidth) })}
             />
-            <span className="text-[#89919e] text-[10px] ml-0.5">px</span>
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Undo, Redo, ZoomIn, Check, Monitor, Smartphone } from 'lucide-react';
+import { Undo, Redo, ZoomIn, Check, Monitor, Smartphone, Plus, Minus } from 'lucide-react';
 
 interface ViewControlsProps {
   canUndo: boolean;
@@ -69,32 +69,70 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
 
       <div className="h-4 w-[1px] bg-[#3f4753] mx-1" />
 
-      {/* Zoom control */}
-      <div ref={zoomRef} className="relative">
+      {/* Zoom Adjust Controls (Decrease / Percentage Menu / Increase) */}
+      <div ref={zoomRef} className="relative flex items-center bg-[#141416] rounded-lg border border-[#353534] p-0.5">
+        <button
+          id="btn-header-zoom-decrease"
+          type="button"
+          onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))}
+          disabled={zoom <= 0.25}
+          className="p-1 text-[#bfc7d5] hover:text-[#9fcaff] hover:bg-[#201f1f] rounded transition-colors disabled:opacity-20"
+          title="Zoom Out / Decrease Zoom (⌘-)"
+        >
+          <Minus className="w-3 h-3" />
+        </button>
+
         <button
           id="btn-header-zoom"
           onClick={() => setZoomMenuOpen(!zoomMenuOpen)}
-          className="p-1 px-1.5 text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors flex items-center gap-1 text-xs"
-          title="Zoom Level"
+          className="px-1.5 py-0.5 text-[#e5e2e1] hover:text-[#9fcaff] hover:bg-[#201f1f] rounded transition-colors flex items-center gap-1 text-xs select-none"
+          title="Zoom Presets"
         >
-          <ZoomIn className="w-3.5 h-3.5" />
-          <span className="font-mono text-[11px]">{Math.round(zoom * 100)}%</span>
+          <ZoomIn className="w-3 h-3 text-[#89919e]" />
+          <span className="font-mono text-[11px] min-w-[34px] text-center">{Math.round(zoom * 100)}%</span>
         </button>
+
+        <button
+          id="btn-header-zoom-increase"
+          type="button"
+          onClick={() => setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}
+          disabled={zoom >= 3}
+          className="p-1 text-[#bfc7d5] hover:text-[#9fcaff] hover:bg-[#201f1f] rounded transition-colors disabled:opacity-20"
+          title="Zoom In / Increase Zoom (⌘+)"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+
         {zoomMenuOpen && (
-          <div className="absolute right-0 top-full mt-1 w-32 bg-[#1c1b1b] border border-[#353534] rounded-lg shadow-xl py-1 z-50 text-xs">
-            {[0.5, 0.75, 1, 1.25, 1.5, 2].map((lvl) => (
+          <div className="absolute right-0 top-full mt-1.5 w-36 bg-[#1c1b1b] border border-[#353534] rounded-lg shadow-2xl py-1 z-50 text-xs">
+            <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#89919e] tracking-wider border-b border-[#353534]">
+              Zoom Presets
+            </div>
+            {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3].map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => {
                   setZoom(lvl);
                   setZoomMenuOpen(false);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-[#e5e2e1] hover:bg-[#2a2a2a]"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-[#e5e2e1] hover:bg-[#2a2a2a] transition-colors"
               >
                 <span>{Math.round(lvl * 100)}%</span>
-                {Math.abs(zoom - lvl) < 0.05 && <Check className="w-3.5 h-3.5 text-[#9fcaff]" />}
+                {Math.abs(zoom - lvl) < 0.04 && <Check className="w-3.5 h-3.5 text-[#9fcaff]" />}
               </button>
             ))}
+            <div className="border-t border-[#353534] mt-1 pt-1">
+              <button
+                onClick={() => {
+                  setZoom(1);
+                  setZoomMenuOpen(false);
+                }}
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-[#9fcaff] hover:bg-[#2a2a2a] transition-colors"
+              >
+                <span>Reset (100%)</span>
+                <span className="text-[10px] text-[#89919e]">⌘0</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

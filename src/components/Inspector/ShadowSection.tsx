@@ -1,5 +1,6 @@
 import React from 'react';
 import { CanvasElement } from '../../types';
+import { NumberAdjustInput } from './NumberAdjustInput';
 
 interface ShadowSectionProps {
   element: CanvasElement;
@@ -34,43 +35,37 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
       </div>
 
       {hasShadow && (
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-3 gap-1.5 text-xs">
           {/* Y Offset */}
-          <div className="flex items-center bg-[#141416] px-2 py-1.5 rounded-lg border border-[#353534]">
-            <span className="text-[#89919e] text-[10px] w-3">Y</span>
-            <input
-              type="number"
-              value={element.shadowY || 0}
-              disabled={disabled}
-              onChange={(e) => onUpdate({ shadowY: parseInt(e.target.value, 10) || 0 })}
-              className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-            />
-          </div>
+          <NumberAdjustInput
+            label="Y"
+            labelTitle="Drag to scrub Shadow Y Offset"
+            value={element.shadowY || 0}
+            disabled={disabled}
+            onChange={(shadowY) => onUpdate({ shadowY })}
+          />
 
           {/* Blur */}
-          <div className="flex items-center bg-[#141416] px-2 py-1.5 rounded-lg border border-[#353534]">
-            <span className="text-[#89919e] text-[10px] w-3">B</span>
-            <input
-              type="number"
-              min="0"
-              value={element.shadowBlur || 0}
-              disabled={disabled}
-              onChange={(e) => onUpdate({ shadowBlur: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-              className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-            />
-          </div>
+          <NumberAdjustInput
+            label="B"
+            labelTitle="Drag to scrub Shadow Blur"
+            value={element.shadowBlur || 0}
+            min={0}
+            max={100}
+            disabled={disabled}
+            onChange={(shadowBlur) => onUpdate({ shadowBlur: Math.max(0, shadowBlur) })}
+          />
 
           {/* Spread */}
-          <div className="flex items-center bg-[#141416] px-2 py-1.5 rounded-lg border border-[#353534]">
-            <span className="text-[#89919e] text-[10px] w-3">S</span>
-            <input
-              type="number"
-              value={element.shadowSpread || 0}
-              disabled={disabled}
-              onChange={(e) => onUpdate({ shadowSpread: parseInt(e.target.value, 10) || 0 })}
-              className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-            />
-          </div>
+          <NumberAdjustInput
+            label="S"
+            labelTitle="Drag to scrub Shadow Spread"
+            value={element.shadowSpread || 0}
+            min={-50}
+            max={50}
+            disabled={disabled}
+            onChange={(shadowSpread) => onUpdate({ shadowSpread })}
+          />
         </div>
       )}
     </div>

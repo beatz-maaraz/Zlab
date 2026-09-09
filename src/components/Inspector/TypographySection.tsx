@@ -6,6 +6,7 @@ import {
   AlignRight,
 } from 'lucide-react';
 import { CanvasElement } from '../../types';
+import { NumberAdjustInput } from './NumberAdjustInput';
 
 interface TypographySectionProps {
   element: CanvasElement;
@@ -49,17 +50,18 @@ export const TypographySection: React.FC<TypographySectionProps> = ({
       {/* Font Size & Weight Grid */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         {/* Font Size */}
-        <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
-          <span className="text-[#89919e] text-[11px] mr-1">Size</span>
-          <input
-            type="number"
-            value={element.fontSize || 16}
-            disabled={disabled}
-            onChange={(e) => onUpdate({ fontSize: Math.max(8, parseInt(e.target.value, 10) || 12) })}
-            className="bg-transparent text-[#e5e2e1] w-full text-right outline-none font-mono disabled:opacity-40"
-          />
-          <span className="text-[#89919e] text-[10px] ml-1">px</span>
-        </div>
+        <NumberAdjustInput
+          label="Size"
+          labelTitle="Drag to scrub Font Size"
+          value={element.fontSize || 16}
+          min={8}
+          max={200}
+          step={1}
+          largeStep={4}
+          suffix="px"
+          disabled={disabled}
+          onChange={(fontSize) => onUpdate({ fontSize: Math.max(8, fontSize) })}
+        />
 
         {/* Font Weight */}
         <div className="flex items-center bg-[#141416] px-2.5 py-1.5 rounded-lg border border-[#353534]">
