@@ -19,7 +19,65 @@ import {
   LayoutTemplate,
   Monitor
 } from 'lucide-react';
-import { ProjectFile, TemplateItem } from '../types';
+import { ProjectFile, TemplateItem, CanvasElement } from '../types';
+
+const MiniCanvasPreview = ({ elements, previewType }: { elements?: Record<string, CanvasElement>, previewType: string }) => {
+  if (!elements) return null;
+  const rootId = previewType === 'mobile' ? 'mobile-app-view' : 'desktop-1440';
+  const rootEl = elements[rootId];
+  if (!rootEl) return null;
+
+  const children = Object.values(elements).filter(el => el.parentId === rootId && el.visible !== false);
+  const scale = Math.min(140 / rootEl.height, 260 / rootEl.width); 
+
+  return (
+    <div 
+      className="absolute top-1/2 left-1/2 overflow-hidden shadow-sm pointer-events-none" 
+      style={{
+        width: rootEl.width, 
+        height: rootEl.height,
+        transform: `translate(-50%, -50%) scale(${scale})`,
+        transformOrigin: 'top left',
+        backgroundColor: rootEl.fill,
+        borderRadius: rootEl.borderRadius,
+      }}
+    >
+      {children.map(el => (
+        <div key={el.id} style={{
+          position: 'absolute',
+          left: el.x,
+          top: el.y,
+          width: el.width,
+          height: el.height,
+          backgroundColor: el.fill,
+          borderRadius: el.borderRadius,
+          border: el.stroke && el.stroke !== 'none' ? `${el.strokeWidth}px solid ${el.stroke}` : undefined,
+          opacity: (el.fillOpacity ?? 100) / 100,
+          transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+        }}>
+          {el.type === 'text' && (
+            <div style={{
+              width: '100%',
+              height: '100%',
+              color: el.color || '#000',
+              fontSize: el.fontSize || 14,
+              fontWeight: el.fontWeight || 400,
+              display: 'flex',
+              alignItems: el.textAlign === 'center' ? 'center' : 'flex-start',
+              justifyContent: el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start'),
+              padding: '4px'
+            }}>
+              {el.textContent}
+            </div>
+          )}
+          {el.type === 'image' && el.src && (
+            <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'cover', borderRadius: el.borderRadius }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface DashboardViewProps {
   recentFiles: ProjectFile[];
@@ -29,10 +87,8 @@ interface DashboardViewProps {
   onSelectTemplate: (template: TemplateItem) => void;
   onDuplicateFile?: (id: string) => void;
   onDeleteFile?: (id: string) => void;
-  onDeleteMultipleFiles?: (ids: string[]) => void;
   onRestoreFile?: (id: string) => void;
   onPermanentDeleteFile?: (id: string) => void;
-  onPermanentDeleteMultipleFiles?: (ids: string[]) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -43,16 +99,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectTemplate,
   onDuplicateFile,
   onDeleteFile,
-  onDeleteMultipleFiles,
   onRestoreFile,
   onPermanentDeleteFile,
-  onPermanentDeleteMultipleFiles,
 }) => {
   const [activeNav, setActiveNav] = useState<'all' | 'recents' | 'shared' | 'trash'>('all');
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [importNotification, setImportNotification] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -242,38 +295,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Files Grid */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-base font-semibold text-[#e5e2e1]">
-                    {activeNav === 'all' ? 'All Designs' : activeNav === 'trash' ? 'Deleted Files' : activeNav === 'shared' ? 'Shared Files' : 'Recent Files'}
-                  </h2>
-                  {selectedFiles.size > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#89919e] bg-[#2a2a2a] px-2 py-1 rounded-md">
-                        {selectedFiles.size} selected
-                      </span>
-                      <button
-                        onClick={() => {
-                          if (activeNav === 'trash' && onPermanentDeleteMultipleFiles) {
-                            onPermanentDeleteMultipleFiles(Array.from(selectedFiles));
-                          } else if (onDeleteMultipleFiles) {
-                            onDeleteMultipleFiles(Array.from(selectedFiles));
-                          }
-                          setSelectedFiles(new Set());
-                        }}
-                        className="text-xs font-medium text-[#ffb4ab] hover:text-[#ff897d] bg-[#311313] hover:bg-[#4a1c1c] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        {activeNav === 'trash' ? 'Delete Permanently' : 'Delete Selected'}
-                      </button>
-                      <button
-                        onClick={() => setSelectedFiles(new Set())}
-                        className="text-xs font-medium text-[#bfc7d5] hover:text-[#e5e2e1] px-3 py-1.5 hover:bg-[#2a2a2a] rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <h2 className="text-base font-semibold text-[#e5e2e1]">
+                  {activeNav === 'all' ? 'All Designs' : activeNav === 'trash' ? 'Deleted Files' : activeNav === 'shared' ? 'Shared Files' : 'Recent Files'}
+                </h2>
                 <button
                   onClick={() => setActiveNav('all')}
                   className="text-xs text-[#9fcaff] hover:underline"
@@ -288,66 +312,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div
                       key={file.id}
                       id={`recent-file-card-${file.id}`}
-                      className={`bg-[#1c1b1b] rounded-xl border overflow-hidden group transition-all shadow-sm relative ${
-                        selectedFiles.has(file.id) ? 'border-[#9fcaff] ring-1 ring-[#9fcaff]' : 'border-[#353534] hover:border-[#9fcaff]'
-                      }`}
+                      className="bg-[#1c1b1b] rounded-xl border border-[#353534] overflow-hidden group hover:border-[#9fcaff] transition-all shadow-sm relative"
                     >
-                      {/* Selection Checkbox */}
-                      <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" style={{ opacity: selectedFiles.has(file.id) ? 1 : undefined }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedFiles.has(file.id)}
-                          onChange={(e) => {
-                            const newSet = new Set(selectedFiles);
-                            if (e.target.checked) {
-                              newSet.add(file.id);
-                            } else {
-                              newSet.delete(file.id);
-                            }
-                            setSelectedFiles(newSet);
-                          }}
-                          className="w-4 h-4 rounded border-[#353534] bg-[#131313] text-[#0d99ff] focus:ring-[#9fcaff] cursor-pointer"
-                        />
-                      </div>
-
                       {/* Visual Thumbnail */}
                       <div 
                         className="h-40 bg-[#201f1f] flex items-center justify-center relative overflow-hidden p-4 cursor-pointer"
                         onClick={() => {
-                          if (selectedFiles.size > 0) {
-                            const newSet = new Set(selectedFiles);
-                            if (newSet.has(file.id)) newSet.delete(file.id);
-                            else newSet.add(file.id);
-                            setSelectedFiles(newSet);
-                          } else if (activeNav !== 'trash') {
-                            onOpenFile(file);
-                          }
+                          if (activeNav !== 'trash') onOpenFile(file);
                         }}
                       >
-                        <div className="w-full h-full bg-[#131313] rounded-lg shadow-lg flex items-center justify-center text-[#bfc7d5] font-medium text-xs border border-[#353534] group-hover:scale-102 transition-transform">
-                          {file.previewType === 'desktop' && (
-                            <div className="text-center p-2">
-                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
-                              <div className="text-[10px] text-[#89919e]">1440 × 900 • Desktop Canvas</div>
-                            </div>
-                          )}
-                          {file.previewType === 'mobile' && (
-                            <div className="text-center p-2">
-                              <Smartphone className="w-6 h-6 text-[#9fcaff] mx-auto mb-1" />
-                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
-                              <div className="text-[10px] text-[#89919e]">390 × 844 • Mobile Screen</div>
-                            </div>
-                          )}
-                          {file.previewType === 'components' && (
-                            <div className="text-center p-2">
-                              <div className="flex gap-1.5 justify-center mb-1.5">
-                                <span className="w-3 h-3 bg-[#9fcaff] rounded-sm inline-block"></span>
-                                <span className="w-3 h-3 bg-[#d2bbff] rounded-sm inline-block"></span>
-                                <span className="w-3 h-3 bg-[#c8c6c5] rounded-sm inline-block"></span>
-                              </div>
-                              <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
-                              <div className="text-[10px] text-[#89919e]">Component Library</div>
-                            </div>
+                        <div className="w-full h-full bg-[#131313] rounded-lg shadow-lg flex items-center justify-center text-[#bfc7d5] font-medium text-xs border border-[#353534] group-hover:scale-102 transition-transform relative overflow-hidden">
+                          {file.elements ? (
+                            <MiniCanvasPreview elements={file.elements} previewType={file.previewType} />
+                          ) : (
+                            <>
+                              {file.previewType === 'desktop' && (
+                                <div className="text-center p-2">
+                                  <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                                  <div className="text-[10px] text-[#89919e]">1440 × 900 • Desktop Canvas</div>
+                                </div>
+                              )}
+                              {file.previewType === 'mobile' && (
+                                <div className="text-center p-2">
+                                  <Smartphone className="w-6 h-6 text-[#9fcaff] mx-auto mb-1" />
+                                  <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                                  <div className="text-[10px] text-[#89919e]">390 × 844 • Mobile Screen</div>
+                                </div>
+                              )}
+                              {file.previewType === 'components' && (
+                                <div className="text-center p-2">
+                                  <div className="flex gap-1.5 justify-center mb-1.5">
+                                    <span className="w-3 h-3 bg-[#9fcaff] rounded-sm inline-block"></span>
+                                    <span className="w-3 h-3 bg-[#d2bbff] rounded-sm inline-block"></span>
+                                    <span className="w-3 h-3 bg-[#c8c6c5] rounded-sm inline-block"></span>
+                                  </div>
+                                  <div className="text-xs font-bold text-[#e5e2e1] mb-1">{file.title}</div>
+                                  <div className="text-[10px] text-[#89919e]">Component Library</div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>

@@ -177,6 +177,7 @@ export interface ProjectFile {
   status?: 'active' | 'trash' | 'shared';
   projectType?: string;
   projectStatus?: string;
+  elements?: Record<string, CanvasElement>;
 }
 
 export interface TemplateItem {

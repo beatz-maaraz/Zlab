@@ -51,7 +51,6 @@ export default function App() {
     updateProject,
     updateActiveProjectElements,
     deleteProject,
-    deleteProjects,
     duplicateProject,
     addPage,
     setActivePage,
@@ -683,6 +682,7 @@ export default function App() {
       status: p.status || 'active',
       projectType: p.projectType,
       projectStatus: p.projectStatus,
+      elements: p.elements,
     }));
   }, [projects, getRecentProjectsList]);
 
@@ -836,10 +836,6 @@ export default function App() {
               updateProject(id, { status: 'trash' });
               showToast('Project moved to trash', 'info');
             }}
-            onDeleteMultipleFiles={(ids) => {
-              ids.forEach(id => updateProject(id, { status: 'trash' }));
-              showToast(`${ids.length} projects moved to trash`, 'info');
-            }}
             onRestoreFile={(id) => {
               updateProject(id, { status: 'active' });
               showToast('Project restored', 'success');
@@ -847,10 +843,6 @@ export default function App() {
             onPermanentDeleteFile={(id) => {
               deleteProject(id);
               showToast('Project permanently deleted', 'info');
-            }}
-            onPermanentDeleteMultipleFiles={(ids) => {
-              deleteProjects(ids);
-              showToast(`${ids.length} projects permanently deleted`, 'info');
             }}
           />
         )}

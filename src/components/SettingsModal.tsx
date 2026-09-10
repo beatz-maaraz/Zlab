@@ -71,6 +71,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(settings);
+
   const handleSave = () => {
     if (onSaveSettings) onSaveSettings(formData);
     if (setSettings) setSettings(formData);
@@ -821,15 +823,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-[#201f1f] text-[#e5e2e1] text-xs font-medium hover:bg-[#2a2a2a] transition-colors border border-[#353534]"
             >
-              Cancel
+              {hasChanges ? 'Cancel' : 'Close'}
             </button>
-            <button
-              id="btn-save-settings"
-              onClick={handleSave}
-              className="px-4 py-2 rounded-lg bg-[#9fcaff] text-[#003259] text-xs font-semibold hover:bg-[#0d99ff] hover:text-[#002f55] transition-colors shadow"
-            >
-              {savedNotification ? 'Saved!' : 'Save Changes'}
-            </button>
+            {(hasChanges || savedNotification) && (
+              <button
+                id="btn-save-settings"
+                onClick={handleSave}
+                className="px-4 py-2 rounded-lg bg-[#9fcaff] text-[#003259] text-xs font-semibold hover:bg-[#0d99ff] hover:text-[#002f55] transition-colors shadow"
+              >
+                {savedNotification ? 'Saved!' : 'Save Changes'}
+              </button>
+            )}
           </div>
         </div>
       </div>

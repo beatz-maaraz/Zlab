@@ -93,7 +93,6 @@ interface ProjectStoreState {
     elements: Record<string, CanvasElement> | ((prev: Record<string, CanvasElement>) => Record<string, CanvasElement>)
   ) => void;
   deleteProject: (id: string) => void;
-  deleteProjects: (ids: string[]) => void;
   duplicateProject: (id: string) => Project;
   addPage: (name?: string) => void;
   setActivePage: (pageId: string) => void;
@@ -269,36 +268,6 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
         let nextActive = state.activeProjectId;
         if (nextActive === id) {
-          nextActive = Object.keys(next)[0] || '';
-          if (!nextActive) {
-            const fallback = createDefaultShowcaseProject();
-            next[fallback.id] = fallback;
-            nextActive = fallback.id;
-            persistProjects(next);
-          }
-        }
-
-        try {
-          localStorage.setItem(ACTIVE_PROJECT_KEY, nextActive);
-        } catch (e) {
-          // ignore
-        }
-
-        return {
-          projects: next,
-          activeProjectId: nextActive,
-        };
-      });
-    },
-
-    deleteProjects: (ids: string[]) => {
-      set((state) => {
-        const next = { ...state.projects };
-        ids.forEach(id => delete next[id]);
-        persistProjects(next);
-
-        let nextActive = state.activeProjectId;
-        if (ids.includes(nextActive)) {
           nextActive = Object.keys(next)[0] || '';
           if (!nextActive) {
             const fallback = createDefaultShowcaseProject();
