@@ -378,13 +378,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="w-full bg-[#2a2a2a] border border-[#353534] rounded px-3 py-2 text-xs text-[#e5e2e1] outline-none focus:border-[#9fcaff]"
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] text-[#bfc7d5] mb-1 block">Username</label>
+                        <input
+                          type="text"
+                          value={formData.username}
+                          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                          className="w-full bg-[#2a2a2a] border border-[#353534] rounded px-3 py-2 text-xs text-[#e5e2e1] outline-none focus:border-[#9fcaff]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-[#bfc7d5] mb-1 block">Role</label>
+                        <input
+                          type="text"
+                          value={formData.role || ''}
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                          className="w-full bg-[#2a2a2a] border border-[#353534] rounded px-3 py-2 text-xs text-[#e5e2e1] outline-none focus:border-[#9fcaff]"
+                          placeholder="e.g. Designer"
+                        />
+                      </div>
+                    </div>
                     <div>
-                      <label className="text-[11px] text-[#bfc7d5] mb-1 block">Username</label>
+                      <label className="text-[11px] text-[#bfc7d5] mb-1 block">Company</label>
                       <input
                         type="text"
-                        value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        value={formData.company || ''}
+                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                         className="w-full bg-[#2a2a2a] border border-[#353534] rounded px-3 py-2 text-xs text-[#e5e2e1] outline-none focus:border-[#9fcaff]"
+                        placeholder="Company name"
                       />
                     </div>
                   </div>
@@ -432,16 +454,115 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* APPEARANCE TAB */}
             {activeTab === 'appearance' && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider block">
-                    Canvas Dot Grid Density
+                    Canvas Preferences
                   </label>
-                  <div className="bg-[#201f1f] p-3 rounded-lg border border-[#353534]/50 space-y-2">
-                    <span className="text-xs text-[#e5e2e1]">Grid Spacing: 24px</span>
-                    <p className="text-[11px] text-[#bfc7d5]">
-                      Hardware-accelerated sub-pixel snap guides enabled.
-                    </p>
+                  
+                  <div className="bg-[#201f1f] p-4 rounded-lg border border-[#353534]/50 space-y-4">
+                    {/* Grid Density */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs text-[#e5e2e1]">
+                        <span>Grid Spacing</span>
+                        <span className="font-mono text-[#d2bbff]">{formData.gridDensity}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="8"
+                        max="64"
+                        step="8"
+                        value={formData.gridDensity}
+                        onChange={(e) =>
+                          setFormData({ ...formData, gridDensity: Number(e.target.value) })
+                        }
+                        className="w-full accent-[#9fcaff] cursor-pointer h-1.5 bg-[#353534] rounded-lg"
+                      />
+                      <p className="text-[10px] text-[#89919e]">
+                        Adjust the size of the background canvas dot grid.
+                      </p>
+                    </div>
+
+                    {/* Snap to grid */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[#353534]/50">
+                      <div className="space-y-0.5">
+                        <div className="text-xs text-[#e5e2e1] font-medium">Snap to Grid</div>
+                        <div className="text-[10px] text-[#89919e]">Automatically align elements to the grid</div>
+                      </div>
+                      <div
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            snapToGrid: !formData.snapToGrid,
+                          })
+                        }
+                        className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${
+                          formData.snapToGrid ? 'bg-[#9fcaff]' : 'bg-[#353534]'
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                            formData.snapToGrid
+                              ? 'right-0.5 bg-[#003259]'
+                              : 'left-0.5 bg-[#89919e]'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider block">
+                    Interface Settings
+                  </label>
+                  <div className="bg-[#201f1f] p-4 rounded-lg border border-[#353534]/50 space-y-4">
+                    {/* UI Scale */}
+                    <div className="space-y-2">
+                      <label className="text-xs text-[#e5e2e1] block">Interface Scale</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['small', 'medium', 'large'] as const).map((scale) => (
+                          <button
+                            key={scale}
+                            onClick={() => setFormData({ ...formData, interfaceScale: scale })}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium capitalize transition-colors ${
+                              formData.interfaceScale === scale
+                                ? 'bg-[#6001d1] text-[#c9aeff]'
+                                : 'bg-[#2a2a2a] text-[#bfc7d5] hover:bg-[#353534]'
+                            }`}
+                          >
+                            {scale}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* High Contrast */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[#353534]/50">
+                      <div className="space-y-0.5">
+                        <div className="text-xs text-[#e5e2e1] font-medium">High Contrast Mode</div>
+                        <div className="text-[10px] text-[#89919e]">Increase contrast for better legibility</div>
+                      </div>
+                      <div
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            highContrast: !formData.highContrast,
+                          })
+                        }
+                        className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${
+                          formData.highContrast ? 'bg-[#9fcaff]' : 'bg-[#353534]'
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                            formData.highContrast
+                              ? 'right-0.5 bg-[#003259]'
+                              : 'left-0.5 bg-[#89919e]'
+                          }`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

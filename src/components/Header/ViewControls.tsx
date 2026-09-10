@@ -51,7 +51,6 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
       >
         <Undo className="w-4 h-4" />
       </button>
-
       {/* Redo */}
       <button
         id="btn-header-redo"
@@ -66,8 +65,6 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
       >
         <Redo className="w-4 h-4" />
       </button>
-
-      <div className="h-4 w-[1px] bg-[#3f4753] mx-1" />
 
       {/* Zoom Adjust Controls (Decrease / Percentage Menu / Increase) */}
       <div ref={zoomRef} className="relative flex items-center bg-[#141416] rounded-lg border border-[#353534] p-0.5">

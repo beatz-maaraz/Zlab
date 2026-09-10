@@ -158,6 +158,13 @@ export interface Project {
   thumbnail?: string;
   category?: string;
   tag?: string;
+  status?: 'active' | 'trash' | 'shared';
+  projectType?: string;
+  description?: string;
+  techStack?: string[];
+  projectStatus?: string;
+  githubUrl?: string;
+  liveDemoUrl?: string;
 }
 
 export interface ProjectFile {
@@ -167,6 +174,9 @@ export interface ProjectFile {
   previewType: 'desktop' | 'mobile' | 'components';
   category?: string;
   tag?: string;
+  status?: 'active' | 'trash' | 'shared';
+  projectType?: string;
+  projectStatus?: string;
 }
 
 export interface TemplateItem {
@@ -188,4 +198,10 @@ export interface UserSettings {
   avatarText: string;
   plan: string;
   planRenewal: string;
+  gridDensity: number;
+  snapToGrid: boolean;
+  interfaceScale: 'small' | 'medium' | 'large';
+  company?: string;
+  role?: string;
+  highContrast?: boolean;
 }

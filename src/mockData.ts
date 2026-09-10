@@ -40,6 +40,12 @@ export const INITIAL_SETTINGS: UserSettings = {
   avatarText: 'AC',
   plan: 'Creator Pro',
   planRenewal: 'November 12, 2025',
+  gridDensity: 24,
+  snapToGrid: true,
+  interfaceScale: 'medium',
+  company: 'ZLab Inc.',
+  role: 'Lead Designer',
+  highContrast: false,
 };
 
 export const INITIAL_RECENT_FILES: ProjectFile[] = [];

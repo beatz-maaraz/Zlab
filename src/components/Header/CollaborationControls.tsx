@@ -17,27 +17,6 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
 }) => {
   return (
     <div className="flex items-center gap-2">
-      {/* Collaborator Avatars Stack */}
-      {collaborators.length > 0 && (
-        <div className="hidden sm:flex items-center -space-x-1.5 mr-1" title="Active Collaborators">
-          {collaborators.slice(0, 3).map((c) => (
-            <div
-              key={c.id}
-              style={{ backgroundColor: c.color }}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-[#002f55] ring-2 ring-[#131313] shadow-sm"
-              title={c.name}
-            >
-              {c.initials}
-            </div>
-          ))}
-          {collaborators.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-[#2a2a2a] text-[#bfc7d5] flex items-center justify-center text-[9px] font-semibold ring-2 ring-[#131313]">
-              +{collaborators.length - 3}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Play Prototype Button */}
       {onOpenPrototype && (
         <button

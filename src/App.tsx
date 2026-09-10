@@ -15,6 +15,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ExportModal } from './components/ExportModal';
 import { PrototypeModal } from './components/PrototypeModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { NewDesignModal } from './components/NewDesignModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import {
@@ -50,6 +51,7 @@ export default function App() {
     updateProject,
     updateActiveProjectElements,
     deleteProject,
+    deleteProjects,
     duplicateProject,
     addPage,
     setActivePage,
@@ -156,9 +158,9 @@ export default function App() {
   const setElementsWrapper = useCallback(
     (value: React.SetStateAction<Record<string, CanvasElement>>) => {
       const resolved = typeof value === 'function' ? value(elements) : value;
-      updateElementsWithHistory(resolved);
+      updateActiveProjectElements(resolved);
     },
-    [elements, updateElementsWithHistory]
+    [elements, updateActiveProjectElements]
   );
 
   const handleUndo = useCallback(() => {
@@ -269,11 +271,8 @@ export default function App() {
 
   // Project creation & loading
   const handleNewDesign = useCallback(() => {
-    const newProj = createProject(undefined, undefined, devicePreview);
-    navigate({ type: 'editor', projectId: newProj.id });
-    setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
-    showToast(`Created new project "${newProj.name}"`, 'success');
-  }, [createProject, devicePreview, navigate, setSelectedElementId, showToast]);
+    openModal('newDesign');
+  }, [openModal]);
 
   const handleOpenFile = useCallback(
     (file: ProjectFile) => {
@@ -681,6 +680,9 @@ export default function App() {
         day: 'numeric',
       }),
       previewType: (p.previewType || 'desktop') as 'desktop' | 'mobile' | 'components',
+      status: p.status || 'active',
+      projectType: p.projectType,
+      projectStatus: p.projectStatus,
     }));
   }, [projects, getRecentProjectsList]);
 
@@ -831,8 +833,24 @@ export default function App() {
               showToast(`Duplicated project "${dup.name}"`, 'success');
             }}
             onDeleteFile={(id) => {
+              updateProject(id, { status: 'trash' });
+              showToast('Project moved to trash', 'info');
+            }}
+            onDeleteMultipleFiles={(ids) => {
+              ids.forEach(id => updateProject(id, { status: 'trash' }));
+              showToast(`${ids.length} projects moved to trash`, 'info');
+            }}
+            onRestoreFile={(id) => {
+              updateProject(id, { status: 'active' });
+              showToast('Project restored', 'success');
+            }}
+            onPermanentDeleteFile={(id) => {
               deleteProject(id);
-              showToast('Project deleted', 'info');
+              showToast('Project permanently deleted', 'info');
+            }}
+            onPermanentDeleteMultipleFiles={(ids) => {
+              deleteProjects(ids);
+              showToast(`${ids.length} projects permanently deleted`, 'info');
             }}
           />
         )}
@@ -892,6 +910,19 @@ export default function App() {
           isOpen={activeModal === 'shortcuts'}
           onClose={closeModal}
           onExecuteAction={handleExecuteAction}
+        />
+
+        {/* New Design Modal */}
+        <NewDesignModal
+          isOpen={activeModal === 'newDesign'}
+          onClose={closeModal}
+          onSubmit={(details) => {
+            const newProj = createProject(details.name, undefined, devicePreview, details);
+            closeModal();
+            navigate({ type: 'editor', projectId: newProj.id });
+            setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+            showToast(`Created new project "${newProj.name}"`, 'success');
+          }}
         />
 
         {/* Toast Notification Alert */}

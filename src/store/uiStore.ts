@@ -17,8 +17,8 @@ const loadStoredSettings = (): UserSettings => {
 };
 
 interface UIStoreState {
-  activeModal: 'settings' | 'export' | 'prototype' | 'shortcuts' | null;
-  openModal: (modal: 'settings' | 'export' | 'prototype' | 'shortcuts') => void;
+  activeModal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign' | null;
+  openModal: (modal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign') => void;
   closeModal: () => void;
 
   settingsTab: SettingsTab;

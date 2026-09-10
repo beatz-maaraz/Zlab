@@ -50,13 +50,32 @@ const loadInitialProjects = (): Record<string, Project> => {
   return initial;
 };
 
+let lastProjectsState: Record<string, Project> | null = null;
+let persistTimeout: ReturnType<typeof setTimeout> | null = null;
+
 const persistProjects = (projects: Record<string, Project>) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  } catch (err) {
-    console.warn('Failed to persist projects to localStorage:', err);
-  }
+  lastProjectsState = projects;
+  if (persistTimeout) clearTimeout(persistTimeout);
+  persistTimeout = setTimeout(() => {
+    try {
+      if (lastProjectsState) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lastProjectsState));
+      }
+    } catch (err) {
+      console.warn('Failed to persist projects to localStorage:', err);
+    }
+  }, 500);
 };
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    if (lastProjectsState) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lastProjectsState));
+      } catch (err) {}
+    }
+  });
+}
 
 interface ProjectStoreState {
   projects: Record<string, Project>;
@@ -65,7 +84,8 @@ interface ProjectStoreState {
   createProject: (
     name?: string,
     initialElements?: Record<string, CanvasElement>,
-    previewType?: 'desktop' | 'mobile'
+    previewType?: 'desktop' | 'mobile',
+    additionalDetails?: Partial<Project>
   ) => Project;
   setActiveProject: (id: string) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
@@ -73,6 +93,7 @@ interface ProjectStoreState {
     elements: Record<string, CanvasElement> | ((prev: Record<string, CanvasElement>) => Record<string, CanvasElement>)
   ) => void;
   deleteProject: (id: string) => void;
+  deleteProjects: (ids: string[]) => void;
   duplicateProject: (id: string) => Project;
   addPage: (name?: string) => void;
   setActivePage: (pageId: string) => void;
@@ -98,7 +119,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       return projects[activeProjectId] || Object.values(projects)[0] || createDefaultShowcaseProject();
     },
 
-    createProject: (name, initialElements, previewType = 'desktop') => {
+    createProject: (name, initialElements, previewType = 'desktop', additionalDetails) => {
       const timestamp = Date.now();
       const newId = `proj_${timestamp}_${Math.random().toString(36).substring(2, 7)}`;
       const now = new Date().toISOString();
@@ -164,6 +185,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         previewType,
         createdAt: now,
         updatedAt: now,
+        status: 'active',
+        ...additionalDetails,
       };
 
       set((state) => {
@@ -246,6 +269,36 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
         let nextActive = state.activeProjectId;
         if (nextActive === id) {
+          nextActive = Object.keys(next)[0] || '';
+          if (!nextActive) {
+            const fallback = createDefaultShowcaseProject();
+            next[fallback.id] = fallback;
+            nextActive = fallback.id;
+            persistProjects(next);
+          }
+        }
+
+        try {
+          localStorage.setItem(ACTIVE_PROJECT_KEY, nextActive);
+        } catch (e) {
+          // ignore
+        }
+
+        return {
+          projects: next,
+          activeProjectId: nextActive,
+        };
+      });
+    },
+
+    deleteProjects: (ids: string[]) => {
+      set((state) => {
+        const next = { ...state.projects };
+        ids.forEach(id => delete next[id]);
+        persistProjects(next);
+
+        let nextActive = state.activeProjectId;
+        if (ids.includes(nextActive)) {
           nextActive = Object.keys(next)[0] || '';
           if (!nextActive) {
             const fallback = createDefaultShowcaseProject();
