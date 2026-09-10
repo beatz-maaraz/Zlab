@@ -12,7 +12,6 @@ import {
   Smartphone,
   ShoppingCart,
   ChevronRight,
-  Sparkles,
   FileCode,
   Copy,
   ExternalLink,

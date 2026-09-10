@@ -1,4 +1,5 @@
 import { CanvasElement } from '../types';
+import { toPng, toSvg } from 'html-to-image';
 
 /**
  * Escapes HTML characters for safe embedding
@@ -16,71 +17,55 @@ function escapeHtml(str: string): string {
  * Generates and downloads a complete, self-contained interactive prototype HTML file.
  * The file can be opened offline in any web browser to simulate the design.
  */
-export function downloadInteractivePrototypeHtml(
+export async function downloadInteractivePrototypeHtml(
   projectTitle: string,
   elements: Record<string, CanvasElement>,
   defaultDevice: 'desktop' | 'mobile' = 'desktop'
 ) {
   const safeTitle = escapeHtml(projectTitle || 'ZLab Prototype');
-  const desktopElements = (Object.values(elements) as CanvasElement[]).filter(
-    (el) => el.parentId === 'desktop-1440' || el.id === 'desktop-1440'
-  );
-  const mobileElements = (Object.values(elements) as CanvasElement[]).filter(
-    (el) => el.parentId === 'mobile-app-view' || el.id === 'mobile-app-view'
-  );
 
-    function renderHtmlNodes(nodeId: string, targetX: number, targetY: number): string {
-      const el = elements[nodeId];
-      if (!el || el.visible === false) return '';
-      
-      const elX = el.x - targetX;
-      const elY = el.y - targetY;
-      
-      let styles = `position: absolute; left: ${elX}px; top: ${elY}px; width: ${el.width}px; height: ${el.height}px;`;
-      if (el.fill) styles += ` background-color: ${el.fill};`;
-      if (el.fillOpacity !== undefined) styles += ` opacity: ${el.fillOpacity / 100};`;
-      if (el.borderRadius) styles += ` border-radius: ${el.borderRadius}px;`;
-      if (el.stroke && el.stroke !== 'none') styles += ` border: ${el.strokeWidth || 1}px solid ${el.stroke};`;
-      if (el.shadowBlur) styles += ` box-shadow: 0px ${el.shadowY || 0}px ${el.shadowBlur}px rgba(0,0,0,0.4);`;
-      if (el.backdropBlur) styles += ` backdrop-filter: blur(${el.backdropBlur}px); -webkit-backdrop-filter: blur(${el.backdropBlur}px);`;
-      if (el.type === 'text' || el.textContent) {
-        styles += ` color: ${el.textColor || (el.type === 'text' ? el.fill : '#fff')}; font-size: ${el.fontSize || 14}px; font-family: sans-serif; display: flex; align-items: ${el.textAlign === 'center' ? 'center' : 'flex-start'}; justify-content: ${el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start')}; padding: 12px; box-sizing: border-box;`;
-      }
-      
-      const innerContent = el.textContent ? escapeHtml(el.textContent) : '';
-      
-      const children = Object.values(elements).filter(
-        (child) => child.parentId === nodeId && child.visible !== false
-      );
-      
-      const nested = children.map((child) => renderHtmlNodes(child.id, targetX, targetY)).join('\n');
-      
-      return `<div class="hotspot" style="${styles}">${innerContent}\n${nested}</div>`;
-    }
+  const desktopTarget = elements['desktop-1440'];
+  const mobileTarget = elements['mobile-app-view'];
+  
+  // Grab the actual DOM elements from the canvas for exact state matching
+  const desktopElement = document.getElementById('desktop-1440');
+  const mobileElement = document.getElementById('mobile-app-view');
 
-    const desktopTarget = elements['desktop-1440'];
-    const mobileTarget = elements['mobile-app-view'];
+  const getCleanHtml = (el: HTMLElement | null) => {
+    if (!el) return '';
+    const clone = el.cloneNode(true) as HTMLElement;
     
-    // We already have the frames .desktop-frame and .mobile-frame acting as the root targets, 
-    // but the recursive function will now output a DIV for the target itself.
-    // To avoid doubling the background/border for the frame, we can just render its children for the HTML 
-    // since the HTML template natively supports the frame bounds and overflow.
-    function renderHtmlChildren(parentId: string, targetX: number, targetY: number): string {
-      return Object.values(elements)
-        .filter((el) => el.parentId === parentId && el.visible !== false)
-        .map((el) => renderHtmlNodes(el.id, targetX, targetY))
-        .join('\n');
-    }
+    // Remove editor-specific overlays and handles to prevent them from appearing in exports
+    clone.querySelectorAll('.pointer-events-none.border-2, .ring-2, [class*="bg-[#0d99ff]"]').forEach(node => {
+        // Only remove UI overlay items like dimension pills, handles or bounding boxes, not valid elements like actual buttons
+        if (
+            node.classList.contains('absolute') && 
+            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap'))
+        ) {
+            node.remove();
+        }
+    });
 
-    const desktopHtml = desktopTarget ? renderHtmlChildren('desktop-1440', desktopTarget.x, desktopTarget.y) : '';
-    const mobileHtml = mobileTarget ? renderHtmlChildren('mobile-app-view', mobileTarget.x, mobileTarget.y) : '';
+    return clone.innerHTML;
+  };
 
-    const htmlContent = `<!DOCTYPE html>
+  const desktopHtml = getCleanHtml(desktopElement);
+  const mobileHtml = getCleanHtml(mobileElement);
+
+  // Capture all current styles from the document to ensure Tailwind classes and custom styles work
+  const documentStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map(el => el.outerHTML)
+    .join('\n');
+
+  const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeTitle} - Interactive Prototype</title>
+  <!-- Fallback Tailwind CSS for local viewing -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  ${documentStyles}
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -244,73 +229,10 @@ export function downloadInteractivePrototypeHtml(
       overflow: hidden;
       position: relative;
     }
-    .dynamic-island {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100px;
-      height: 26px;
-      background: #000;
-      border-radius: 20px;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      padding-right: 8px;
-    }
-    .camera-lens { width: 8px; height: 8px; border-radius: 50%; background: #1a1a2e; }
-    .mobile-status-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 44px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      padding: 0 24px 8px 24px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #fafafa;
-      z-index: 990;
-      pointer-events: none;
-    }
     .mobile-content {
       flex: 1;
       position: relative;
       overflow: hidden;
-    }
-    .mobile-home-indicator {
-      position: absolute;
-      bottom: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 120px;
-      height: 4px;
-      background: #71717a;
-      border-radius: 2px;
-      z-index: 1000;
-      pointer-events: none;
-    }
-    /* Hotspot Blue Ripple */
-    .hotspot {
-      cursor: pointer;
-      position: absolute;
-      transition: transform 0.1s ease, filter 0.15s ease;
-    }
-    .hotspot:hover {
-      filter: brightness(1.08);
-    }
-    .hotspot:active {
-      transform: scale(0.98);
-    }
-    .hotspot-flash {
-      animation: hotspotPulse 0.4s ease-out;
-    }
-    @keyframes hotspotPulse {
-      0% { box-shadow: 0 0 0 0 rgba(13, 153, 255, 0.8); }
-      100% { box-shadow: 0 0 0 16px rgba(13, 153, 255, 0); }
     }
     /* Toast notice */
     #prototype-toast {
@@ -333,6 +255,7 @@ export function downloadInteractivePrototypeHtml(
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+    /* Preserving tailwind classes explicitly embedded by actual DOM elements if any, fallback handles standard style rendering */
   </style>
 </head>
 <body>
@@ -349,14 +272,11 @@ export function downloadInteractivePrototypeHtml(
     </div>
 
     <div class="header-actions">
-      <button class="btn-action" onclick="toggleHotspots()">
-        <span id="hotspot-indicator">●</span> Hints: ON
-      </button>
       <button class="btn-action" onclick="restartPrototype()">↺ Restart</button>
     </div>
   </header>
 
-  <main id="prototype-stage" onclick="handleCanvasClick(event)">
+  <main id="prototype-stage">
     <!-- Desktop View -->
     <div id="desktop-view" class="desktop-frame" style="display: ${defaultDevice === 'desktop' ? 'flex' : 'none'};">
       <div class="browser-bar">
@@ -374,17 +294,9 @@ export function downloadInteractivePrototypeHtml(
 
     <!-- Mobile View -->
     <div id="mobile-view" class="mobile-frame" style="display: ${defaultDevice === 'mobile' ? 'flex' : 'none'};">
-      <div class="dynamic-island">
-        <div class="camera-lens"></div>
-      </div>
-      <div class="mobile-status-bar">
-        <span>9:41</span>
-        <span>5G 􀛨</span>
-      </div>
       <div class="mobile-content">
         ${mobileHtml}
       </div>
-      <div class="mobile-home-indicator"></div>
     </div>
   </main>
 
@@ -392,92 +304,6 @@ export function downloadInteractivePrototypeHtml(
 
   <script>
     let currentView = '${defaultDevice}';
-    let currentMobileScreen = 'welcome';
-    let showHotspots = true;
-
-    function smartAnimateTo(screen) {
-      currentMobileScreen = screen;
-      const isWelcome = screen === 'welcome';
-      
-      const backRow = document.getElementById('proto-back-row');
-      const logoWrapper = document.getElementById('proto-logo-wrapper');
-      const logoBox = document.getElementById('proto-logo-box');
-      const titleWrapper = document.getElementById('proto-title-wrapper');
-      const title = document.getElementById('proto-title');
-      const subtitle = document.getElementById('proto-subtitle');
-      const welcomeCard = document.getElementById('proto-welcome-card');
-      const signinForm = document.getElementById('proto-signin-form');
-      const ctaBtn = document.getElementById('proto-cta-btn');
-      const secondaryLink = document.getElementById('proto-secondary-link');
-
-      if (isWelcome) {
-        backRow.style.opacity = '0';
-        backRow.style.transform = 'translateY(-10px)';
-        backRow.style.pointerEvents = 'none';
-
-        logoWrapper.style.transform = 'translateY(35px)';
-        logoBox.style.width = '100px';
-        logoBox.style.height = '100px';
-        logoBox.style.borderRadius = '26px';
-
-        titleWrapper.style.transform = 'translateY(45px)';
-        title.textContent = 'Welcome to ZLab';
-        title.style.fontSize = '22px';
-        subtitle.textContent = 'Design smoothly with Smart Animate motion';
-
-        welcomeCard.style.display = 'block';
-        setTimeout(() => { welcomeCard.style.opacity = '1'; }, 20);
-
-        signinForm.style.opacity = '0';
-        signinForm.style.transform = 'translateY(20px)';
-        setTimeout(() => { signinForm.style.display = 'none'; }, 250);
-
-        ctaBtn.style.background = '#9fcaff';
-        ctaBtn.style.color = '#003259';
-        ctaBtn.textContent = '✦ Get Started (On Tap ➔ Smart Animate)';
-
-        secondaryLink.innerHTML = 'Already have an account? <span style="color: #9fcaff; text-decoration: underline;">Sign In</span>';
-        showToast('✦ Smart Animate: Sign-In Screen ➔ Welcome Screen (450ms)');
-      } else {
-        backRow.style.opacity = '1';
-        backRow.style.transform = 'translateY(0)';
-        backRow.style.pointerEvents = 'auto';
-
-        logoWrapper.style.transform = 'translateY(5px)';
-        logoBox.style.width = '64px';
-        logoBox.style.height = '64px';
-        logoBox.style.borderRadius = '18px';
-
-        titleWrapper.style.transform = 'translateY(15px)';
-        title.textContent = 'Sign in to your workspace';
-        title.style.fontSize = '19px';
-        subtitle.textContent = 'Enter your credentials to continue to canvas';
-
-        welcomeCard.style.opacity = '0';
-        setTimeout(() => { welcomeCard.style.display = 'none'; }, 250);
-
-        signinForm.style.display = 'flex';
-        setTimeout(() => {
-          signinForm.style.opacity = '1';
-          signinForm.style.transform = 'translateY(0)';
-        }, 30);
-
-        ctaBtn.style.background = '#0d99ff';
-        ctaBtn.style.color = '#ffffff';
-        ctaBtn.textContent = 'Sign In to Workspace';
-
-        secondaryLink.innerHTML = '← Return to Welcome Screen';
-        showToast('✦ Smart Animate: Welcome Screen ➔ Sign-In Screen (450ms)');
-      }
-    }
-
-    function toggleScreenSmartAnimate() {
-      if (currentMobileScreen === 'welcome') {
-        smartAnimateTo('signin');
-      } else {
-        smartAnimateTo('welcome');
-      }
-    }
 
     function switchView(view) {
       currentView = view;
@@ -488,41 +314,6 @@ export function downloadInteractivePrototypeHtml(
       showToast('Switched to ' + (view === 'desktop' ? 'Desktop 1440' : 'Mobile iOS') + ' view');
     }
 
-    function toggleHotspots() {
-      showHotspots = !showHotspots;
-      const indicator = document.getElementById('hotspot-indicator');
-      const btn = indicator.parentElement;
-      indicator.style.color = showHotspots ? '#22c55e' : '#71717a';
-      btn.innerHTML = '<span id="hotspot-indicator" style="color: ' + (showHotspots ? '#22c55e' : '#71717a') + '">●</span> Hints: ' + (showHotspots ? 'ON' : 'OFF');
-      showToast('Click hints ' + (showHotspots ? 'Enabled' : 'Disabled'));
-    }
-
-    function triggerAction(message) {
-      showToast(message);
-    }
-
-    function restartPrototype() {
-      switchView('${defaultDevice}');
-      showToast('Prototype restarted from initial frame');
-    }
-
-    function handleCanvasClick(e) {
-      if (!showHotspots) return;
-      const isHotspot = e.target.closest('.hotspot');
-      if (!isHotspot) {
-        // Flash subtle hint on all hotspots in current view
-        const activeContainer = currentView === 'desktop' ? document.getElementById('desktop-view') : document.getElementById('mobile-view');
-        if (activeContainer) {
-          const spots = activeContainer.querySelectorAll('.hotspot');
-          spots.forEach(s => {
-            s.classList.remove('hotspot-flash');
-            void s.offsetWidth; // trigger reflow
-            s.classList.add('hotspot-flash');
-          });
-        }
-      }
-    }
-
     function showToast(text) {
       const toast = document.getElementById('prototype-toast');
       toast.textContent = text;
@@ -531,6 +322,11 @@ export function downloadInteractivePrototypeHtml(
       window.__toastTimer = setTimeout(() => {
         toast.classList.remove('show');
       }, 2200);
+    }
+
+    function restartPrototype() {
+      switchView('${defaultDevice}');
+      showToast('Prototype restarted from initial frame');
     }
   </script>
 </body>
@@ -549,9 +345,9 @@ export function downloadInteractivePrototypeHtml(
 }
 
 /**
- * Generates and downloads a clean, scalable, and editable SVG file of the design artwork.
+ * Generates and downloads a scalable SVG using DOM-to-image conversion to accurately reflect current state.
  */
-export function downloadSvg(
+export async function downloadSvg(
   projectTitle: string,
   elements: Record<string, CanvasElement>,
   selectedElementId?: string,
@@ -561,101 +357,63 @@ export function downloadSvg(
     editableText?: boolean;
   }
 ) {
-  const target = selectedElementId ? elements[selectedElementId] : elements['desktop-1440'];
-  const w = target?.width || 960;
-  const h = target?.height || 640;
-  const targetX = target?.x || 0;
-  const targetY = target?.y || 0;
-  const transparentBg = options?.transparentBackground ?? false;
-
-  function buildSvgNodes(nodeId: string): string {
-    const el = elements[nodeId];
-    if (!el || el.visible === false) return '';
-
-    const isRootTarget = nodeId === target?.id;
-    let nodeSvg = '';
-
-    const fill = isRootTarget && transparentBg ? 'none' : (el.fill || (el.type === 'text' ? 'none' : '#0d99ff'));
-    const stroke = el.stroke && el.stroke !== 'none' ? `stroke="${el.stroke}" stroke-width="${el.strokeWidth || 1}"` : '';
-    const rx = el.borderRadius ? `rx="${el.borderRadius}"` : '';
-    const opacity = el.fillOpacity !== undefined && el.fillOpacity !== 100 ? `opacity="${el.fillOpacity / 100}"` : '';
+  const targetId = selectedElementId || 'desktop-1440';
+  const targetElementId = targetId === 'desktop-1440' || targetId === 'mobile-app-view' 
+    ? targetId 
+    : `canvas-el-${targetId}`;
     
-    // Draw element background / shape if not transparent text
-    if (fill !== 'none' || stroke !== '') {
-      nodeSvg += `  <rect x="${el.x - targetX}" y="${el.y - targetY}" width="${el.width}" height="${el.height}" fill="${fill}" ${stroke} ${rx} ${opacity} />\n`;
-    }
-
-    // Editable Text
-    if (el.textContent) {
-      let textAnchor = 'start';
-      let textX = (el.x - targetX) + 12;
-      const textY = (el.y - targetY) + (el.height / 2);
-
-      if (el.textAlign === 'center' || el.id === 'main-hero-title') {
-        textAnchor = 'middle';
-        textX = (el.x - targetX) + (el.width / 2);
-      } else if (el.textAlign === 'right') {
-        textAnchor = 'end';
-        textX = (el.x - targetX) + el.width - 12;
-      }
-
-      const fontSize = el.fontSize || 14;
-      const fontWeight = el.fontWeight || (el.type === 'button' ? '600' : 'normal');
-      const textColor = el.textColor || (el.type === 'text' ? el.fill : '#ffffff');
-
-      nodeSvg += `  <text x="${textX}" y="${textY}" fill="${textColor}" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}px" font-weight="${fontWeight}" text-anchor="${textAnchor}" dominant-baseline="central">${escapeHtml(el.textContent)}</text>\n`;
-    }
-
-    // Subtext if present
-    if (el.subText) {
-      const subX = (el.x - targetX) + (el.textAlign === 'center' ? el.width / 2 : 12);
-      const subY = (el.y - targetY) + (el.height / 2) + 20;
-      const textAnchor = el.textAlign === 'center' ? 'middle' : 'start';
-      nodeSvg += `  <text x="${subX}" y="${subY}" fill="#89919e" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="12px" text-anchor="${textAnchor}" dominant-baseline="central">${escapeHtml(el.subText)}</text>\n`;
-    }
-
-    const children = Object.values(elements).filter(
-      (child) => child.parentId === nodeId && child.visible !== false
-    );
-    
-    const childrenSvg = children.map((child) => buildSvgNodes(child.id)).join('\n');
-    const cleanId = escapeHtml(el.id.replace(/[^a-zA-Z0-9-_]/g, '_'));
-    const cleanName = escapeHtml(el.name);
-
-    return `<g id="${cleanId}" data-name="${cleanName}">\n${nodeSvg}${childrenSvg}</g>`;
+  const targetElement = document.getElementById(targetElementId);
+  
+  if (!targetElement) {
+    console.error(`Export failed: DOM node for element ${targetId} not found.`);
+    return;
   }
 
-  // Generate all SVG content recursively starting from target
-  const contentSvg = target ? buildSvgNodes(target.id) : '';
+  try {
+    const filterUiOverlays = (node: HTMLElement) => {
+        if (!node.classList) return true;
+        
+        // Exclude editor selection bounds and resize handles
+        if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
+        if (node.classList.contains('ring-2')) return false;
+        
+        // Exclude dimension pills and rotation handles (which use absolute + z-50 + specific background)
+        if (
+            node.classList.contains('absolute') && 
+            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
+            node.className.includes('bg-[#0d99ff]')
+        ) {
+            return false;
+        }
+        
+        return true;
+    };
 
-  const svgMarkup = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      text { user-select: none; }
-    </style>
-  </defs>
-  <!-- Generated by ZLab: Editable Vector Export -->
-${contentSvg}
-</svg>`;
+    const dataUrl = await toSvg(targetElement, {
+      backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
+      skipFonts: false,
+      filter: filterUiOverlays,
+    });
 
-  const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  const targetSlug = (target?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}.svg`;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const targetSlug = (elements[targetId]?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}.svg`;
+    
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(dataUrl);
+  } catch (error) {
+    console.error('Error exporting SVG:', error);
+  }
 }
 
 /**
- * Generates and downloads a raster PNG image using offscreen HTML5 canvas at high resolution (1x, 2x, 3x, 4x).
+ * Generates and downloads a raster PNG image using offscreen HTML5 canvas to accurately reflect current state.
  */
-export function downloadPng(
+export async function downloadPng(
   projectTitle: string,
   elements: Record<string, CanvasElement>,
   selectedElementId?: string,
@@ -664,127 +422,63 @@ export function downloadPng(
     transparentBackground?: boolean;
   }
 ) {
-  const target = selectedElementId ? elements[selectedElementId] : elements['desktop-1440'];
-  const w = target?.width || 960;
-  const h = target?.height || 640;
-  const transparentBg = options?.transparentBackground ?? false;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(w * scale);
-  canvas.height = Math.round(h * scale);
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) return;
-
-  ctx.scale(scale, scale);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-
-  const targetX = target?.x || 0;
-  const targetY = target?.y || 0;
-
-  function renderNodes(nodeId: string) {
-    const el = elements[nodeId];
-    if (!el || el.visible === false || !ctx) return;
-
-    const isRootTarget = nodeId === target?.id;
-
-    ctx.save();
-    ctx.globalAlpha = (el.fillOpacity ?? 100) / 100;
-
-    const elX = el.x - targetX;
-    const elY = el.y - targetY;
-
-    // Rounded rectangle path
-    const r = el.borderRadius || 0;
-    ctx.beginPath();
-    ctx.moveTo(elX + r, elY);
-    ctx.lineTo(elX + el.width - r, elY);
-    ctx.quadraticCurveTo(elX + el.width, elY, elX + el.width, elY + r);
-    ctx.lineTo(elX + el.width, elY + el.height - r);
-    ctx.quadraticCurveTo(elX + el.width, elY + el.height, elX + el.width - r, elY + el.height);
-    ctx.lineTo(elX + r, elY + el.height);
-    ctx.quadraticCurveTo(elX, elY + el.height, elX, elY + el.height - r);
-    ctx.lineTo(elX, elY + r);
-    ctx.quadraticCurveTo(elX, elY, elX + r, elY);
-    ctx.closePath();
-
-    if (el.shadowBlur) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-      ctx.shadowBlur = el.shadowBlur;
-      ctx.shadowOffsetY = el.shadowY || 0;
-    }
-
-    // Fill logic
-    if (!(isRootTarget && transparentBg)) {
-      ctx.fillStyle = el.fill || (el.type === 'text' ? 'transparent' : '#0d99ff');
-      ctx.fill();
-    }
-
-    if (el.stroke && el.stroke !== 'none') {
-      ctx.strokeStyle = el.stroke;
-      ctx.lineWidth = el.strokeWidth || 1;
-      ctx.stroke();
-    }
-
-    // Text content
-    if (el.textContent) {
-      ctx.shadowColor = 'transparent';
-      ctx.fillStyle = el.textColor || (el.type === 'text' ? el.fill : '#ffffff');
-      const weight = el.fontWeight || (el.type === 'button' ? '600' : 'normal');
-      ctx.font = `${weight} ${el.fontSize || 13}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      
-      const textAlign = el.textAlign || (el.id === 'main-hero-title' ? 'center' : 'left');
-      ctx.textAlign = textAlign as CanvasTextAlign;
-      ctx.textBaseline = 'middle';
-      
-      let textPosX = elX + 12;
-      if (textAlign === 'center') textPosX = elX + (el.width / 2);
-      if (textAlign === 'right') textPosX = elX + el.width - 12;
-      
-      ctx.fillText(el.textContent, textPosX, elY + el.height / 2);
-    }
-
-    // Subtext
-    if (el.subText) {
-      ctx.shadowColor = 'transparent';
-      ctx.fillStyle = '#89919e';
-      ctx.font = `normal 12px -apple-system, BlinkMacSystemFont, sans-serif`;
-      const textAlign = el.textAlign || 'left';
-      ctx.textAlign = textAlign as CanvasTextAlign;
-      ctx.textBaseline = 'middle';
-      const textPosX = textAlign === 'center' ? elX + el.width / 2 : elX + 12;
-      ctx.fillText(el.subText, textPosX, elY + el.height / 2 + 18);
-    }
-
-    ctx.restore();
-
-    const children = Object.values(elements).filter(
-      (child) => child.parentId === nodeId && child.visible !== false
-    );
-
-    for (const child of children) {
-      renderNodes(child.id);
-    }
+  const targetId = selectedElementId || 'desktop-1440';
+  const targetElementId = targetId === 'desktop-1440' || targetId === 'mobile-app-view' 
+    ? targetId 
+    : `canvas-el-${targetId}`;
+    
+  const targetElement = document.getElementById(targetElementId);
+  
+  if (!targetElement) {
+    console.error(`Export failed: DOM node for element ${targetId} not found.`);
+    return;
   }
 
-  if (target) {
-    renderNodes(target.id);
-  }
+  try {
+    const filterUiOverlays = (node: HTMLElement) => {
+        if (!node.classList) return true;
+        
+        // Exclude editor selection bounds and resize handles
+        if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
+        if (node.classList.contains('ring-2')) return false;
+        
+        // Exclude dimension pills and rotation handles
+        if (
+            node.classList.contains('absolute') && 
+            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
+            node.className.includes('bg-[#0d99ff]')
+        ) {
+            return false;
+        }
+        
+        return true;
+    };
 
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const targetSlug = (target?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    // Some browsers have a bug rendering fonts in html-to-image without fetching them properly.
+    const dataUrl = await toPng(targetElement, {
+      pixelRatio: scale,
+      backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
+      skipFonts: false,
+      filter: filterUiOverlays,
+      style: {
+        transform: 'none',
+        margin: '0'
+      }
+    });
+
+    const targetSlug = (elements[targetId]?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}@${scale}x.png`;
+    
+    const link = document.createElement('a');
+    link.href = dataUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, 'image/png');
+    URL.revokeObjectURL(dataUrl);
+  } catch (error) {
+    console.error('Error exporting PNG:', error);
+  }
 }
 
 /**
@@ -796,7 +490,7 @@ export function downloadJson(
 ) {
   const exportData = {
     project: projectTitle,
-    schemaVersion: '2.4',
+    schemaVersion: '2.5',
     exportedAt: new Date().toISOString(),
     elements,
   };
@@ -807,6 +501,214 @@ export function downloadJson(
   const link = document.createElement('a');
   link.href = url;
   link.download = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Generates and downloads a React/Tailwind component representing the selected design.
+ */
+export function downloadReactCode(
+  projectTitle: string,
+  elements: Record<string, CanvasElement>,
+  targetElementId?: string
+) {
+  const targetId = targetElementId || 'desktop-1440';
+  const target = elements[targetId] || elements['desktop-1440'];
+  if (!target) return;
+  
+  const targetX = target.x;
+  const targetY = target.y;
+
+  function buildTsxNodes(nodeId: string, indentLevel: number = 3): string {
+    const el = elements[nodeId];
+    if (!el || el.visible === false) return '';
+    
+    const indent = '  '.repeat(indentLevel);
+    const isRoot = nodeId === targetId;
+
+    const x = isRoot ? 0 : el.x - targetX;
+    const y = isRoot ? 0 : el.y - targetY;
+    
+    let styleStr = `position: '${isRoot ? 'relative' : 'absolute'}', `;
+    styleStr += `left: ${isRoot ? 0 : x}, top: ${isRoot ? 0 : y}, `;
+    styleStr += `width: ${el.width}, height: ${el.height}, `;
+    
+    if (el.fill && el.type !== 'text') {
+      styleStr += `backgroundColor: '${el.fill}', `;
+    }
+    if (el.fillOpacity !== undefined && el.fillOpacity !== 100) {
+      styleStr += `opacity: ${el.fillOpacity / 100}, `;
+    }
+    if (el.borderRadius) {
+      styleStr += `borderRadius: ${el.borderRadius}, `;
+    }
+    if (el.stroke && el.stroke !== 'none') {
+      styleStr += `border: '${el.strokeWidth || 1}px solid ${el.stroke}', `;
+    }
+    if (el.shadowBlur) {
+      styleStr += `boxShadow: '0px ${el.shadowY || 0}px ${el.shadowBlur}px rgba(0,0,0,0.4)', `;
+    }
+    if (el.backdropBlur) {
+      styleStr += `backdropFilter: 'blur(${el.backdropBlur}px)', WebkitBackdropFilter: 'blur(${el.backdropBlur}px)', `;
+    }
+    if (el.type === 'text' || el.textContent) {
+      styleStr += `color: '${el.textColor || (el.type === 'text' ? el.fill : '#fff')}', `;
+      styleStr += `fontSize: ${el.fontSize || 14}, `;
+      styleStr += `display: 'flex', `;
+      styleStr += `alignItems: '${el.textAlign === 'center' ? 'center' : 'flex-start'}', `;
+      styleStr += `justifyContent: '${el.textAlign === 'center' ? 'center' : (el.textAlign === 'right' ? 'flex-end' : 'flex-start')}', `;
+      styleStr += `padding: 12, boxSizing: 'border-box', `;
+    }
+
+    const childrenNodes = Object.values(elements)
+      .filter((child) => child.parentId === nodeId && child.visible !== false)
+      .map((child) => buildTsxNodes(child.id, indentLevel + 1))
+      .join('\\n');
+
+    let content = '';
+    if (el.textContent) {
+      content = `\\n${indent}  {${JSON.stringify(el.textContent)}}\\n`;
+    }
+    if (childrenNodes) {
+      content += (content ? '' : '\\n') + childrenNodes + `\\n${indent}`;
+    }
+
+    const tag = el.type === 'button' ? 'button' : 'div';
+    
+    if (!content) {
+      return `${indent}<${tag} style={{ ${styleStr} }} />`;
+    }
+
+    return `${indent}<${tag} style={{ ${styleStr} }}>${content}</${tag}>`;
+  }
+
+  const tsxContent = buildTsxNodes(targetId, 2);
+  const componentName = (target.name || 'ZLabComponent')
+    .replace(/[^a-zA-Z0-9]/g, ' ')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('');
+
+  const code = `import React from 'react';
+
+/**
+ * Generated by ZLab Export
+ * Component: ${componentName}
+ */
+export const ${componentName}: React.FC = () => {
+  return (
+${tsxContent}
+  );
+};
+
+export default ${componentName};
+`;
+
+  const blob = new Blob([code], { type: 'text/typescript;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const targetSlug = (target.name || 'component').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  link.download = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}.tsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Generates and downloads raw HTML/CSS representing the selected design.
+ */
+export function downloadHtmlCode(
+  projectTitle: string,
+  elements: Record<string, CanvasElement>,
+  targetElementId?: string
+) {
+  const targetId = targetElementId || 'desktop-1440';
+  const target = elements[targetId] || elements['desktop-1440'];
+  if (!target) return;
+  
+  const domId = targetId === 'desktop-1440' || targetId === 'mobile-app-view' 
+    ? targetId 
+    : `canvas-el-${targetId}`;
+
+  const domElement = document.getElementById(domId);
+  if (!domElement) {
+    console.error(`Export failed: DOM node for element ${targetId} not found.`);
+    return;
+  }
+
+  // Clone to avoid mutating the live DOM
+  const clone = domElement.cloneNode(true) as HTMLElement;
+  
+  // Clean up selection rings or UI overlays if present
+  const uiOverlays = clone.querySelectorAll('.pointer-events-none.border-2, .ring-2, [class*="bg-[#0d99ff]"]');
+  uiOverlays.forEach(node => {
+        if (
+            node.classList.contains('absolute') && 
+            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap'))
+        ) {
+            node.remove();
+        }
+  });
+
+  // Force the root element to be relatively positioned so it renders correctly inline
+  clone.style.position = 'relative';
+  clone.style.left = '0';
+  clone.style.top = '0';
+  clone.style.transform = 'none';
+
+  const htmlContent = clone.outerHTML;
+
+  // Capture all current styles from the document to ensure Tailwind classes and custom styles work
+  const documentStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map(el => el.outerHTML)
+    .join('\n');
+
+  const componentName = (target.name || 'ZLabComponent')
+    .replace(/[^a-zA-Z0-9]/g, ' ')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('');
+
+  const code = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${projectTitle} - ${componentName}</title>
+  <!-- Fallback Tailwind CSS for local viewing -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  ${documentStyles}
+  <style>
+    /* Reset baseline */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, sans-serif;
+    }
+  </style>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>
+`;
+
+  const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const targetSlug = (target.name || 'component').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  link.download = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}-code.html`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

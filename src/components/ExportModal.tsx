@@ -18,6 +18,8 @@ import {
   downloadSvg,
   downloadInteractivePrototypeHtml,
   downloadJson,
+  downloadReactCode,
+  downloadHtmlCode,
 } from '../utils/exportUtils';
 
 interface ExportModalProps {
@@ -29,7 +31,7 @@ interface ExportModalProps {
   devicePreview: 'desktop' | 'mobile';
 }
 
-export type ExportFormat = 'png' | 'svg' | 'prototype' | 'json';
+export type ExportFormat = 'png' | 'svg' | 'prototype' | 'json' | 'react' | 'html';
 export type PngScale = '1x' | '2x' | '3x' | '4x';
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -78,33 +80,39 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const outputPixelWidth = Math.round(targetWidth * scaleMultiplier);
   const outputPixelHeight = Math.round(targetHeight * scaleMultiplier);
 
-  const handleExecuteExport = () => {
+  const handleExecuteExport = async () => {
     setIsExporting(true);
 
-    setTimeout(() => {
+    try {
       if (format === 'png') {
-        downloadPng(projectTitle, elements, effectiveTargetId, scaleMultiplier, {
+        await downloadPng(projectTitle, elements, effectiveTargetId, scaleMultiplier, {
           transparentBackground: transparentBg,
         });
       } else if (format === 'svg') {
-        downloadSvg(projectTitle, elements, effectiveTargetId, {
+        await downloadSvg(projectTitle, elements, effectiveTargetId, {
           transparentBackground: transparentBg,
           includeIds: true,
           editableText: true,
         });
       } else if (format === 'prototype') {
-        downloadInteractivePrototypeHtml(projectTitle, elements, devicePreview);
+        await downloadInteractivePrototypeHtml(projectTitle, elements, devicePreview);
+      } else if (format === 'react') {
+        downloadReactCode(projectTitle, elements, effectiveTargetId);
+      } else if (format === 'html') {
+        downloadHtmlCode(projectTitle, elements, effectiveTargetId);
       } else if (format === 'json') {
         downloadJson(projectTitle, elements);
       }
-
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
       setIsExporting(false);
       setExportComplete(true);
       setTimeout(() => {
         setExportComplete(false);
         onClose();
       }, 1400);
-    }, 350);
+    }
   };
 
   const getTargetFileName = () => {
@@ -113,6 +121,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (format === 'png') return `${proj}-${slug}@${scale}.png`;
     if (format === 'svg') return `${proj}-${slug}.svg`;
     if (format === 'prototype') return `${proj}-prototype.html`;
+    if (format === 'react') return `${proj}-${slug}.tsx`;
+    if (format === 'html') return `${proj}-${slug}-code.html`;
     return `${proj}.json`;
   };
 
@@ -387,14 +397,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-          {/* Secondary formats toggle (Interactive Prototype / JSON Schema) */}
+          {/* Secondary formats toggle (Interactive Prototype / JSON Schema / React / HTML) */}
           <div className="pt-1">
             <button
               type="button"
               onClick={() => setShowOtherFormats(!showOtherFormats)}
               className="text-[11px] text-[#89919e] hover:text-[#e5e2e1] transition-colors flex items-center gap-1"
             >
-              <span>{showOtherFormats ? '▾ Hide additional formats' : '▸ Need Interactive Prototype (.html) or Schema (.json)?'}</span>
+              <span>{showOtherFormats ? '▾ Hide additional formats' : '▸ Need Code (.html/.tsx), Prototype, or Schema?'}</span>
             </button>
 
             {showOtherFormats && (
@@ -408,11 +418,40 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       : 'border-[#27272a] bg-[#141416] text-[#a1a1aa] hover:border-[#3f3f46]'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-medium text-xs text-white">
+                  <div className="flex items-center gap-1.5 font-medium text-[10px] text-white">
                     <Globe className="w-3.5 h-3.5 text-[#0d99ff]" />
-                    <span>HTML Prototype</span>
+                    <span>Prototype</span>
                   </div>
-                  <div className="text-[10px] text-[#89919e] mt-0.5">Offline interactive sim</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormat('html')}
+                  className={`p-2.5 rounded-lg border text-left transition-all ${
+                    format === 'html'
+                      ? 'border-[#f97316] bg-[#f97316]/10 text-white'
+                      : 'border-[#27272a] bg-[#141416] text-[#a1a1aa] hover:border-[#3f3f46]'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-medium text-[10px] text-white">
+                    <FileCode className="w-3.5 h-3.5 text-[#f97316]" />
+                    <span>HTML Code</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormat('react')}
+                  className={`p-2.5 rounded-lg border text-left transition-all ${
+                    format === 'react'
+                      ? 'border-[#10b981] bg-[#10b981]/10 text-white'
+                      : 'border-[#27272a] bg-[#141416] text-[#a1a1aa] hover:border-[#3f3f46]'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-medium text-[10px] text-white">
+                    <FileCode className="w-3.5 h-3.5 text-[#10b981]" />
+                    <span>React Code</span>
+                  </div>
                 </button>
 
                 <button
@@ -420,15 +459,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   onClick={() => setFormat('json')}
                   className={`p-2.5 rounded-lg border text-left transition-all ${
                     format === 'json'
-                      ? 'border-[#0d99ff] bg-[#0d99ff]/10 text-white'
+                      ? 'border-[#d2bbff] bg-[#d2bbff]/10 text-white'
                       : 'border-[#27272a] bg-[#141416] text-[#a1a1aa] hover:border-[#3f3f46]'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-medium text-xs text-white">
+                  <div className="flex items-center gap-1.5 font-medium text-[10px] text-white">
                     <Database className="w-3.5 h-3.5 text-[#d2bbff]" />
-                    <span>Project Schema</span>
+                    <span>JSON Data</span>
                   </div>
-                  <div className="text-[10px] text-[#89919e] mt-0.5">Raw JSON layers</div>
                 </button>
               </div>
             )}
