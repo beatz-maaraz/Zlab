@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { SettingsTab, UserSettings } from '../types';
 import { ALL_COMMANDS } from './ShortcutsModal';
+import { useRouter } from '../routes';
+import { useUIStore } from '../store/uiStore';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -43,6 +45,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenShortcutsOverlay,
   onExecuteAction,
 }) => {
+  const { navigate } = useRouter();
+  const { setAuthenticated } = useUIStore();
+
+  const handleSignOut = () => {
+    setAuthenticated(false);
+    onClose();
+    navigate({ type: 'login' });
+  };
+
   const [internalActiveTab, setInternalActiveTab] = useState<SettingsTab>(
     activeTabProp || initialTab
   );
@@ -433,6 +444,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <button className="px-3 py-1.5 rounded-lg bg-[#2a2a2a] text-[#e5e2e1] text-xs hover:bg-[#353534] transition-colors border border-[#353534]">
                       Manage Billing
+                    </button>
+                  </div>
+                </div>
+
+                {/* Session Management */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-semibold text-[#89919e] uppercase tracking-wider block">
+                    Session
+                  </label>
+                  <div className="flex items-center justify-between bg-[#201f1f] p-4 rounded-lg border border-[#353534]/50">
+                    <div className="text-xs text-[#e5e2e1]">
+                      Sign out of your current session on this device.
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="px-3 py-1.5 rounded-lg bg-[#2a2a2a] text-[#e5e2e1] text-xs font-medium hover:bg-[#353534] transition-colors border border-[#353534]"
+                    >
+                      Sign Out
                     </button>
                   </div>
                 </div>

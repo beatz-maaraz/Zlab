@@ -690,6 +690,16 @@ export default function App() {
   const activeElement = elements[selectedElementId] || elements['desktop-1440'] || Object.values(elements)[0];
   const isEditorView = route.type === 'editor' || route.type === 'prototype';
 
+  const { isAuthenticated } = useUIStore();
+  
+  useEffect(() => {
+    if (!isAuthenticated && route.type !== 'login' && route.type !== 'signup') {
+      navigate({ type: 'login' });
+    } else if (isAuthenticated && (route.type === 'login' || route.type === 'signup')) {
+      navigate({ type: 'dashboard' });
+    }
+  }, [isAuthenticated, route.type, navigate]);
+
   return (
     <ErrorBoundary>
       <div
@@ -735,6 +745,8 @@ export default function App() {
         {/* Main View: Editor Workspace or Dashboard Browser or Auth */}
         {route.type === 'login' || route.type === 'signup' ? (
           <AuthView initialMode={route.type} />
+        ) : !isAuthenticated ? (
+          <div className="flex-1 bg-[#131313]" /> // Blank loading state while redirecting
         ) : isEditorView ? (
           <div id="editor-workspace" className="flex flex-1 relative overflow-hidden pt-16 pb-8">
             {/* Left Sidebar */}

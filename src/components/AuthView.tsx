@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from '../routes';
 import { Sparkles, ArrowRight, Github, Mail, Lock, User } from 'lucide-react';
+import { useUIStore } from '../store/uiStore';
 
 interface AuthViewProps {
   initialMode?: 'login' | 'signup';
@@ -9,10 +10,12 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({ initialMode = 'login' }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const { navigate } = useRouter();
+  const { setAuthenticated } = useUIStore();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Mock login/signup, navigate to dashboard
+    setAuthenticated(true);
     navigate({ type: 'dashboard' });
   };
 

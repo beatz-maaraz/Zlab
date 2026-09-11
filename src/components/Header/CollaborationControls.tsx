@@ -1,7 +1,6 @@
 import React from 'react';
-import { Keyboard, Play, LogIn } from 'lucide-react';
+import { Keyboard, Play } from 'lucide-react';
 import { Collaborator } from '../../types';
-import { useRouter } from '../../routes';
 
 interface CollaborationControlsProps {
   collaborators?: Collaborator[];
@@ -16,8 +15,6 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
   onOpenShortcuts,
   onOpenSettings,
 }) => {
-  const { navigate } = useRouter();
-
   return (
     <div className="flex items-center gap-2">
       {/* Play Prototype Button */}
@@ -45,25 +42,15 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
         </button>
       )}
 
-      <div className="flex items-center gap-2 ml-1">
-        <button
-          onClick={() => navigate({ type: 'login' })}
-          className="px-3 py-1.5 text-xs font-medium bg-[#0d99ff] hover:bg-[#3fb1ff] text-white rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
-        >
-          <LogIn className="w-3.5 h-3.5" />
-          Sign In
-        </button>
-
-        {/* User Profile Avatar */}
-        <button
-          id="btn-header-user-avatar"
-          onClick={() => onOpenSettings('account')}
-          className="w-8 h-8 rounded-full bg-[#9fcaff] text-[#003259] flex items-center justify-center font-bold text-xs ring-2 ring-[#131313] hover:ring-[#0d99ff] transition-all"
-          title="User Account & Preferences"
-        >
-          AC
-        </button>
-      </div>
+      {/* User Profile Avatar */}
+      <button
+        id="btn-header-user-avatar"
+        onClick={() => onOpenSettings('account')}
+        className="w-8 h-8 rounded-full bg-[#9fcaff] text-[#003259] flex items-center justify-center font-bold text-xs ring-2 ring-[#131313] hover:ring-[#0d99ff] transition-all ml-1"
+        title="User Account & Preferences"
+      >
+        AC
+      </button>
     </div>
   );
 };

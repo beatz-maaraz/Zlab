@@ -40,6 +40,9 @@ interface UIStoreState {
   toast: { message: string; type?: 'info' | 'success' | 'warning' } | null;
   showToast: (message: string, type?: 'info' | 'success' | 'warning') => void;
   hideToast: () => void;
+
+  isAuthenticated: boolean;
+  setAuthenticated: (auth: boolean) => void;
 }
 
 export const useUIStore = create<UIStoreState>((set) => ({
@@ -82,4 +85,7 @@ export const useUIStore = create<UIStoreState>((set) => ({
     }, 3000);
   },
   hideToast: () => set({ toast: null }),
+
+  isAuthenticated: false,
+  setAuthenticated: (auth) => set({ isAuthenticated: auth }),
 }));
