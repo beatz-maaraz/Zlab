@@ -693,9 +693,10 @@ export default function App() {
   const { isAuthenticated } = useUIStore();
   
   useEffect(() => {
-    if (!isAuthenticated && route.type !== 'login' && route.type !== 'signup') {
+    const isAuthRoute = ['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type);
+    if (!isAuthenticated && !isAuthRoute) {
       navigate({ type: 'login' });
-    } else if (isAuthenticated && (route.type === 'login' || route.type === 'signup')) {
+    } else if (isAuthenticated && isAuthRoute) {
       navigate({ type: 'dashboard' });
     }
   }, [isAuthenticated, route.type, navigate]);
@@ -707,7 +708,7 @@ export default function App() {
         className="flex flex-col h-screen w-screen overflow-hidden bg-[#131313] text-[#e5e2e1] font-sans select-none"
       >
         {/* Top Application Header */}
-        {route.type !== 'login' && route.type !== 'signup' && (
+        {!['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) && (
           <Header
             projectTitle={projectTitle}
             setProjectTitle={(name) => updateProject(activeProject.id, { name })}
@@ -743,8 +744,8 @@ export default function App() {
         )}
 
         {/* Main View: Editor Workspace or Dashboard Browser or Auth */}
-        {route.type === 'login' || route.type === 'signup' ? (
-          <AuthView initialMode={route.type} />
+        {['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) ? (
+          <AuthView initialMode={route.type as 'login' | 'signup' | 'forgot-password' | 'verify-email'} />
         ) : !isAuthenticated ? (
           <div className="flex-1 bg-[#131313]" /> // Blank loading state while redirecting
         ) : isEditorView ? (

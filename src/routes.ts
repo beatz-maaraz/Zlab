@@ -6,13 +6,14 @@ export type AppRoute =
   | { type: 'prototype'; projectId: string }
   | { type: 'share'; projectId: string }
   | { type: 'login' }
-  | { type: 'signup' };
+  | { type: 'signup' }
+  | { type: 'forgot-password' }
+  | { type: 'verify-email' };
 
 export function parseRoute(pathname: string): AppRoute {
   // Support pathname or hash-based paths if hosted in subpaths
   const cleanPath = pathname.replace(/^\/+/, '').split('?')[0];
   const segments = cleanPath.split('/');
-
   const section = segments[0] || '';
   const param = segments[1] || '';
 
@@ -30,6 +31,12 @@ export function parseRoute(pathname: string): AppRoute {
   }
   if (section === 'signup') {
     return { type: 'signup' };
+  }
+  if (section === 'forgot-password') {
+    return { type: 'forgot-password' };
+  }
+  if (section === 'verify-email') {
+    return { type: 'verify-email' };
   }
 
   return { type: 'dashboard' };
@@ -49,6 +56,10 @@ export function routeToPath(route: AppRoute): string {
       return '/login';
     case 'signup':
       return '/signup';
+    case 'forgot-password':
+      return '/forgot-password';
+    case 'verify-email':
+      return '/verify-email';
   }
 }
 
