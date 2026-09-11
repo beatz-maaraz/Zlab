@@ -539,39 +539,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </div>
           )}
 
-          {/* Sub Header / Tabs based on activeNavTab */}
+          {/* Sub Header / Panel Title */}
           <div className="flex items-center justify-between border-b border-[#353534] px-3 py-2">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveNavTab('layers')}
-                className={`text-xs font-medium pb-0.5 transition-colors ${
-                  activeNavTab === 'layers'
-                    ? 'text-[#e5e2e1] border-b-2 border-[#9fcaff]'
-                    : 'text-[#89919e] hover:text-[#bfc7d5]'
-                }`}
-              >
-                Layers
-              </button>
-              <button
-                onClick={() => setActiveNavTab('components')}
-                className={`text-xs font-medium pb-0.5 transition-colors ${
-                  activeNavTab === 'components'
-                    ? 'text-[#e5e2e1] border-b-2 border-[#9fcaff]'
-                    : 'text-[#89919e] hover:text-[#bfc7d5]'
-                }`}
-              >
-                Components
-              </button>
-              <button
-                onClick={() => setActiveNavTab('assets')}
-                className={`text-xs font-medium pb-0.5 transition-colors ${
-                  activeNavTab === 'assets'
-                    ? 'text-[#e5e2e1] border-b-2 border-[#9fcaff]'
-                    : 'text-[#89919e] hover:text-[#bfc7d5]'
-                }`}
-              >
-                Assets
-              </button>
+              <span className="text-xs font-medium pb-0.5 text-[#e5e2e1] capitalize">
+                {activeNavTab}
+              </span>
             </div>
 
             {/* Quick Action Button */}

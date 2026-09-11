@@ -11,6 +11,7 @@ import { Canvas } from './components/Canvas';
 import { Inspector } from './components/Inspector';
 import { StatusBar } from './components/StatusBar';
 import { DashboardView } from './components/DashboardView';
+import { AuthView } from './components/AuthView';
 import { SettingsModal } from './components/SettingsModal';
 import { ExportModal } from './components/ExportModal';
 import { PrototypeModal } from './components/PrototypeModal';
@@ -696,41 +697,45 @@ export default function App() {
         className="flex flex-col h-screen w-screen overflow-hidden bg-[#131313] text-[#e5e2e1] font-sans select-none"
       >
         {/* Top Application Header */}
-        <Header
-          projectTitle={projectTitle}
-          setProjectTitle={(name) => updateProject(activeProject.id, { name })}
-          zoom={zoom}
-          setZoom={setZoom}
-          devicePreview={devicePreview}
-          setDevicePreview={handleDeviceChange}
-          currentView={isEditorView ? 'editor' : 'dashboard'}
-          setCurrentView={(view) => {
-            if (view === 'dashboard') {
-              navigate({ type: 'dashboard' });
-            } else {
-              navigate({ type: 'editor', projectId: activeProject.id });
-            }
-          }}
-          onOpenSettings={(tab?: string) => {
-            if (tab) setSettingsTab(tab as SettingsTab);
-            openModal('settings');
-          }}
-          onExport={() => openModal('export')}
-          onOpenPrototype={() => openModal('prototype')}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onOpenShortcuts={() => openModal('shortcuts')}
-          onImportMaterialKit={handleImportMaterialKit}
-          onImportIOSKit={handleImportIOSKit}
-          onImportAllMaterials={handleImportAllMaterials}
-          collaborators={collaborators}
-          onNewDesign={handleNewDesign}
-        />
+        {route.type !== 'login' && route.type !== 'signup' && (
+          <Header
+            projectTitle={projectTitle}
+            setProjectTitle={(name) => updateProject(activeProject.id, { name })}
+            zoom={zoom}
+            setZoom={setZoom}
+            devicePreview={devicePreview}
+            setDevicePreview={handleDeviceChange}
+            currentView={isEditorView ? 'editor' : 'dashboard'}
+            setCurrentView={(view) => {
+              if (view === 'dashboard') {
+                navigate({ type: 'dashboard' });
+              } else {
+                navigate({ type: 'editor', projectId: activeProject.id });
+              }
+            }}
+            onOpenSettings={(tab?: string) => {
+              if (tab) setSettingsTab(tab as SettingsTab);
+              openModal('settings');
+            }}
+            onExport={() => openModal('export')}
+            onOpenPrototype={() => openModal('prototype')}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onOpenShortcuts={() => openModal('shortcuts')}
+            onImportMaterialKit={handleImportMaterialKit}
+            onImportIOSKit={handleImportIOSKit}
+            onImportAllMaterials={handleImportAllMaterials}
+            collaborators={collaborators}
+            onNewDesign={handleNewDesign}
+          />
+        )}
 
-        {/* Main View: Editor Workspace or Dashboard Browser */}
-        {isEditorView ? (
+        {/* Main View: Editor Workspace or Dashboard Browser or Auth */}
+        {route.type === 'login' || route.type === 'signup' ? (
+          <AuthView initialMode={route.type} />
+        ) : isEditorView ? (
           <div id="editor-workspace" className="flex flex-1 relative overflow-hidden pt-16 pb-8">
             {/* Left Sidebar */}
             <LeftSidebar

@@ -4,7 +4,9 @@ export type AppRoute =
   | { type: 'dashboard' }
   | { type: 'editor'; projectId: string }
   | { type: 'prototype'; projectId: string }
-  | { type: 'share'; projectId: string };
+  | { type: 'share'; projectId: string }
+  | { type: 'login' }
+  | { type: 'signup' };
 
 export function parseRoute(pathname: string): AppRoute {
   // Support pathname or hash-based paths if hosted in subpaths
@@ -23,6 +25,12 @@ export function parseRoute(pathname: string): AppRoute {
   if (section === 'share') {
     return { type: 'share', projectId: param || 'default' };
   }
+  if (section === 'login') {
+    return { type: 'login' };
+  }
+  if (section === 'signup') {
+    return { type: 'signup' };
+  }
 
   return { type: 'dashboard' };
 }
@@ -37,6 +45,10 @@ export function routeToPath(route: AppRoute): string {
       return `/prototype/${route.projectId}`;
     case 'share':
       return `/share/${route.projectId}`;
+    case 'login':
+      return '/login';
+    case 'signup':
+      return '/signup';
   }
 }
 
