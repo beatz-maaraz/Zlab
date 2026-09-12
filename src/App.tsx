@@ -701,8 +701,9 @@ export default function App() {
   const activeElement = elements[selectedElementId] || elements['desktop-1440'] || Object.values(elements)[0];
   const isEditorView = route.type === 'editor' || route.type === 'prototype';
 
-  const { isAuthenticated } = useUIStore();
-  const { isInitialized } = useAuthStore();
+  const { isAuthenticated: uiAuth } = useUIStore();
+  const { isInitialized, user } = useAuthStore();
+  const isAuthenticated = Boolean(user) || uiAuth;
   
   useEffect(() => {
     if (!isInitialized) return;

@@ -10,6 +10,10 @@ import {
   sendEmailVerification,
   fbSignOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
   FirebaseUser,
   db,
   doc,
@@ -18,6 +22,10 @@ import {
   OperationType,
   handleFirestoreError,
 } from '../lib/firebase';
+import {
+  deleteAllUserProjectsFromFirestore,
+  deleteUserProfileFromFirestore,
+} from '../lib/firestoreProjects';
 import { useUIStore } from './uiStore';
 import { useProjectStore } from './projectStore';
 
@@ -43,6 +51,8 @@ interface AuthState {
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: (password?: string) => Promise<void>;
+  reauthenticateWithGoogleAndDelete: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -69,6 +79,8 @@ function formatAuthError(error: any): string {
       return 'Sign-in popup was blocked by your browser. Please allow popups for this site.';
     case 'auth/operation-not-allowed':
       return 'Google sign-in is currently unavailable. Please use email and password.';
+    case 'auth/requires-recent-login':
+      return 'For security reasons, deleting your account requires recent authentication. Please sign out, sign back in, and try deleting your account again.';
     default:
       return error?.message || 'Authentication failed. Please try again.';
   }
@@ -247,6 +259,90 @@ export const useAuthStore = create<AuthState>((set, get) => {
       } finally {
         set({ user: null, profile: null, isLoading: false, authError: null });
         useUIStore.getState().setAuthenticated(false);
+        useUIStore.getState().closeModal();
+        useProjectStore.getState().onUserSignedOut();
+      }
+    },
+
+    deleteAccount: async (password?: string) => {
+      const targetUser = auth.currentUser || get().user;
+      if (!targetUser) {
+        throw new Error('No user is currently signed in.');
+      }
+
+      set({ isLoading: true, authError: null });
+      const userId = targetUser.uid;
+
+      try {
+        // If password was provided for recent re-authentication
+        if (password && targetUser.email) {
+          const cred = EmailAuthProvider.credential(targetUser.email, password);
+          await reauthenticateWithCredential(targetUser, cred);
+        }
+
+        // 1. Delete all Firestore projects owned by this user
+        try {
+          await deleteAllUserProjectsFromFirestore(userId);
+        } catch (e) {
+          console.warn('Error deleting user projects from Firestore:', e);
+        }
+
+        // 2. Delete the user profile document from Firestore
+        try {
+          await deleteUserProfileFromFirestore(userId);
+        } catch (e) {
+          console.warn('Error deleting user profile from Firestore:', e);
+        }
+
+        // 3. Delete the user from Firebase Auth
+        await deleteUser(targetUser);
+
+        // 4. Reset stores and state
+        set({ user: null, profile: null, isLoading: false, authError: null });
+        useUIStore.getState().setAuthenticated(false);
+        useUIStore.getState().closeModal();
+        useProjectStore.getState().onUserSignedOut();
+      } catch (err: any) {
+        const errorMsg = formatAuthError(err);
+        set({ isLoading: false, authError: errorMsg });
+        throw new Error(errorMsg);
+      }
+    },
+
+    reauthenticateWithGoogleAndDelete: async () => {
+      const targetUser = auth.currentUser || get().user;
+      if (!targetUser) {
+        throw new Error('No user is currently signed in.');
+      }
+
+      set({ isLoading: true, authError: null });
+      const userId = targetUser.uid;
+
+      try {
+        await reauthenticateWithPopup(targetUser, googleProvider);
+
+        try {
+          await deleteAllUserProjectsFromFirestore(userId);
+        } catch (e) {
+          console.warn('Error deleting user projects from Firestore:', e);
+        }
+
+        try {
+          await deleteUserProfileFromFirestore(userId);
+        } catch (e) {
+          console.warn('Error deleting user profile from Firestore:', e);
+        }
+
+        await deleteUser(targetUser);
+
+        set({ user: null, profile: null, isLoading: false, authError: null });
+        useUIStore.getState().setAuthenticated(false);
+        useUIStore.getState().closeModal();
+        useProjectStore.getState().onUserSignedOut();
+      } catch (err: any) {
+        const errorMsg = formatAuthError(err);
+        set({ isLoading: false, authError: errorMsg });
+        throw new Error(errorMsg);
       }
     },
   };

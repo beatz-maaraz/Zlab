@@ -10,6 +10,10 @@ import {
   sendEmailVerification,
   signOut as fbSignOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
   User as FirebaseUser,
 } from 'firebase/auth';
 import {
@@ -118,6 +122,10 @@ export {
   sendEmailVerification,
   fbSignOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
   doc,
   getDoc,
   getDocFromServer,

@@ -14,11 +14,19 @@ import {
   Sliders,
   ArrowRight,
   ExternalLink,
+  AlertTriangle,
+  Trash2,
+  Loader2,
+  Eye,
+  EyeOff,
+  Key,
+  LogOut,
 } from 'lucide-react';
 import { SettingsTab, UserSettings } from '../types';
 import { ALL_COMMANDS } from './ShortcutsModal';
 import { useRouter } from '../routes';
 import { useUIStore } from '../store/uiStore';
+import { useAuthStore } from '../store/authStore';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -47,11 +55,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const { navigate } = useRouter();
   const { setAuthenticated } = useUIStore();
+  const { signOut, deleteAccount, reauthenticateWithGoogleAndDelete, user } = useAuthStore();
 
-  const handleSignOut = () => {
-    setAuthenticated(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [showReauthPassword, setShowReauthPassword] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
+
+  const isGoogleUser = Boolean(user?.providerData?.some((p) => p.providerId === 'google.com'));
+
+  const handleSignOut = async () => {
     onClose();
+    await signOut();
     navigate({ type: 'login' });
+  };
+
+  const handleDeleteAccount = async (passwordOverride?: string) => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm account deletion.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount(passwordOverride || (reauthPassword ? reauthPassword : undefined));
+      setIsDeletingAccount(false);
+      setShowDeleteConfirm(false);
+      onClose();
+      navigate({ type: 'login' });
+    } catch (err: any) {
+      setIsDeletingAccount(false);
+      const msg = err.message || 'Failed to delete account. Please try again.';
+      setDeleteError(msg);
+      if (
+        msg.toLowerCase().includes('recent authentication') ||
+        msg.toLowerCase().includes('requires-recent-login')
+      ) {
+        setNeedsReauth(true);
+      }
+    }
+  };
+
+  const handleGoogleReauthAndDelete = async () => {
+    setIsDeletingAccount(true);
+    setDeleteError(null);
+    try {
+      await reauthenticateWithGoogleAndDelete();
+      setIsDeletingAccount(false);
+      setShowDeleteConfirm(false);
+      onClose();
+      navigate({ type: 'login' });
+    } catch (err: any) {
+      setIsDeletingAccount(false);
+      setDeleteError(err.message || 'Failed to re-authenticate with Google.');
+    }
   };
 
   const [internalActiveTab, setInternalActiveTab] = useState<SettingsTab>(
@@ -74,6 +135,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFormData(settings);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
+      setDeleteError(null);
       if (activeTabProp) {
         setInternalActiveTab(activeTabProp);
       }
@@ -471,14 +535,189 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <label className="text-[10px] font-semibold text-[#ffb4ab] uppercase tracking-wider block">
                     Danger Zone
                   </label>
-                  <div className="border border-[#93000a]/40 bg-[#93000a]/10 p-4 rounded-lg flex items-center justify-between">
-                    <div className="text-xs text-[#e5e2e1]">
-                      Permanently delete your account and all vector files.
+                  {!showDeleteConfirm ? (
+                    <div className="border border-[#93000a]/40 bg-[#93000a]/10 p-4 rounded-lg flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-medium text-[#ffdad6]">
+                          Permanently delete your account
+                        </div>
+                        <div className="text-[11px] text-[#ffb4ab]/80">
+                          Deletes your user credentials, Firestore profile, and all saved vector design files.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        id="btn-trigger-delete-account"
+                        onClick={() => {
+                          setShowDeleteConfirm(true);
+                          setDeleteConfirmText('');
+                          setDeleteError(null);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#93000a] text-[#ffdad6] text-xs font-medium hover:bg-[#ba1a1a] transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Account
+                      </button>
                     </div>
-                    <button className="px-3 py-1.5 rounded-lg bg-[#93000a] text-[#ffdad6] text-xs font-medium hover:opacity-90 transition-opacity">
-                      Delete Account
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="border border-[#93000a]/60 bg-[#93000a]/15 p-4 rounded-lg space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-[#ffb4ab] shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <div className="text-xs font-semibold text-[#ffdad6]">
+                            Are you absolutely sure you want to delete your account?
+                          </div>
+                          <div className="text-[11px] text-[#e5e2e1]/80 leading-relaxed">
+                            This action is <span className="font-semibold text-[#ffb4ab]">irreversible</span>.
+                            All your authentication records, profile details, and vector canvas projects stored in Firestore will be permanently deleted.
+                          </div>
+                        </div>
+                      </div>
+
+                      {deleteError && (
+                        <div className="bg-[#ba1a1a]/20 border border-[#ffb4ab]/30 p-2.5 rounded text-xs text-[#ffdad6] flex items-start gap-2">
+                          <AlertTriangle className="w-3.5 h-3.5 text-[#ffb4ab] shrink-0 mt-0.5" />
+                          <div className="space-y-1 flex-1">
+                            <div>{deleteError}</div>
+                            {needsReauth && (
+                              <div className="text-[11px] text-[#ffb4ab]/90 pt-0.5">
+                                Re-authentication is required by Firebase security before account deletion.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5 pt-1">
+                        <label className="text-[11px] text-[#ffdad6]/90 block">
+                          Type <span className="font-mono font-bold text-white bg-[#93000a]/40 px-1 py-0.5 rounded">DELETE</span> to confirm:
+                        </label>
+                        <input
+                          id="input-delete-account-confirm"
+                          type="text"
+                          disabled={isDeletingAccount}
+                          value={deleteConfirmText}
+                          onChange={(e) => {
+                            setDeleteConfirmText(e.target.value);
+                            if (deleteError) setDeleteError(null);
+                          }}
+                          placeholder="DELETE"
+                          className="w-full bg-[#1b0808] border border-[#93000a]/60 focus:border-[#ffb4ab] rounded px-3 py-2 text-xs text-[#ffdad6] outline-none font-mono placeholder-[#ffb4ab]/40"
+                        />
+                      </div>
+
+                      {/* Optional or Required Password Confirmation for Email/Password users */}
+                      {(!isGoogleUser || needsReauth) && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] text-[#ffdad6]/90 flex items-center gap-1.5">
+                              <Key className="w-3 h-3 text-[#ffb4ab]" />
+                              {needsReauth ? 'Enter account password to verify:' : 'Account Password (optional if recent):'}
+                            </label>
+                            {needsReauth && (
+                              <span className="text-[10px] text-[#ffb4ab] font-medium">Required for verification</span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              id="input-delete-reauth-password"
+                              type={showReauthPassword ? 'text' : 'password'}
+                              disabled={isDeletingAccount}
+                              value={reauthPassword}
+                              onChange={(e) => {
+                                setReauthPassword(e.target.value);
+                                if (deleteError) setDeleteError(null);
+                              }}
+                              placeholder="Enter your account password"
+                              className="w-full bg-[#1b0808] border border-[#93000a]/60 focus:border-[#ffb4ab] rounded px-3 py-2 text-xs text-[#ffdad6] outline-none font-sans placeholder-[#ffb4ab]/40 pr-9"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowReauthPassword(!showReauthPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#ffb4ab]/70 hover:text-[#ffdad6] transition-colors p-0.5"
+                              title={showReauthPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showReauthPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#93000a]/30">
+                        <button
+                          type="button"
+                          onClick={handleSignOut}
+                          className="text-[11px] text-[#9fcaff] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <LogOut className="w-3 h-3" /> Or sign out first
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            id="btn-cancel-delete-account"
+                            disabled={isDeletingAccount}
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setDeleteConfirmText('');
+                              setReauthPassword('');
+                              setDeleteError(null);
+                              setNeedsReauth(false);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-[#2a2a2a] text-[#e5e2e1] text-xs font-medium hover:bg-[#353534] transition-colors border border-[#353534] disabled:opacity-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+
+                          {isGoogleUser && needsReauth ? (
+                            <button
+                              type="button"
+                              id="btn-google-reauth-delete"
+                              disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || isDeletingAccount}
+                              onClick={handleGoogleReauthAndDelete}
+                              className="px-3.5 py-1.5 rounded-lg bg-[#ba1a1a] hover:bg-[#de3730] text-[#ffffff] text-xs font-semibold transition-colors disabled:opacity-40 disabled:hover:bg-[#ba1a1a] flex items-center gap-1.5 cursor-pointer"
+                            >
+                              {isDeletingAccount ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  Verifying with Google...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Verify with Google & Delete
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              id="btn-confirm-delete-account"
+                              disabled={
+                                deleteConfirmText.trim().toUpperCase() !== 'DELETE' ||
+                                (needsReauth && !reauthPassword.trim()) ||
+                                isDeletingAccount
+                              }
+                              onClick={() => handleDeleteAccount()}
+                              className="px-3.5 py-1.5 rounded-lg bg-[#ba1a1a] hover:bg-[#de3730] text-[#ffffff] text-xs font-semibold transition-colors disabled:opacity-40 disabled:hover:bg-[#ba1a1a] flex items-center gap-1.5 cursor-pointer"
+                            >
+                              {isDeletingAccount ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  Deleting Account...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Permanently Delete Account
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

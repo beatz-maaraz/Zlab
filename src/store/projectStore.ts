@@ -7,6 +7,7 @@ import {
   fetchUserProjectsFromFirestore,
   deleteProjectFromFirestore,
 } from '../lib/firestoreProjects';
+import { auth } from '../lib/firebase';
 
 const STORAGE_KEY = 'zlab_projects_v2';
 const ACTIVE_PROJECT_KEY = 'zlab_active_project_id';
@@ -160,7 +161,18 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     },
 
     onUserSignedOut: () => {
-      set({ currentUserId: null });
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(ACTIVE_PROJECT_KEY);
+      } catch (e) {
+        // ignore
+      }
+      const initialProjects = { [DEFAULT_PROJECT_ID]: createDefaultShowcaseProject() };
+      set({
+        projects: initialProjects,
+        activeProjectId: DEFAULT_PROJECT_ID,
+        currentUserId: null,
+      });
     },
 
     getActiveProject: () => {
@@ -358,8 +370,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         };
       });
 
-      const { currentUserId } = get();
-      if (currentUserId) {
+      const targetUserId = get().currentUserId || auth.currentUser?.uid;
+      if (targetUserId) {
         deleteProjectFromFirestore(id);
       }
     },

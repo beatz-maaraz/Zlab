@@ -36,6 +36,7 @@ export async function syncProjectToFirestore(project: Project, userId: string): 
       activePageId: project.activePageId || 'page-1',
       pages: project.pages || [{ id: 'page-1', name: 'Page 1 — Main Canvas' }],
       elementsJson: elementsJson,
+      status: project.status || 'active',
       createdAt: project.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -84,6 +85,7 @@ export async function fetchUserProjectsFromFirestore(userId: string): Promise<Pr
         description: data.description,
         techStack: data.techStack,
         projectStatus: data.projectStatus,
+        status: data.status || 'active',
         githubUrl: data.githubUrl,
         liveDemoUrl: data.liveDemoUrl,
       });
@@ -113,3 +115,38 @@ export async function deleteProjectFromFirestore(projectId: string): Promise<voi
     }
   }
 }
+
+/**
+ * Deletes all projects owned by a user from Firestore.
+ */
+export async function deleteAllUserProjectsFromFirestore(userId: string): Promise<void> {
+  if (!userId) return;
+  try {
+    const q = query(collection(db, 'projects'), where('userId', '==', userId));
+    const snap = await getDocs(q);
+    const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(deletePromises);
+  } catch (err: any) {
+    console.warn('Error deleting all user projects from Firestore:', err);
+    if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
+      handleFirestoreError(err, OperationType.DELETE, 'projects');
+    }
+  }
+}
+
+/**
+ * Deletes user profile document from Firestore.
+ */
+export async function deleteUserProfileFromFirestore(userId: string): Promise<void> {
+  if (!userId) return;
+  const path = `users/${userId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId));
+  } catch (err: any) {
+    console.warn('Error deleting user profile from Firestore:', err);
+    if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+    }
+  }
+}
+

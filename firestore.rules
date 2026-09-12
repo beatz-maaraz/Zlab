@@ -49,6 +49,8 @@ service cloud.firestore {
         && (!('elementsJson' in data) || (data.elementsJson is string && data.elementsJson.size() <= 2097152))
         && (!('techStack' in data) || (data.techStack is list && data.techStack.size() <= 50))
         && (!('pages' in data) || (data.pages is list && data.pages.size() <= 50))
+        && (!('ownerId' in data) || (data.ownerId is string && data.ownerId.size() <= 128))
+        && (!('status' in data) || (data.status is string && data.status.size() <= 50))
         && (!('createdAt' in data) || data.createdAt is string)
         && (!('updatedAt' in data) || data.updatedAt is string);
     }

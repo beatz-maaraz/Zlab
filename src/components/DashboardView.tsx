@@ -17,9 +17,14 @@ import {
   ExternalLink,
   RefreshCw,
   LayoutTemplate,
-  Monitor
+  Monitor,
+  LogOut,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { ProjectFile, TemplateItem, CanvasElement } from '../types';
+import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
+import { useRouter } from '../routes';
 
 const MiniCanvasPreview = ({ elements, previewType }: { elements?: Record<string, CanvasElement>, previewType: string }) => {
   if (!elements) return null;
@@ -107,6 +112,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [importNotification, setImportNotification] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const { user, profile, signOut } = useAuthStore();
+  const { navigate } = useRouter();
+  const { openModal, setSettingsTab, showToast } = useUIStore();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      showToast('Signed out successfully', 'info');
+      navigate({ type: 'login' });
+    } catch (e: any) {
+      console.warn('Sign out error:', e);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -253,6 +272,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>Mobile App</span>
             </button>
           </div>
+        </div>
+
+        {/* User Account & Sign Out Footer */}
+        <div className="pt-4 border-t border-[#353534] space-y-2 mt-auto">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-[#141414] border border-[#2a2a2a]">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt="Avatar"
+                className="w-7 h-7 rounded-full object-cover border border-[#444746]"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-[#004a77] text-[#c2e7ff] text-[11px] font-bold flex items-center justify-center shrink-0">
+                {(profile?.displayName || user?.displayName || user?.email || 'U')[0].toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-[#e5e2e1] truncate">
+                {profile?.displayName || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Designer')}
+              </div>
+              <div className="text-[10px] text-[#89919e] truncate">
+                {user?.email || 'Signed in'}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setSettingsTab('account');
+                openModal('settings');
+              }}
+              title="Account & Danger Zone Settings"
+              className="p-1 rounded text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] transition-colors shrink-0 cursor-pointer"
+            >
+              <SettingsIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <button
+            id="btn-dashboard-sign-out"
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-[#ffb4ab] hover:text-[#ffdad6] hover:bg-[#93000a]/20 border border-transparent hover:border-[#93000a]/40 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
