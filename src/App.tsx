@@ -80,6 +80,9 @@ export default function App() {
     setDevicePreview,
     selectedElementId,
     setSelectedElementId,
+    selectedElementIds,
+    setSelectedElementIds,
+    toggleElementSelection,
     showGrid,
     setShowGrid,
     toggleGrid,
@@ -211,18 +214,32 @@ export default function App() {
     (id: string) => {
       if (id === 'desktop-1440' || id === 'mobile-app-view' || id === 'hero-bg') return;
       const next = { ...elements };
+      const elToDelete = next[id];
       delete next[id];
+
+      // If deleted item is a group, cascade delete its children
+      if (elToDelete?.type === 'group') {
+        Object.values(elements).forEach((c) => {
+          if (c.parentId === id) {
+            delete next[c.id];
+          }
+        });
+      }
+
       updateElementsWithHistory(next);
-      setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+      const fallbackId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+      setSelectedElementId(fallbackId);
+      setSelectedElementIds([fallbackId]);
     },
-    [elements, devicePreview, updateElementsWithHistory, setSelectedElementId]
+    [elements, devicePreview, updateElementsWithHistory, setSelectedElementId, setSelectedElementIds]
   );
 
   const handleDuplicateElement = useCallback(
     (id: string) => {
       const el = elements[id];
       if (!el) return;
-      const newId = `${el.id}_copy_${Date.now()}`;
+      const timestamp = Date.now();
+      const newId = `${el.id}_copy_${timestamp}`;
       const duplicated: CanvasElement = {
         ...el,
         id: newId,
@@ -230,9 +247,192 @@ export default function App() {
         x: el.x + 24,
         y: el.y + 24,
       };
-      handleInsertElement(duplicated);
+
+      const next = { ...elements, [newId]: duplicated };
+
+      if (el.type === 'group') {
+        const groupChildren = Object.values(elements).filter((c) => c.parentId === id);
+        groupChildren.forEach((child) => {
+          const newChildId = `${child.id}_copy_${timestamp}`;
+          next[newChildId] = {
+            ...child,
+            id: newChildId,
+            parentId: newId,
+          };
+        });
+      }
+
+      updateElementsWithHistory(next);
+      setSelectedElementId(newId);
+      setSelectedElementIds([newId]);
     },
-    [elements, handleInsertElement]
+    [elements, updateElementsWithHistory, setSelectedElementId, setSelectedElementIds]
+  );
+
+  // Group multiple selected components into a new group container
+  const handleGroupElements = useCallback(() => {
+    let idsToGroup = selectedElementIds.filter(
+      (id) =>
+        id &&
+        id !== 'desktop-1440' &&
+        id !== 'mobile-app-view' &&
+        id !== 'hero-bg' &&
+        elements[id]
+    );
+
+    if (idsToGroup.length < 1 && selectedElementId && elements[selectedElementId]) {
+      if (
+        selectedElementId !== 'desktop-1440' &&
+        selectedElementId !== 'mobile-app-view' &&
+        selectedElementId !== 'hero-bg'
+      ) {
+        idsToGroup = [selectedElementId];
+      }
+    }
+
+    if (idsToGroup.length < 1) {
+      showToast('Select elements to group', 'info');
+      return;
+    }
+
+    const selectedElements = idsToGroup.map((id) => elements[id]);
+
+    const firstParentId = selectedElements[0].parentId;
+    const sameParent = selectedElements.every((el) => el.parentId === firstParentId);
+    const targetParentId = sameParent
+      ? firstParentId
+      : devicePreview === 'desktop'
+      ? 'desktop-1440'
+      : 'mobile-app-view';
+
+    const minX = Math.min(...selectedElements.map((el) => el.x));
+    const minY = Math.min(...selectedElements.map((el) => el.y));
+    const maxX = Math.max(...selectedElements.map((el) => el.x + (el.width || 0)));
+    const maxY = Math.max(...selectedElements.map((el) => el.y + (el.height || 0)));
+    const groupWidth = Math.max(24, maxX - minX);
+    const groupHeight = Math.max(24, maxY - minY);
+
+    const groupId = `group_${Date.now()}`;
+    const groupCount = Object.values(elements).filter((e) => e.type === 'group').length + 1;
+    const groupName = `Group ${groupCount}`;
+
+    const newGroup: CanvasElement = {
+      id: groupId,
+      name: groupName,
+      type: 'group',
+      x: minX,
+      y: minY,
+      width: groupWidth,
+      height: groupHeight,
+      rotation: 0,
+      borderRadius: 0,
+      fill: 'transparent',
+      fillOpacity: 100,
+      stroke: 'none',
+      strokeWidth: 0,
+      shadowBlur: 0,
+      shadowY: 0,
+      shadowSpread: 0,
+      visible: true,
+      locked: false,
+      parentId: targetParentId,
+    };
+
+    const nextElements = { ...elements, [groupId]: newGroup };
+
+    // Reparent children to new group and offset coordinates
+    selectedElements.forEach((el) => {
+      nextElements[el.id] = {
+        ...el,
+        parentId: groupId,
+        x: el.x - minX,
+        y: el.y - minY,
+      };
+    });
+
+    updateElementsWithHistory(nextElements);
+    setSelectedElementId(groupId);
+    setSelectedElementIds([groupId]);
+    showToast(`Grouped ${selectedElements.length} elements into "${groupName}"`, 'success');
+  }, [
+    elements,
+    selectedElementIds,
+    selectedElementId,
+    devicePreview,
+    updateElementsWithHistory,
+    setSelectedElementId,
+    setSelectedElementIds,
+    showToast,
+  ]);
+
+  // Ungroup a group container and restore its children to the parent frame
+  const handleUngroupElements = useCallback(
+    (targetGroupId?: string) => {
+      let groupId = targetGroupId;
+      if (!groupId) {
+        if (selectedElementId && elements[selectedElementId]?.type === 'group') {
+          groupId = selectedElementId;
+        } else {
+          const groupInSelection = selectedElementIds.find(
+            (id) => elements[id]?.type === 'group'
+          );
+          if (groupInSelection) {
+            groupId = groupInSelection;
+          } else if (selectedElementId && elements[selectedElementId]?.parentId) {
+            const parent = elements[elements[selectedElementId].parentId!];
+            if (parent && parent.type === 'group') {
+              groupId = parent.id;
+            }
+          }
+        }
+      }
+
+      if (!groupId || !elements[groupId] || elements[groupId].type !== 'group') {
+        showToast('Select a group to ungroup', 'info');
+        return;
+      }
+
+      const group = elements[groupId];
+      const targetParentId =
+        group.parentId ||
+        (devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+
+      const nextElements = { ...elements };
+      delete nextElements[groupId];
+
+      const children = Object.values(elements).filter((el) => el.parentId === groupId);
+      const childIds: string[] = [];
+
+      children.forEach((child) => {
+        childIds.push(child.id);
+        nextElements[child.id] = {
+          ...child,
+          parentId: targetParentId,
+          x: group.x + child.x,
+          y: group.y + child.y,
+        };
+      });
+
+      updateElementsWithHistory(nextElements);
+      if (childIds.length > 0) {
+        setSelectedElementIds(childIds);
+        setSelectedElementId(childIds[childIds.length - 1]);
+      } else {
+        setSelectedElementId(targetParentId);
+        setSelectedElementIds([targetParentId]);
+      }
+      showToast(`Ungrouped "${group.name}"`, 'info');
+    },
+    [
+      elements,
+      selectedElementId,
+      selectedElementIds,
+      devicePreview,
+      updateElementsWithHistory,
+      setSelectedElementId,
+      setSelectedElementIds,
+      showToast,
+    ]
   );
 
   const handleApplyColor = useCallback(
@@ -500,6 +700,20 @@ export default function App() {
         return;
       }
 
+      // Group shortcut: Cmd+G / Ctrl+G
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleGroupElements();
+        return;
+      }
+
+      // Ungroup shortcut: Cmd+Shift+G / Ctrl+Shift+G
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleUngroupElements();
+        return;
+      }
+
       // Export modal: Cmd+E / Ctrl+E
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
         e.preventDefault();
@@ -596,7 +810,9 @@ export default function App() {
           setCurrentTool('comment');
           break;
         case 'g':
-          toggleGrid();
+          if (!e.metaKey && !e.ctrlKey) {
+            toggleGrid();
+          }
           break;
       }
     };
@@ -616,6 +832,8 @@ export default function App() {
     handleRedo,
     handleUndo,
     handleDuplicateElement,
+    handleGroupElements,
+    handleUngroupElements,
     setZoom,
     resetZoom,
     handleUpdateSelectedElement,
@@ -759,6 +977,8 @@ export default function App() {
             onRedo={handleRedo}
             canUndo={canUndo}
             canRedo={canRedo}
+            onGroup={handleGroupElements}
+            onUngroup={handleUngroupElements}
             onOpenShortcuts={() => openModal('shortcuts')}
             onImportMaterialKit={handleImportMaterialKit}
             onImportIOSKit={handleImportIOSKit}
@@ -787,6 +1007,11 @@ export default function App() {
               }}
               selectedElementId={selectedElementId}
               setSelectedElementId={setSelectedElementId}
+              selectedElementIds={selectedElementIds}
+              setSelectedElementIds={setSelectedElementIds}
+              toggleElementSelection={toggleElementSelection}
+              onGroup={handleGroupElements}
+              onUngroup={handleUngroupElements}
               elements={elements}
               setElements={setElementsWrapper}
               onInsertElement={handleInsertElement}
@@ -837,6 +1062,11 @@ export default function App() {
                 devicePreview={devicePreview}
                 selectedElementId={selectedElementId}
                 setSelectedElementId={setSelectedElementId}
+                selectedElementIds={selectedElementIds}
+                setSelectedElementIds={setSelectedElementIds}
+                toggleElementSelection={toggleElementSelection}
+                onGroup={handleGroupElements}
+                onUngroup={handleUngroupElements}
                 elements={elements}
                 setElements={setElementsWrapper}
                 onUpdateElementWithHistory={updateElementsWithHistory}
@@ -858,6 +1088,13 @@ export default function App() {
               allElements={elements}
               projectTitle={projectTitle}
               devicePreview={devicePreview}
+              selectedElementIds={selectedElementIds}
+              onGroup={handleGroupElements}
+              onUngroup={handleUngroupElements}
+              onSelectElement={(id) => {
+                setSelectedElementId(id);
+                setSelectedElementIds([id]);
+              }}
               onUpdateElement={handleUpdateSelectedElement}
               onExportSelected={() => openModal('export')}
               onOpenPrototype={() => openModal('prototype')}

@@ -32,6 +32,7 @@ export type SettingsTab =
 
 export type CanvasElementType =
   | 'frame'
+  | 'group'
   | 'rectangle'
   | 'text'
   | 'button'

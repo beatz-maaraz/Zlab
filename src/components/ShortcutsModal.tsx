@@ -25,6 +25,8 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
+  FolderPlus,
+  FolderMinus,
 } from 'lucide-react';
 
 export interface CommandItem {
@@ -144,6 +146,24 @@ export const ALL_COMMANDS: CommandItem[] = [
     keys: ['⌘', 'D'],
     actionId: 'duplicate',
     icon: <Copy className="w-3.5 h-3.5 text-[#d2bbff]" />,
+  },
+  {
+    id: 'edit-group',
+    title: 'Group Selection',
+    description: 'Bundle selected components and elements into a unified group container',
+    category: 'Edit',
+    keys: ['⌘', 'G'],
+    actionId: 'group',
+    icon: <FolderPlus className="w-3.5 h-3.5 text-[#9fcaff]" />,
+  },
+  {
+    id: 'edit-ungroup',
+    title: 'Ungroup Selection',
+    description: 'Disassemble selected group container back to individual components',
+    category: 'Edit',
+    keys: ['⌘', '⇧', 'G'],
+    actionId: 'ungroup',
+    icon: <FolderMinus className="w-3.5 h-3.5 text-[#f59e0b]" />,
   },
   {
     id: 'edit-delete',

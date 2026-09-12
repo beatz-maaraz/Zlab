@@ -12,6 +12,10 @@ interface EditorStoreState {
   setDevicePreview: (mode: 'desktop' | 'mobile') => void;
   selectedElementId: string;
   setSelectedElementId: (id: string) => void;
+  selectedElementIds: string[];
+  setSelectedElementIds: (ids: string[]) => void;
+  toggleElementSelection: (id: string) => void;
+  clearSelection: () => void;
   showGrid: boolean;
   setShowGrid: (value: boolean | ((prev: boolean) => boolean)) => void;
   toggleGrid: () => void;
@@ -44,7 +48,36 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
   setDevicePreview: (devicePreview) => set({ devicePreview }),
 
   selectedElementId: 'desktop-1440',
-  setSelectedElementId: (id) => set({ selectedElementId: id }),
+  setSelectedElementId: (id) =>
+    set({
+      selectedElementId: id,
+      selectedElementIds: id ? [id] : [],
+    }),
+
+  selectedElementIds: ['desktop-1440'],
+  setSelectedElementIds: (ids) =>
+    set({
+      selectedElementIds: ids,
+      selectedElementId: ids.length > 0 ? ids[ids.length - 1] : '',
+    }),
+
+  toggleElementSelection: (id) =>
+    set((state) => {
+      const exists = state.selectedElementIds.includes(id);
+      const newIds = exists
+        ? state.selectedElementIds.filter((item) => item !== id)
+        : [...state.selectedElementIds, id];
+      return {
+        selectedElementIds: newIds,
+        selectedElementId: newIds.length > 0 ? newIds[newIds.length - 1] : '',
+      };
+    }),
+
+  clearSelection: () =>
+    set({
+      selectedElementId: '',
+      selectedElementIds: [],
+    }),
 
   showGrid: false,
   setShowGrid: (value) =>

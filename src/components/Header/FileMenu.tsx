@@ -8,6 +8,8 @@ import {
   Keyboard,
   Layers,
   Copy,
+  FolderPlus,
+  FolderMinus,
 } from 'lucide-react';
 
 interface FileMenuProps {
@@ -23,6 +25,8 @@ interface FileMenuProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onGroup?: () => void;
+  onUngroup?: () => void;
   zoom: number;
   setZoom: (zoom: number | ((prev: number) => number)) => void;
   devicePreview: 'desktop' | 'mobile';
@@ -42,6 +46,8 @@ export const FileMenu: React.FC<FileMenuProps> = ({
   onRedo,
   canUndo,
   canRedo,
+  onGroup,
+  onUngroup,
   zoom,
   setZoom,
   devicePreview,
@@ -183,6 +189,31 @@ export const FileMenu: React.FC<FileMenuProps> = ({
             >
               <span>Redo</span>
               <span className="text-[10px] text-[#89919e]">⇧⌘Z</span>
+            </button>
+            <div className="h-[1px] bg-[#353534] my-1" />
+            <button
+              onClick={() => {
+                onGroup?.();
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#2a2a2a]"
+            >
+              <span className="flex items-center gap-2">
+                <FolderPlus className="w-3.5 h-3.5 text-[#9fcaff]" /> Group Selection
+              </span>
+              <span className="text-[10px] text-[#89919e]">⌘G</span>
+            </button>
+            <button
+              onClick={() => {
+                onUngroup?.();
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#2a2a2a]"
+            >
+              <span className="flex items-center gap-2">
+                <FolderMinus className="w-3.5 h-3.5 text-[#f59e0b]" /> Ungroup Selection
+              </span>
+              <span className="text-[10px] text-[#89919e]">⇧⌘G</span>
             </button>
           </div>
         )}

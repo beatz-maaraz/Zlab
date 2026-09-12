@@ -22,6 +22,8 @@ export interface HeaderProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onGroup?: () => void;
+  onUngroup?: () => void;
   onOpenShortcuts?: () => void;
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
@@ -46,6 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRedo,
   canUndo,
   canRedo,
+  onGroup,
+  onUngroup,
   onOpenShortcuts,
   onImportMaterialKit,
   onImportIOSKit,
@@ -83,6 +87,8 @@ export const Header: React.FC<HeaderProps> = ({
             onRedo={onRedo}
             canUndo={canUndo}
             canRedo={canRedo}
+            onGroup={onGroup}
+            onUngroup={onUngroup}
             zoom={zoom}
             setZoom={setZoom}
             devicePreview={devicePreview}

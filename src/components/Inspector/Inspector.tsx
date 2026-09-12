@@ -9,6 +9,10 @@ import {
   Sliders,
   Play,
   Code2,
+  Folder,
+  FolderPlus,
+  FolderMinus,
+  Layers,
 } from 'lucide-react';
 import { CanvasElement, InspectorTab } from '../../types';
 import { PositionSection } from './PositionSection';
@@ -32,6 +36,10 @@ export interface InspectorProps {
   onOpenPrototype?: () => void;
   onDeleteElement?: (id: string) => void;
   onDuplicateElement?: (id: string) => void;
+  selectedElementIds?: string[];
+  onGroup?: () => void;
+  onUngroup?: (groupId?: string) => void;
+  onSelectElement?: (id: string) => void;
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
 }
@@ -46,6 +54,10 @@ export const Inspector: React.FC<InspectorProps> = ({
   onOpenPrototype,
   onDeleteElement,
   onDuplicateElement,
+  selectedElementIds = [],
+  onGroup,
+  onUngroup,
+  onSelectElement,
   width = 288,
   onStartResize,
 }) => {
@@ -86,6 +98,17 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Ungroup button for group elements */}
+          {selectedElement.type === 'group' && onUngroup && (
+            <button
+              onClick={() => onUngroup(selectedElement.id)}
+              className="p-1 text-[#f59e0b] hover:text-[#fbbf24] hover:bg-[#f59e0b]/20 rounded transition-colors"
+              title="Ungroup components (⌘⇧G)"
+            >
+              <FolderMinus className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {/* Pin/Fix toggle */}
           <button
             onClick={() =>
@@ -206,6 +229,82 @@ export const Inspector: React.FC<InspectorProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {activeTab === 'design' && (
           <>
+            {/* Multi-selection Banner */}
+            {selectedElementIds && selectedElementIds.length > 1 && (
+              <div className="p-3 bg-[#0d99ff]/10 border-b border-[#0d99ff]/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-[#9fcaff]" />
+                    <span className="text-xs font-semibold text-[#9fcaff]">Multiple Components</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-[#0d99ff] px-2 py-0.5 rounded bg-[#0d99ff]/20">
+                    {selectedElementIds.length} Selected
+                  </span>
+                </div>
+                {onGroup && (
+                  <button
+                    onClick={onGroup}
+                    className="w-full py-1.5 px-3 bg-[#0d99ff] hover:bg-[#007acc] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                    <span>Group Selection (⌘G)</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Group Container Details */}
+            {selectedElement.type === 'group' && (
+              <div className="p-3 bg-[#201f1f]/70 border-b border-[#2a2a2a]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Folder className="w-4 h-4 text-[#fbbf24]" />
+                    <span className="text-xs font-semibold text-[#e5e2e1]">Group Container</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#89919e] px-1.5 py-0.5 rounded bg-[#171717] border border-[#353534]">
+                    {Object.values(allElements).filter((c) => c.parentId === selectedElement.id).length} items
+                  </span>
+                </div>
+                {onUngroup && (
+                  <button
+                    onClick={() => onUngroup(selectedElement.id)}
+                    className="w-full py-1.5 px-3 bg-[#f59e0b]/15 hover:bg-[#f59e0b]/25 border border-[#f59e0b]/40 text-[#fbbf24] text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98]"
+                  >
+                    <FolderMinus className="w-3.5 h-3.5" />
+                    <span>Ungroup Selection (⌘⇧G)</span>
+                  </button>
+                )}
+                {/* Child elements list */}
+                {(() => {
+                  const children = Object.values(allElements).filter(
+                    (c) => c.parentId === selectedElement.id
+                  );
+                  if (children.length === 0) return null;
+                  return (
+                    <div className="mt-2.5 space-y-1">
+                      <span className="text-[10px] text-[#89919e] uppercase font-bold tracking-wider">
+                        Components Inside Group:
+                      </span>
+                      <div className="max-h-32 overflow-y-auto space-y-0.5">
+                        {children.map((child) => (
+                          <div
+                            key={child.id}
+                            onClick={() => onSelectElement?.(child.id)}
+                            className="flex items-center justify-between px-2 py-1 bg-[#141414] hover:bg-[#252525] rounded text-[11px] cursor-pointer text-[#bfc7d5] hover:text-[#e5e2e1] transition-colors"
+                          >
+                            <span className="truncate">{child.name}</span>
+                            <span className="text-[9px] font-mono text-[#89919e] uppercase">
+                              {child.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <PositionSection
               element={selectedElement}
               onUpdate={onUpdateElement}

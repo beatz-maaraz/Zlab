@@ -24,6 +24,9 @@ import {
   Move,
   RotateCw,
   LayoutDashboard,
+  Folder,
+  FolderPlus,
+  FolderMinus,
 } from 'lucide-react';
 import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
 import { DynamicIcon } from './DynamicIcon';
@@ -41,6 +44,11 @@ interface CanvasProps {
   devicePreview: 'desktop' | 'mobile';
   selectedElementId: string;
   setSelectedElementId: (id: string) => void;
+  selectedElementIds?: string[];
+  setSelectedElementIds?: (ids: string[]) => void;
+  toggleElementSelection?: (id: string) => void;
+  onGroup?: () => void;
+  onUngroup?: (groupId?: string) => void;
   elements: Record<string, CanvasElement>;
   setElements: React.Dispatch<React.SetStateAction<Record<string, CanvasElement>>>;
   onUpdateElementWithHistory?: (newElements: Record<string, CanvasElement>) => void;
@@ -60,6 +68,11 @@ export const Canvas: React.FC<CanvasProps> = ({
   devicePreview,
   selectedElementId,
   setSelectedElementId,
+  selectedElementIds = [],
+  setSelectedElementIds,
+  toggleElementSelection,
+  onGroup,
+  onUngroup,
   elements,
   setElements,
   onUpdateElementWithHistory,
@@ -141,6 +154,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Inline text editing state
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
+  // Marquee drag-selection state
+  const [marqueeState, setMarqueeState] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
   const [comments, setComments] = useState<CanvasComment[]>([
     {
       id: 'c1',
@@ -168,7 +189,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         (e.target as HTMLElement).id === 'canvas-viewport' ||
         (e.target as HTMLElement).id === 'preview-stage'
       ) {
-        setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+        const rootId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+        setSelectedElementId(rootId);
+        if (setSelectedElementIds) setSelectedElementIds([rootId]);
         setEditingTextId(null);
       }
     }
@@ -321,11 +344,52 @@ export const Canvas: React.FC<CanvasProps> = ({
         const currX = Math.round((e.clientX - rect.left) / totalScale);
         const currY = Math.round((e.clientY - rect.top) / totalScale);
         setDrawingState((prev) => (prev ? { ...prev, currentX: currX, currentY: currY } : null));
+        return;
+      }
+
+      // 6. Marquee Selection
+      if (marqueeState && artboardRef.current) {
+        const rect = artboardRef.current.getBoundingClientRect();
+        const currX = Math.round((e.clientX - rect.left) / totalScale);
+        const currY = Math.round((e.clientY - rect.top) / totalScale);
+        setMarqueeState((prev) => (prev ? { ...prev, currentX: currX, currentY: currY } : null));
+
+        const minX = Math.min(marqueeState.startX, currX);
+        const maxX = Math.max(marqueeState.startX, currX);
+        const minY = Math.min(marqueeState.startY, currY);
+        const maxY = Math.max(marqueeState.startY, currY);
+
+        if (maxX - minX > 6 || maxY - minY > 6) {
+          const hits = (Object.values(elements) as CanvasElement[]).filter((el) => {
+            if (
+              el.id === 'desktop-1440' ||
+              el.id === 'mobile-app-view' ||
+              el.id === 'default-artboard-frame' ||
+              el.id === 'hero-bg' ||
+              el.visible === false
+            ) {
+              return false;
+            }
+            // If element is child of a group, check if its parent group is hit instead of child directly
+            if (el.parentId && elements[el.parentId]?.type === 'group') {
+              return false;
+            }
+            const elRight = el.x + (el.width || 0);
+            const elBottom = el.y + (el.height || 0);
+            return el.x < maxX && elRight > minX && el.y < maxY && elBottom > minY;
+          }).map((el) => el.id);
+
+          if (hits.length > 0) {
+            if (setSelectedElementIds) setSelectedElementIds(hits);
+            setSelectedElementId(hits[hits.length - 1]);
+          }
+        }
       }
     };
 
     const handleMouseUp = () => {
       if (isPanning) setIsPanning(false);
+      if (marqueeState) setMarqueeState(null);
 
       if (draggingId) {
         setDraggingId(null);
@@ -555,14 +619,34 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
-    // Default: select active artboard
-    setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+    // Default: select active artboard and initialize marquee selection
+    const activeArtId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+    setSelectedElementId(activeArtId);
+    if (setSelectedElementIds) setSelectedElementIds([activeArtId]);
+
+    if (currentTool === 'move') {
+      setMarqueeState({
+        startX: clickX,
+        startY: clickY,
+        currentX: clickX,
+        currentY: clickY,
+      });
+    }
   };
 
   // Start dragging an element
   const handleElementMouseDown = (e: React.MouseEvent, el: CanvasElement) => {
     e.stopPropagation();
+
+    if (e.shiftKey && toggleElementSelection) {
+      toggleElementSelection(el.id);
+      return;
+    }
+
     setSelectedElementId(el.id);
+    if (setSelectedElementIds) {
+      setSelectedElementIds([el.id]);
+    }
 
     if (el.locked || currentTool === 'hand' || currentTool !== 'move') return;
 
@@ -640,37 +724,45 @@ export const Canvas: React.FC<CanvasProps> = ({
     const allEls = Object.values(elements) as CanvasElement[];
 
     // 1. Elements directly parented to this active artboard
+    // Note: Do not include items that belong to a group container, as their parent group renders them
     const matching = allEls.filter(
       (el) =>
         el.id !== 'desktop-1440' &&
         el.id !== 'mobile-app-view' &&
         el.id !== 'default-artboard-frame' &&
         el.id !== 'hero-bg' &&
+        (!el.parentId || !elements[el.parentId] || elements[el.parentId].type !== 'group') &&
         (el.parentId === artboardId || (!el.parentId && (devicePreview === 'desktop' || !allEls.some((e) => e.parentId === 'mobile-app-view'))))
     );
 
     let result = matching;
-    // If no specific children exist for this mode, show all design elements
-    // so nothing vanishes when switching preview
+    // If no specific children exist for this mode, show all top-level design elements
     if (result.length === 0) {
       result = allEls.filter(
         (el) =>
           el.id !== 'desktop-1440' &&
           el.id !== 'mobile-app-view' &&
           el.id !== 'default-artboard-frame' &&
-          el.id !== 'hero-bg'
+          el.id !== 'hero-bg' &&
+          (!el.parentId || !elements[el.parentId] || elements[el.parentId].type !== 'group')
       );
     }
 
-    // Ensure selected element is always visible and interactive
+    // Ensure selected element (or its parent group) is always visible and interactive
     if (selectedElementId && elements[selectedElementId]) {
       const sel = elements[selectedElementId];
       if (
         sel.id !== 'desktop-1440' &&
-        sel.id !== 'mobile-app-view' &&
-        !result.some((r) => r.id === sel.id)
+        sel.id !== 'mobile-app-view'
       ) {
-        result = [...result, sel];
+        if (sel.parentId && elements[sel.parentId]?.type === 'group') {
+          const parentGroup = elements[sel.parentId];
+          if (!result.some((r) => r.id === parentGroup.id)) {
+            result = [...result, parentGroup];
+          }
+        } else if (!result.some((r) => r.id === sel.id)) {
+          result = [...result, sel];
+        }
       }
     }
 
@@ -1246,6 +1338,74 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // 9. Frame Containers / Rectangles
     const isGlassFrame = el.glassEffect && el.glassEffect !== 'none' || el.materialPreset === 'glass';
+    if (el.type === 'group') {
+      const groupChildren = (Object.values(elements) as CanvasElement[]).filter(
+        (child) => child.parentId === el.id && child.visible !== false
+      );
+
+      return (
+        <div className="w-full h-full relative pointer-events-auto">
+          {groupChildren.map((child) => {
+            const isChildSelected = selectedElementId === child.id || (selectedElementIds?.includes(child.id) ?? false);
+            return (
+              <div
+                key={child.id}
+                id={`canvas-el-${child.id}`}
+                style={{
+                  position: 'absolute',
+                  left: `${child.x}px`,
+                  top: `${child.y}px`,
+                  width: `${child.width}px`,
+                  height: `${child.height}px`,
+                  transform: child.rotation ? `rotate(${child.rotation}deg)` : undefined,
+                  zIndex: isChildSelected ? 35 : 10,
+                }}
+                className={`transition-shadow select-none ${
+                  child.locked ? 'cursor-not-allowed' : 'cursor-move'
+                } ${
+                  isChildSelected
+                    ? 'ring-2 ring-[#0d99ff] ring-offset-1 ring-offset-[#131313]'
+                    : 'hover:ring-1 hover:ring-[#0d99ff]/50'
+                }`}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (e.shiftKey && toggleElementSelection) {
+                    toggleElementSelection(child.id);
+                    return;
+                  }
+                  setSelectedElementId(child.id);
+                  if (setSelectedElementIds) {
+                    setSelectedElementIds([child.id]);
+                  }
+                  if (!child.locked && currentTool === 'move') {
+                    setDraggingId(child.id);
+                    setDragStart({
+                      mouseX: e.clientX,
+                      mouseY: e.clientY,
+                      initialX: child.x,
+                      initialY: child.y,
+                    });
+                  }
+                }}
+              >
+                {renderElementContent(child)}
+
+                {/* Child Name Badge when specifically selected */}
+                {isChildSelected && selectedElementId === child.id && (
+                  <div className="absolute -bottom-5 left-0 bg-[#0d99ff] text-[#002f55] text-[9px] font-mono px-1.5 py-0.5 rounded font-bold shadow flex items-center gap-1 z-50 whitespace-nowrap">
+                    <span>{child.name}</span>
+                    <span className="opacity-75">
+                      {child.width}×{child.height}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     return (
       <div
         style={{
@@ -1275,7 +1435,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Reusable interactive artboard child element renderer
   const renderArtboardItem = (el: CanvasElement) => {
-    const isSelected = selectedElementId === el.id;
+    const isSelected = selectedElementId === el.id || (selectedElementIds?.includes(el.id) ?? false);
     if (el.visible === false) return null;
 
     return (
@@ -1290,13 +1450,15 @@ export const Canvas: React.FC<CanvasProps> = ({
           width: `${el.width}px`,
           height: `${el.height}px`,
           transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
-          zIndex: isSelected ? 40 : 20,
+          zIndex: isSelected ? 40 : el.type === 'group' ? 15 : 20,
         }}
         className={`group transition-shadow select-none ${
           el.locked ? 'cursor-not-allowed' : 'cursor-move'
         } ${
           isSelected
             ? 'ring-2 ring-[#0d99ff] ring-offset-1 ring-offset-[#131313]'
+            : el.type === 'group'
+            ? 'border border-dashed border-white/20 hover:border-[#0d99ff]/60'
             : 'hover:ring-1 hover:ring-[#0d99ff]/60'
         }`}
       >
@@ -1361,7 +1523,14 @@ export const Canvas: React.FC<CanvasProps> = ({
 
             {/* Dimensions & Name Pill */}
             <div className="absolute -bottom-6 left-0 bg-[#0d99ff] text-[#002f55] text-[9px] font-mono px-2 py-0.5 rounded font-bold shadow flex items-center gap-1.5 z-50 whitespace-nowrap">
-              <span>{el.name}</span>
+              {el.type === 'group' ? (
+                <span className="flex items-center gap-1">
+                  <Folder className="w-3 h-3" />
+                  {el.name} ({Object.values(elements).filter((c) => c.parentId === el.id).length} items)
+                </span>
+              ) : (
+                <span>{el.name}</span>
+              )}
               <span className="opacity-75">
                 {el.width}×{el.height} • ({el.x}, {el.y})
               </span>
@@ -1372,6 +1541,17 @@ export const Canvas: React.FC<CanvasProps> = ({
               className="absolute -top-9 right-0 bg-[#1c1b1b]/95 backdrop-blur border border-[#353534] rounded-md px-1.5 py-0.5 flex items-center gap-1 shadow-xl z-50 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Group quick ungroup button */}
+              {el.type === 'group' && onUngroup && (
+                <button
+                  onClick={() => onUngroup(el.id)}
+                  className="px-1.5 py-0.5 rounded bg-[#f59e0b]/20 hover:bg-[#f59e0b]/35 text-[#fbbf24] text-[10px] font-semibold transition-colors flex items-center gap-1 mr-0.5"
+                  title="Ungroup components (⌘⇧G)"
+                >
+                  <FolderMinus className="w-3 h-3" />
+                  <span>Ungroup</span>
+                </button>
+              )}
               {/* Unfix / Unlock quick action badge if locked/fixed */}
               {(el.locked || el.fixed || el.pinned) && (
                 <button
@@ -1667,6 +1847,20 @@ export const Canvas: React.FC<CanvasProps> = ({
                       {Math.abs(drawingState.currentY - drawingState.startY)}
                     </div>
                   </div>
+                )}
+
+                {/* Marquee Drag Selection Box */}
+                {marqueeState && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${Math.min(marqueeState.startX, marqueeState.currentX)}px`,
+                      top: `${Math.min(marqueeState.startY, marqueeState.currentY)}px`,
+                      width: `${Math.abs(marqueeState.currentX - marqueeState.startX)}px`,
+                      height: `${Math.abs(marqueeState.currentY - marqueeState.startY)}px`,
+                    }}
+                    className="border border-[#0d99ff] bg-[#0d99ff]/15 rounded pointer-events-none z-50 shadow-sm"
+                  />
                 )}
               </>
             }

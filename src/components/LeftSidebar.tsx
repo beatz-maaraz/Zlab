@@ -37,6 +37,9 @@ import {
   Tag,
   Sliders,
   ArrowRight,
+  Folder,
+  FolderPlus,
+  FolderMinus,
 } from 'lucide-react';
 import { CanvasElement, AppView, LibraryComponentItem, ProjectPage } from '../types';
 import {
@@ -55,6 +58,11 @@ interface LeftSidebarProps {
   setCurrentView: (view: AppView) => void;
   selectedElementId: string;
   setSelectedElementId: (id: string) => void;
+  selectedElementIds?: string[];
+  setSelectedElementIds?: (ids: string[]) => void;
+  toggleElementSelection?: (id: string) => void;
+  onGroup?: () => void;
+  onUngroup?: (groupId?: string) => void;
   elements: Record<string, CanvasElement>;
   setElements: React.Dispatch<React.SetStateAction<Record<string, CanvasElement>>>;
   onInsertElement: (element: CanvasElement) => void;
@@ -84,6 +92,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   setCurrentView,
   selectedElementId,
   setSelectedElementId,
+  selectedElementIds = [],
+  setSelectedElementIds,
+  toggleElementSelection,
+  onGroup,
+  onUngroup,
   elements,
   setElements,
   onInsertElement,
@@ -146,7 +159,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     e?.stopPropagation();
     setExpandedNodes((prev) => ({
       ...prev,
-      [nodeId]: !prev[nodeId],
+      [nodeId]: prev[nodeId] === undefined ? false : !prev[nodeId],
     }));
   };
 
@@ -155,13 +168,28 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     setElements((prev) => {
       const el = prev[elementId];
       if (!el) return prev;
-      return {
+      const nextVisible = el.visible === false ? true : false;
+      const updated: Record<string, CanvasElement> = {
         ...prev,
         [elementId]: {
           ...el,
-          visible: !el.visible,
+          visible: nextVisible,
         },
       };
+
+      // Cascade to all children if this element is a group
+      if (el.type === 'group') {
+        Object.values(prev).forEach((child) => {
+          if (child.parentId === elementId) {
+            updated[child.id] = {
+              ...child,
+              visible: nextVisible,
+            };
+          }
+        });
+      }
+
+      return updated;
     });
   };
 
@@ -395,12 +423,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         el.id !== 'desktop-1440' &&
         el.id !== 'mobile-app-view' &&
         el.parentId !== 'desktop-1440' &&
-        el.parentId !== 'mobile-app-view'
+        el.parentId !== 'mobile-app-view' &&
+        (!el.parentId || !elements[el.parentId] || elements[el.parentId].type !== 'group')
     );
   }, [elements]);
 
   // Element type icon helper
   const renderElementIcon = (el: CanvasElement) => {
+    if (el.type === 'group') return <Folder className="w-3.5 h-3.5 text-[#fbbf24] shrink-0" />;
     if (el.type === 'button') return <MousePointerClick className="w-3.5 h-3.5 text-[#d2bbff] shrink-0" />;
     if (el.type === 'text') return <Type className="w-3.5 h-3.5 text-[#9fcaff] shrink-0" />;
     if (el.type === 'grid' || el.type === 'card') return <Grid className="w-3.5 h-3.5 text-[#c8c6c5] shrink-0" />;
@@ -418,6 +448,156 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     if (el.type === 'shape') return <Circle className="w-3.5 h-3.5 text-[#fb7185] shrink-0" />;
     if (el.type === 'frame') return <Monitor className="w-3.5 h-3.5 text-[#bfc7d5] shrink-0" />;
     return <Square className="w-3.5 h-3.5 text-[#89919e] shrink-0" />;
+  };
+
+  // Recursive layer item renderer supporting nested groups
+  const renderLayerItem = (el: CanvasElement, isChildOfGroup = false) => {
+    const isSelected = selectedElementId === el.id || (selectedElementIds?.includes(el.id) ?? false);
+    const isRenaming = renamingId === el.id;
+    const isGroup = el.type === 'group';
+    const isExpanded = expandedNodes[el.id] !== false; // default expanded
+    const groupChildren = isGroup
+      ? (Object.values(elements) as CanvasElement[]).filter((c) => c.parentId === el.id)
+      : [];
+
+    return (
+      <div key={el.id} className="space-y-0.5">
+        <div
+          onClick={(e) => {
+            if (e.shiftKey) {
+              e.stopPropagation();
+              toggleElementSelection?.(el.id);
+            } else {
+              setSelectedElementId(el.id);
+              setSelectedElementIds?.([el.id]);
+            }
+          }}
+          onDoubleClick={() => {
+            setRenamingId(el.id);
+            setTempName(el.name);
+          }}
+          className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors ${
+            isSelected
+              ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
+              : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
+          } ${isChildOfGroup ? 'pl-2.5' : ''}`}
+        >
+          <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
+            {isGroup && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand(el.id);
+                }}
+                className="text-[#9fcaff] hover:text-white p-0.5 cursor-pointer shrink-0"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+              </span>
+            )}
+            {renderElementIcon(el)}
+            {isRenaming ? (
+              <input
+                type="text"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onBlur={() => {
+                  if (tempName.trim()) {
+                    setElements((prev) => ({
+                      ...prev,
+                      [el.id]: { ...prev[el.id], name: tempName },
+                    }));
+                  }
+                  setRenamingId(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (tempName.trim()) {
+                      setElements((prev) => ({
+                        ...prev,
+                        [el.id]: { ...prev[el.id], name: tempName },
+                      }));
+                    }
+                    setRenamingId(null);
+                  }
+                }}
+                autoFocus
+                className="bg-[#201f1f] text-[#e5e2e1] px-1 rounded text-xs outline-none border border-[#0d99ff] w-full"
+              />
+            ) : (
+              <span className="truncate text-[11px]">{el.name}</span>
+            )}
+            {isGroup && (
+              <span className="text-[9px] font-mono text-[#89919e] px-1 rounded bg-[#201f1f] shrink-0">
+                {groupChildren.length}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
+            {isGroup && onUngroup && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUngroup(el.id);
+                }}
+                className="text-[#89919e] hover:text-[#f59e0b] p-0.5"
+                title="Ungroup components (⌘⇧G)"
+              >
+                <FolderMinus className="w-3 h-3" />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicateElement(el.id);
+              }}
+              className="text-[#89919e] hover:text-[#9fcaff] p-0.5"
+              title="Duplicate Node"
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => toggleVisibility(el.id, e)}
+              className="text-[#89919e] hover:text-[#e5e2e1] p-0.5"
+              title="Toggle Visibility"
+            >
+              {el.visible !== false ? (
+                <Eye className="w-3 h-3" />
+              ) : (
+                <EyeOff className="w-3 h-3 text-[#f59e0b]" />
+              )}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteElement(el.id);
+              }}
+              className="text-[#89919e] hover:text-[#ffb4ab] p-0.5"
+              title="Delete Element"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Nested children inside group */}
+        {isGroup && isExpanded && groupChildren.length > 0 && (
+          <div className="pl-3 border-l border-[#353534]/70 ml-3 space-y-0.5">
+            {groupChildren
+              .filter(
+                (child) =>
+                  !layerSearch ||
+                  child.name.toLowerCase().includes(layerSearch.toLowerCase())
+              )
+              .map((child) => renderLayerItem(child, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -777,6 +957,26 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
               {/* Layer Tree */}
               <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 text-xs text-[#e5e2e1]">
+                {/* Multi-selection Quick Action Banner */}
+                {selectedElementIds && selectedElementIds.length > 1 && (
+                  <div className="mb-2 p-2 bg-[#0d99ff]/10 border border-[#0d99ff]/30 rounded-md flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-[#9fcaff]">
+                      <Layers className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-semibold truncate">{selectedElementIds.length} items selected</span>
+                    </div>
+                    {onGroup && (
+                      <button
+                        onClick={onGroup}
+                        className="px-2 py-0.5 bg-[#0d99ff] hover:bg-[#007acc] text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-sm transition-colors"
+                        title="Group selection (⌘G)"
+                      >
+                        <FolderPlus className="w-3 h-3" />
+                        <span>Group (⌘G)</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Page Group */}
                 <div
                   className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#2a2a2a] group cursor-pointer"
@@ -855,95 +1055,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               !layerSearch ||
                               el.name.toLowerCase().includes(layerSearch.toLowerCase())
                           )
-                          .map((el) => {
-                            const isSelected = selectedElementId === el.id;
-                            const isRenaming = renamingId === el.id;
-
-                            return (
-                              <div
-                                key={el.id}
-                                onClick={() => setSelectedElementId(el.id)}
-                                onDoubleClick={() => {
-                                  setRenamingId(el.id);
-                                  setTempName(el.name);
-                                }}
-                                className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
-                                    : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
-                                }`}
-                              >
-                                <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
-                                  {renderElementIcon(el)}
-                                  {isRenaming ? (
-                                    <input
-                                      type="text"
-                                      value={tempName}
-                                      onChange={(e) => setTempName(e.target.value)}
-                                      onBlur={() => {
-                                        if (tempName.trim()) {
-                                          setElements((prev) => ({
-                                            ...prev,
-                                            [el.id]: { ...prev[el.id], name: tempName },
-                                          }));
-                                        }
-                                        setRenamingId(null);
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          if (tempName.trim()) {
-                                            setElements((prev) => ({
-                                              ...prev,
-                                              [el.id]: { ...prev[el.id], name: tempName },
-                                            }));
-                                          }
-                                          setRenamingId(null);
-                                        }
-                                      }}
-                                      autoFocus
-                                      className="bg-[#201f1f] text-[#e5e2e1] px-1 rounded text-xs outline-none border border-[#0d99ff] w-full"
-                                    />
-                                  ) : (
-                                    <span className="truncate text-[11px]">{el.name}</span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDuplicateElement(el.id);
-                                    }}
-                                    className="text-[#89919e] hover:text-[#9fcaff] p-0.5"
-                                    title="Duplicate Node"
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => toggleVisibility(el.id, e)}
-                                    className="text-[#89919e] hover:text-[#e5e2e1] p-0.5"
-                                    title="Toggle Visibility"
-                                  >
-                                    {el.visible !== false ? (
-                                      <Eye className="w-3 h-3" />
-                                    ) : (
-                                      <EyeOff className="w-3 h-3 text-[#f59e0b]" />
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDeleteElement(el.id);
-                                    }}
-                                    className="text-[#89919e] hover:text-[#ffb4ab] p-0.5"
-                                    title="Delete Element"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          .map((el) => renderLayerItem(el))}
                       </div>
                     )}
 
@@ -991,95 +1103,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               !layerSearch ||
                               el.name.toLowerCase().includes(layerSearch.toLowerCase())
                           )
-                          .map((el) => {
-                            const isSelected = selectedElementId === el.id;
-                            const isRenaming = renamingId === el.id;
-
-                            return (
-                              <div
-                                key={el.id}
-                                onClick={() => setSelectedElementId(el.id)}
-                                onDoubleClick={() => {
-                                  setRenamingId(el.id);
-                                  setTempName(el.name);
-                                }}
-                                className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
-                                    : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
-                                }`}
-                              >
-                                <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
-                                  {renderElementIcon(el)}
-                                  {isRenaming ? (
-                                    <input
-                                      type="text"
-                                      value={tempName}
-                                      onChange={(e) => setTempName(e.target.value)}
-                                      onBlur={() => {
-                                        if (tempName.trim()) {
-                                          setElements((prev) => ({
-                                            ...prev,
-                                            [el.id]: { ...prev[el.id], name: tempName },
-                                          }));
-                                        }
-                                        setRenamingId(null);
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          if (tempName.trim()) {
-                                            setElements((prev) => ({
-                                              ...prev,
-                                              [el.id]: { ...prev[el.id], name: tempName },
-                                            }));
-                                          }
-                                          setRenamingId(null);
-                                        }
-                                      }}
-                                      autoFocus
-                                      className="bg-[#201f1f] text-[#e5e2e1] px-1 rounded text-xs outline-none border border-[#0d99ff] w-full"
-                                    />
-                                  ) : (
-                                    <span className="truncate text-[11px]">{el.name}</span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDuplicateElement(el.id);
-                                    }}
-                                    className="text-[#89919e] hover:text-[#9fcaff] p-0.5"
-                                    title="Duplicate Node"
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => toggleVisibility(el.id, e)}
-                                    className="text-[#89919e] hover:text-[#e5e2e1] p-0.5"
-                                    title="Toggle Visibility"
-                                  >
-                                    {el.visible !== false ? (
-                                      <Eye className="w-3 h-3" />
-                                    ) : (
-                                      <EyeOff className="w-3 h-3 text-[#f59e0b]" />
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDeleteElement(el.id);
-                                    }}
-                                    className="text-[#89919e] hover:text-[#ffb4ab] p-0.5"
-                                    title="Delete Element"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          .map((el) => renderLayerItem(el))}
                       </div>
                     )}
 
@@ -1089,31 +1113,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         <span className="text-[10px] uppercase font-semibold text-[#89919e] px-2 block mb-1">
                           Other Canvas Nodes
                         </span>
-                        {otherElements.map((el) => (
-                          <div
-                            key={el.id}
-                            onClick={() => setSelectedElementId(el.id)}
-                            className={`flex items-center justify-between px-2 py-1 rounded cursor-pointer ${
-                              selectedElementId === el.id
-                                ? 'bg-[#0d99ff]/20 text-[#9fcaff]'
-                                : 'text-[#bfc7d5] hover:bg-[#2a2a2a]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 truncate">
-                              {renderElementIcon(el)}
-                              <span className="text-[11px] truncate">{el.name}</span>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteElement(el.id);
-                              }}
-                              className="text-[#89919e] hover:text-[#ffb4ab]"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
+                        {otherElements
+                          .filter(
+                            (el) =>
+                              !layerSearch ||
+                              el.name.toLowerCase().includes(layerSearch.toLowerCase())
+                          )
+                          .map((el) => renderLayerItem(el))}
                       </div>
                     )}
                   </div>
