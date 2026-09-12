@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { CanvasElement, Project, ProjectPage } from '../types';
 import { INITIAL_ELEMENTS } from '../mockData';
 import { computeAutoLayouts } from '../utils/layoutEngine';
+import {
+  syncProjectToFirestore,
+  fetchUserProjectsFromFirestore,
+  deleteProjectFromFirestore,
+} from '../lib/firestoreProjects';
 
 const STORAGE_KEY = 'zlab_projects_v2';
 const ACTIVE_PROJECT_KEY = 'zlab_active_project_id';
@@ -80,7 +85,10 @@ if (typeof window !== 'undefined') {
 interface ProjectStoreState {
   projects: Record<string, Project>;
   activeProjectId: string;
+  currentUserId: string | null;
   getActiveProject: () => Project;
+  syncWithUser: (userId: string) => Promise<void>;
+  onUserSignedOut: () => void;
   createProject: (
     name?: string,
     initialElements?: Record<string, CanvasElement>,
@@ -112,6 +120,48 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
   return {
     projects: initialProjects,
     activeProjectId: initialActiveId,
+    currentUserId: null,
+
+    syncWithUser: async (userId: string) => {
+      set({ currentUserId: userId });
+      try {
+        const cloudProjects = await fetchUserProjectsFromFirestore(userId);
+        if (cloudProjects.length > 0) {
+          const map: Record<string, Project> = {};
+          cloudProjects.forEach((p) => {
+            map[p.id] = p;
+          });
+          const mostRecent = cloudProjects.sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )[0];
+          set({
+            projects: map,
+            activeProjectId: mostRecent ? mostRecent.id : Object.keys(map)[0],
+          });
+          persistProjects(map);
+        } else {
+          // New user on Firebase: Seed initial showcase project to Firestore for them
+          const current = get().getActiveProject();
+          const userProject: Project = {
+            ...current,
+            id: `proj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            ownerId: userId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          const next = { [userProject.id]: userProject };
+          set({ projects: next, activeProjectId: userProject.id });
+          persistProjects(next);
+          await syncProjectToFirestore(userProject, userId);
+        }
+      } catch (err) {
+        console.warn('Failed to sync projects with Firestore:', err);
+      }
+    },
+
+    onUserSignedOut: () => {
+      set({ currentUserId: null });
+    },
 
     getActiveProject: () => {
       const { projects, activeProjectId } = get();
@@ -202,6 +252,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         };
       });
 
+      const { currentUserId } = get();
+      if (currentUserId) {
+        syncProjectToFirestore(newProject, currentUserId);
+      }
+
       return newProject;
     },
 
@@ -218,6 +273,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     },
 
     updateProject: (id: string, updates: Partial<Project>) => {
+      let updatedProject: Project | null = null;
       set((state) => {
         const current = state.projects[id];
         if (!current) return state;
@@ -227,14 +283,21 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
           ...updates,
           updatedAt: new Date().toISOString(),
         };
+        updatedProject = updated;
 
         const next = { ...state.projects, [id]: updated };
         persistProjects(next);
         return { projects: next };
       });
+
+      const { currentUserId } = get();
+      if (currentUserId && updatedProject) {
+        syncProjectToFirestore(updatedProject, currentUserId);
+      }
     },
 
     updateActiveProjectElements: (value) => {
+      let updatedProject: Project | null = null;
       set((state) => {
         const current = state.projects[state.activeProjectId];
         if (!current) return state;
@@ -253,11 +316,17 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
           pageElements,
           updatedAt: new Date().toISOString(),
         };
+        updatedProject = updated;
 
         const next = { ...state.projects, [state.activeProjectId]: updated };
         persistProjects(next);
         return { projects: next };
       });
+
+      const { currentUserId } = get();
+      if (currentUserId && updatedProject) {
+        syncProjectToFirestore(updatedProject, currentUserId);
+      }
     },
 
     deleteProject: (id: string) => {
@@ -288,6 +357,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
           activeProjectId: nextActive,
         };
       });
+
+      const { currentUserId } = get();
+      if (currentUserId) {
+        deleteProjectFromFirestore(id);
+      }
     },
 
     duplicateProject: (id: string) => {
@@ -312,6 +386,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         persistProjects(next);
         return { projects: next, activeProjectId: newId };
       });
+
+      const { currentUserId } = get();
+      if (currentUserId) {
+        syncProjectToFirestore(cloned, currentUserId);
+      }
 
       return cloned;
     },

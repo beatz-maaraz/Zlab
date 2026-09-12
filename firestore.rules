@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helper primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for UserProfile entity
+    function isValidUserProfile(data) {
+      return data.id is string && data.id.size() <= 128
+        && (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 256))
+        && (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 2048))
+        && (!('createdAt' in data) || data.createdAt is string)
+        && (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
+    // Validation for Project entity
+    function isValidProject(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.name is string && data.name.size() <= 200
+        && (!('description' in data) || (data.description is string && data.description.size() <= 2000))
+        && (!('projectType' in data) || (data.projectType is string && data.projectType.size() <= 100))
+        && (!('previewType' in data) || (data.previewType is string && data.previewType.size() <= 50))
+        && (!('projectStatus' in data) || (data.projectStatus is string && data.projectStatus.size() <= 50))
+        && (!('githubUrl' in data) || (data.githubUrl is string && data.githubUrl.size() <= 1024))
+        && (!('liveDemoUrl' in data) || (data.liveDemoUrl is string && data.liveDemoUrl.size() <= 1024))
+        && (!('activePageId' in data) || (data.activePageId is string && data.activePageId.size() <= 128))
+        && (!('elementsJson' in data) || (data.elementsJson is string && data.elementsJson.size() <= 2097152))
+        && (!('techStack' in data) || (data.techStack is list && data.techStack.size() <= 50))
+        && (!('pages' in data) || (data.pages is list && data.pages.size() <= 50))
+        && (!('createdAt' in data) || data.createdAt is string)
+        && (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
+    // Connectivity verification test endpoint
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // User Profile collection: private, owner-only
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create, update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUserProfile(incoming());
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      match /projects/{projectId} {
+        allow read, write: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    // Design Projects collection
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(projectId) && incoming().userId == request.auth.uid && isValidProject(incoming());
+      allow update: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid && incoming().userId == existing().userId && isValidProject(incoming());
+      allow delete: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid;
+    }
+  }
+}

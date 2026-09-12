@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile and authentication metadata",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Firebase user ID matching auth UID",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar image URL",
+          "maxLength": 2048
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of account creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of last account update"
+        }
+      },
+      "required": ["id"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Design project containing canvas elements, pages, and metadata",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique design project identifier",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Owner identifier",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Project title",
+          "maxLength": 200
+        },
+        "projectType": {
+          "type": "string",
+          "description": "Project category type",
+          "maxLength": 100
+        },
+        "previewType": {
+          "type": "string",
+          "description": "Canvas target viewport type (desktop, tablet, mobile)",
+          "maxLength": 50
+        },
+        "description": {
+          "type": "string",
+          "description": "Project notes and description",
+          "maxLength": 2000
+        },
+        "techStack": {
+          "type": "array",
+          "description": "Tags or framework chips"
+        },
+        "projectStatus": {
+          "type": "string",
+          "description": "Project workflow status",
+          "maxLength": 50
+        },
+        "githubUrl": {
+          "type": "string",
+          "description": "Optional repository URL",
+          "maxLength": 1024
+        },
+        "liveDemoUrl": {
+          "type": "string",
+          "description": "Optional live preview URL",
+          "maxLength": 1024
+        },
+        "activePageId": {
+          "type": "string",
+          "description": "Active page identifier",
+          "maxLength": 128
+        },
+        "pages": {
+          "type": "array",
+          "description": "Project canvas pages collection"
+        },
+        "elementsJson": {
+          "type": "string",
+          "description": "Serialized canvas element hierarchy for robust cross-session persistence",
+          "maxLength": 2097152
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "userId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "User profile collection storing individual user metadata and preferences"
+    },
+    "/projects/{projectId}": {
+      "schema": {
+        "$ref": "#/entities/Project"
+      },
+      "description": "User design projects storing canvas components, layout, and metadata"
+    }
+  }
+}

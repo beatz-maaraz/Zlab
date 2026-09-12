@@ -12,6 +12,8 @@ import {
   Mail,
   Lock,
   CheckCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { CanvasElement } from '../types';
 import { downloadInteractivePrototypeHtml } from '../utils/exportUtils';
@@ -33,6 +35,7 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
 }) => {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('mobile');
   const [showHotspots, setShowHotspots] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -594,13 +597,27 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
                     Password
                   </label>
                   <div className="flex items-center gap-2.5 bg-[#1c1c21] px-3.5 py-3 rounded-xl border border-[#2d2d32] text-xs text-white">
-                    <Lock className="w-4 h-4 text-[#89919e]" />
+                    <Lock className="w-4 h-4 text-[#89919e] shrink-0" />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       readOnly
-                      value="••••••••••••"
+                      value={showPassword ? 'password123!' : '••••••••••••'}
                       className="bg-transparent text-white outline-none w-full font-medium font-mono"
                     />
+                    <button
+                      type="button"
+                      id="btn-prototype-toggle-password"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[#89919e] hover:text-[#e5e2e1] transition-colors p-0.5 cursor-pointer shrink-0"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

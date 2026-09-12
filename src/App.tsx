@@ -19,7 +19,7 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react';
 
 import {
   CanvasElement,
@@ -39,6 +39,7 @@ import { useProjectStore } from './store/projectStore';
 import { useEditorStore } from './store/editorStore';
 import { useUIStore } from './store/uiStore';
 import { useHistoryStore } from './store/historyStore';
+import { useAuthStore } from './store/authStore';
 
 export default function App() {
   // Routing hook
@@ -701,15 +702,28 @@ export default function App() {
   const isEditorView = route.type === 'editor' || route.type === 'prototype';
 
   const { isAuthenticated } = useUIStore();
+  const { isInitialized } = useAuthStore();
   
   useEffect(() => {
+    if (!isInitialized) return;
     const isAuthRoute = ['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type);
     if (!isAuthenticated && !isAuthRoute) {
       navigate({ type: 'login' });
     } else if (isAuthenticated && isAuthRoute) {
       navigate({ type: 'dashboard' });
     }
-  }, [isAuthenticated, route.type, navigate]);
+  }, [isAuthenticated, isInitialized, route.type, navigate]);
+
+  if (!isInitialized) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a0b] text-[#e5e2e1]">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#003259] to-[#0d99ff] flex items-center justify-center mb-4 shadow-lg shadow-[#0d99ff]/20">
+          <Sparkles className="w-6 h-6 text-white animate-pulse" />
+        </div>
+        <Loader2 className="w-5 h-5 animate-spin text-[#0d99ff]" />
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
