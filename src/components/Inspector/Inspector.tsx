@@ -74,22 +74,34 @@ export const Inspector: React.FC<InspectorProps> = ({
   const [activeTab, setActiveTab] = useState<InspectorTab>('design');
 
   const handleAlign = (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distributeH' | 'distributeV') => {
-    if (!selectedElementIds || selectedElementIds.length < 2 || !onUpdateMultipleElements || !allElements) return;
+    if (!selectedElementIds || selectedElementIds.length === 0 || !onUpdateMultipleElements || !allElements) return;
     
     const elements = selectedElementIds.map(id => allElements[id]).filter(Boolean);
-    if (elements.length < 2) return;
+    if (elements.length === 0) return;
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    elements.forEach(el => {
-      if (el.x < minX) minX = el.x;
-      if (el.y < minY) minY = el.y;
-      if (el.x + el.width > maxX) maxX = el.x + el.width;
-      if (el.y + el.height > maxY) maxY = el.y + el.height;
-    });
+
+    if (elements.length === 1) {
+      const el = elements[0];
+      const parent = el.parentId ? allElements[el.parentId] : null;
+      if (!parent) return; // Cannot align without a parent frame
+      minX = 0;
+      minY = 0;
+      maxX = parent.width;
+      maxY = parent.height;
+    } else {
+      elements.forEach(el => {
+        if (el.x < minX) minX = el.x;
+        if (el.y < minY) minY = el.y;
+        if (el.x + el.width > maxX) maxX = el.x + el.width;
+        if (el.y + el.height > maxY) maxY = el.y + el.height;
+      });
+    }
 
     const updates: Record<string, Partial<CanvasElement>> = {};
 
     if (type === 'distributeH' || type === 'distributeV') {
+      if (elements.length < 3) return;
       const sorted = [...elements].sort((a, b) => type === 'distributeH' ? a.x - b.x : a.y - b.y);
       if (sorted.length > 2) {
         const first = sorted[0];
@@ -139,6 +151,9 @@ export const Inspector: React.FC<InspectorProps> = ({
 
   const isLocked = !!selectedElement.locked;
   const isPinned = !!(selectedElement.pinned || selectedElement.fixed);
+
+  const canAlign = selectedElementIds && (selectedElementIds.length > 1 || (selectedElementIds.length === 1 && selectedElement?.parentId));
+  const canDistribute = selectedElementIds && selectedElementIds.length > 2;
 
   return (
     <aside
@@ -299,42 +314,36 @@ export const Inspector: React.FC<InspectorProps> = ({
         {activeTab === 'design' && (
           <>
             {/* Multi-selection Banner */}
-            {selectedElementIds && selectedElementIds.length > 1 && (
+            {selectedElementIds && selectedElementIds.length > 1 && onGroup && (
               <div className="p-3 bg-[#0d99ff]/10 border-b border-[#0d99ff]/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-[#9fcaff]" />
-                    <span className="text-xs font-semibold text-[#9fcaff]">Multiple Components</span>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-[#0d99ff] px-2 py-0.5 rounded bg-[#0d99ff]/20">
-                    {selectedElementIds.length} Selected
-                  </span>
+                <button
+                  onClick={onGroup}
+                  className="w-full py-1.5 px-3 bg-[#0d99ff] hover:bg-[#007acc] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
+                >
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  <span>Group Selection (⌘G)</span>
+                </button>
+              </div>
+            )}
+
+            {/* Alignment Controls */}
+            {selectedElement && !isArtboard && (
+              <div className="px-3 py-2 border-b border-[#201f1f] flex items-center justify-between bg-[#141416]/30">
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => handleAlign('left')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Left"><AlignStartVertical className="w-4 h-4" /></button>
+                  <button onClick={() => handleAlign('center')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Horizontal Center"><AlignCenterVertical className="w-4 h-4" /></button>
+                  <button onClick={() => handleAlign('right')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Right"><AlignEndVertical className="w-4 h-4" /></button>
+                  
+                  <div className="w-[1px] h-3.5 bg-[#353534] mx-1" />
+                  
+                  <button onClick={() => handleAlign('top')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Top"><AlignStartHorizontal className="w-4 h-4" /></button>
+                  <button onClick={() => handleAlign('middle')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Vertical Center"><AlignCenterHorizontal className="w-4 h-4" /></button>
+                  <button onClick={() => handleAlign('bottom')} disabled={!canAlign} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Align Bottom"><AlignEndHorizontal className="w-4 h-4" /></button>
                 </div>
-                {onGroup && (
-                  <button
-                    onClick={onGroup}
-                    className="w-full py-1.5 px-3 mb-3 bg-[#0d99ff] hover:bg-[#007acc] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5" />
-                    <span>Group Selection (⌘G)</span>
-                  </button>
-                )}
-                
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <div className="flex gap-1">
-                    <button onClick={() => handleAlign('left')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Left"><AlignStartVertical className="w-4 h-4" /></button>
-                    <button onClick={() => handleAlign('center')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Horizontal Center"><AlignCenterVertical className="w-4 h-4" /></button>
-                    <button onClick={() => handleAlign('right')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Right"><AlignEndVertical className="w-4 h-4" /></button>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleAlign('top')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Top"><AlignStartHorizontal className="w-4 h-4" /></button>
-                    <button onClick={() => handleAlign('middle')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Vertical Center"><AlignCenterHorizontal className="w-4 h-4" /></button>
-                    <button onClick={() => handleAlign('bottom')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Bottom"><AlignEndHorizontal className="w-4 h-4" /></button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={() => handleAlign('distributeH')} className="flex-1 p-1.5 flex justify-center text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Distribute Horizontally"><AlignHorizontalSpaceAround className="w-4 h-4" /></button>
-                    <button onClick={() => handleAlign('distributeV')} className="flex-1 p-1.5 flex justify-center text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Distribute Vertically"><AlignVerticalSpaceAround className="w-4 h-4" /></button>
+
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => handleAlign('distributeH')} disabled={!canDistribute} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Distribute Horizontally"><AlignHorizontalSpaceAround className="w-4 h-4" /></button>
+                  <button onClick={() => handleAlign('distributeV')} disabled={!canDistribute} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Distribute Vertically"><AlignVerticalSpaceAround className="w-4 h-4" /></button>
                 </div>
               </div>
             )}
