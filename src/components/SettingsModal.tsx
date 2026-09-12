@@ -833,6 +833,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                     </div>
+                    {/* Toolbar Drag & Drop */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[#353534]/50">
+                      <div className="space-y-0.5">
+                        <div className="text-xs text-[#e5e2e1] font-medium">Toolbar Drag & Drop</div>
+                        <div className="text-[10px] text-[#89919e]">Enable drag and drop reordering of the 7 main toolbar components</div>
+                      </div>
+                      <div
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            enableToolbarDrag: !formData.enableToolbarDrag,
+                          })
+                        }
+                        className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${
+                          formData.enableToolbarDrag ? 'bg-[#9fcaff]' : 'bg-[#353534]'
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                            formData.enableToolbarDrag
+                              ? 'right-0.5 bg-[#003259]'
+                              : 'left-0.5 bg-[#89919e]'
+                          }`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

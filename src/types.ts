@@ -206,4 +206,5 @@ export interface UserSettings {
   company?: string;
   role?: string;
   highContrast?: boolean;
+  enableToolbarDrag?: boolean;
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ZLabLogo } from '../ZLabLogo';
 import { AppView } from '../../types';
-import { Check } from 'lucide-react';
+import { Check, Cloud } from 'lucide-react';
 
 interface ProjectTitleProps {
   projectTitle: string;
@@ -10,6 +10,7 @@ interface ProjectTitleProps {
   onToggleView?: () => void;
   onGoToHome?: () => void;
   onGoToProject?: () => void;
+  isSaving?: boolean;
   lastSavedText?: string;
 }
 
@@ -19,6 +20,7 @@ export const ProjectTitle: React.FC<ProjectTitleProps> = ({
   currentView,
   onToggleView,
   onGoToHome,
+  isSaving = false,
   lastSavedText = 'Saved',
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -97,8 +99,17 @@ export const ProjectTitle: React.FC<ProjectTitleProps> = ({
                   {projectTitle}
                 </span>
                 <span className="text-[9px] text-[#89919e] flex items-center gap-0.5 opacity-75">
-                  <Check className="w-2.5 h-2.5 text-[#34d399]" />
-                  <span>{lastSavedText}</span>
+                  {isSaving ? (
+                    <>
+                      <Cloud className="w-2.5 h-2.5 text-[#0d99ff] animate-pulse" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-2.5 h-2.5 text-[#34d399]" />
+                      <span>{lastSavedText}</span>
+                    </>
+                  )}
                 </span>
               </div>
             )}

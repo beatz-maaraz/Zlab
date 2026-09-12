@@ -43,6 +43,7 @@ export const INITIAL_SETTINGS: UserSettings = {
   gridDensity: 24,
   snapToGrid: true,
   interfaceScale: 'medium',
+  enableToolbarDrag: true,
   company: 'ZLab Inc.',
   role: 'Lead Designer',
   highContrast: false,

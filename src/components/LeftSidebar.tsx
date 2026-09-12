@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Layers,
   Component,
@@ -40,6 +40,10 @@ import {
   Folder,
   FolderPlus,
   FolderMinus,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Download,
 } from 'lucide-react';
 import { CanvasElement, AppView, LibraryComponentItem, ProjectPage } from '../types';
 import {
@@ -52,6 +56,7 @@ import {
 } from '../data/libraryData';
 import { DynamicIcon } from './DynamicIcon';
 import { ZLabLogo } from './ZLabLogo';
+import { ContextMenu, ContextMenuState, ContextMenuItem } from './ContextMenu';
 
 interface LeftSidebarProps {
   currentView: AppView;
@@ -147,8 +152,188 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState('');
 
+  // Drag-and-drop state for layer reordering
+  const [dragLayerId, setDragLayerId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const dragCounter = useRef(0);
+
+  // Reorder elements by moving dragId before or after targetId within the same sibling group
+  const handleLayerDrop = useCallback((dragId: string, targetId: string, position: 'before' | 'after') => {
+    if (dragId === targetId) return;
+    const dragEl = elements[dragId];
+    const targetEl = elements[targetId];
+    if (!dragEl || !targetEl) return;
+    // Only allow reorder within same parent
+    if (dragEl.parentId !== targetEl.parentId) return;
+
+    const parentId = dragEl.parentId;
+    // Get ordered sibling keys (same parent)
+    const allKeys = Object.keys(elements);
+    const siblingKeys = allKeys.filter((k) => elements[k].parentId === parentId);
+    const otherKeys = allKeys.filter((k) => elements[k].parentId !== parentId);
+
+    // Remove dragId from siblings
+    const filtered = siblingKeys.filter((k) => k !== dragId);
+    // Find target index in filtered list
+    const targetIdx = filtered.indexOf(targetId);
+    if (targetIdx === -1) return;
+
+    const insertIdx = position === 'after' ? targetIdx + 1 : targetIdx;
+    filtered.splice(insertIdx, 0, dragId);
+
+    // Rebuild elements Record preserving non-sibling order, inserting siblings in new order
+    const newElements: Record<string, CanvasElement> = {};
+    // First add all non-siblings in original order
+    for (const k of otherKeys) {
+      newElements[k] = elements[k];
+    }
+    // Then add siblings in new order
+    // Actually we need to preserve the interleaved order. Let's rebuild fully:
+    const reordered: Record<string, CanvasElement> = {};
+    let sibIdx = 0;
+    for (const k of allKeys) {
+      if (elements[k].parentId === parentId) {
+        // Replace with reordered sibling
+        reordered[filtered[sibIdx]] = elements[filtered[sibIdx]];
+        sibIdx++;
+      } else {
+        reordered[k] = elements[k];
+      }
+    }
+    setElements(reordered);
+  }, [elements, setElements]);
+
   // Feedback notification when item is inserted
   const [insertNotice, setInsertNotice] = useState<string | null>(null);
+
+  // Context menu state for right-click on layer items
+  const [layerContextMenu, setLayerContextMenu] = useState<ContextMenuState | null>(null);
+
+  const openLayerContextMenu = useCallback((e: React.MouseEvent, el: CanvasElement) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Select the item being right-clicked
+    setSelectedElementId(el.id);
+    setSelectedElementIds?.([el.id]);
+
+    const isLocked = el.locked;
+    const isVisible = el.visible !== false;
+
+    const items: ContextMenuItem[] = [
+      {
+        id: 'rename',
+        label: 'Rename',
+        icon: <Edit3 className="w-3.5 h-3.5" />,
+        shortcut: 'F2',
+        action: () => {
+          setRenamingId(el.id);
+          setTempName(el.name);
+        },
+      },
+      {
+        id: 'duplicate',
+        label: 'Duplicate',
+        icon: <Copy className="w-3.5 h-3.5" />,
+        shortcut: '⌘D',
+        action: () => onDuplicateElement(el.id),
+      },
+      {
+        id: 'visibility',
+        label: isVisible ? 'Hide' : 'Show',
+        icon: isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />,
+        shortcut: '⌘⇧H',
+        action: () => {
+          setElements((prev) => {
+            const current = prev[el.id];
+            if (!current) return prev;
+            return { ...prev, [el.id]: { ...current, visible: !isVisible } };
+          });
+        },
+      },
+      {
+        id: 'lock',
+        label: isLocked ? 'Unlock' : 'Lock',
+        icon: isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />,
+        shortcut: '⌘⇧L',
+        action: () => {
+          setElements((prev) => {
+            const current = prev[el.id];
+            if (!current) return prev;
+            return { ...prev, [el.id]: { ...current, locked: !isLocked } };
+          });
+        },
+      },
+      {
+        id: 'bring-forward',
+        label: 'Bring Forward',
+        icon: <ArrowUp className="w-3.5 h-3.5" />,
+        shortcut: '⌘]',
+        separator: true,
+        action: () => {
+          const parentId = el.parentId;
+          const allKeys = Object.keys(elements);
+          const siblingKeys = allKeys.filter((k) => elements[k].parentId === parentId);
+          const idx = siblingKeys.indexOf(el.id);
+          if (idx < siblingKeys.length - 1) {
+            handleLayerDrop(el.id, siblingKeys[idx + 1], 'after');
+          }
+        },
+      },
+      {
+        id: 'send-backward',
+        label: 'Send Backward',
+        icon: <ArrowDown className="w-3.5 h-3.5" />,
+        shortcut: '⌘[',
+        action: () => {
+          const parentId = el.parentId;
+          const allKeys = Object.keys(elements);
+          const siblingKeys = allKeys.filter((k) => elements[k].parentId === parentId);
+          const idx = siblingKeys.indexOf(el.id);
+          if (idx > 0) {
+            handleLayerDrop(el.id, siblingKeys[idx - 1], 'before');
+          }
+        },
+      },
+      {
+        id: 'export',
+        label: 'Quick Export (PNG)',
+        icon: <Download className="w-3.5 h-3.5" />,
+        shortcut: '⌘⇧E',
+        separator: true,
+        action: () => {
+          // Trigger a quick PNG export of this element via html-to-image
+          const domId = el.id === 'desktop-1440' || el.id === 'mobile-app-view'
+            ? el.id
+            : `canvas-el-${el.id}`;
+          const domEl = document.getElementById(domId);
+          if (domEl) {
+            import('html-to-image').then(({ toPng }) => {
+              toPng(domEl, { pixelRatio: 2 }).then((dataUrl) => {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `${el.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              });
+            });
+          }
+        },
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: <Trash2 className="w-3.5 h-3.5" />,
+        shortcut: 'Del',
+        danger: true,
+        separator: true,
+        action: () => onDeleteElement(el.id),
+      },
+    ];
+
+    setLayerContextMenu({ x: e.clientX, y: e.clientY, targetId: el.id, items });
+  }, [elements, setElements, setSelectedElementId, setSelectedElementIds, onDuplicateElement, onDeleteElement, handleLayerDrop, setRenamingId, setTempName]);
 
   const triggerNotice = (name: string) => {
     setInsertNotice(`Added "${name}" to canvas`);
@@ -451,7 +636,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   // Recursive layer item renderer supporting nested groups
-  const renderLayerItem = (el: CanvasElement, isChildOfGroup = false) => {
+  const renderLayerItem = (el: CanvasElement, isChildOfGroup = false, isLastChild = false) => {
     const isSelected = selectedElementId === el.id || (selectedElementIds?.includes(el.id) ?? false);
     const isRenaming = renamingId === el.id;
     const isGroup = el.type === 'group';
@@ -459,9 +644,119 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     const groupChildren = isGroup
       ? (Object.values(elements) as CanvasElement[]).filter((c) => c.parentId === el.id)
       : [];
+    const isDragTarget = dropTargetId === el.id;
+    const isBeingDragged = dragLayerId === el.id;
 
     return (
-      <div key={el.id} className="space-y-0.5">
+      <div
+        key={el.id}
+        className={`relative ${isBeingDragged ? 'opacity-40' : ''}`}
+        style={isChildOfGroup ? { paddingLeft: 16 } : undefined}
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          setDragLayerId(el.id);
+          e.dataTransfer.effectAllowed = 'move';
+          // Use a tiny transparent image so the browser default ghost doesn't obscure
+          const ghost = document.createElement('div');
+          ghost.style.width = '1px';
+          ghost.style.height = '1px';
+          ghost.style.opacity = '0';
+          document.body.appendChild(ghost);
+          e.dataTransfer.setDragImage(ghost, 0, 0);
+          requestAnimationFrame(() => document.body.removeChild(ghost));
+        }}
+        onDragEnd={() => {
+          setDragLayerId(null);
+          setDropTargetId(null);
+          setDropPosition(null);
+          dragCounter.current = 0;
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dragCounter.current++;
+          if (dragLayerId && dragLayerId !== el.id) {
+            setDropTargetId(el.id);
+          }
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+          dragCounter.current--;
+          if (dragCounter.current <= 0) {
+            dragCounter.current = 0;
+            if (dropTargetId === el.id) {
+              setDropTargetId(null);
+              setDropPosition(null);
+            }
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!dragLayerId || dragLayerId === el.id) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          setDropPosition(e.clientY < midY ? 'before' : 'after');
+          setDropTargetId(el.id);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dragLayerId && dropPosition) {
+            handleLayerDrop(dragLayerId, el.id, dropPosition);
+          }
+          setDragLayerId(null);
+          setDropTargetId(null);
+          setDropPosition(null);
+          dragCounter.current = 0;
+        }}
+      >
+        {/* Drop indicator line — before */}
+        {isDragTarget && dropPosition === 'before' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: isChildOfGroup ? 16 : 0,
+              right: 0,
+              height: 2,
+              backgroundColor: '#0d99ff',
+              borderRadius: 1,
+              zIndex: 50,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        {/* Tree connector lines for child items */}
+        {isChildOfGroup && (
+          <>
+            {/* Vertical guide line — stops at midpoint for last child, full height otherwise */}
+            <span
+              style={{
+                position: 'absolute',
+                left: 4,
+                top: 0,
+                width: 1,
+                height: isLastChild ? '50%' : '100%',
+                backgroundColor: '#353534',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* Horizontal branch connector — aligns to row center */}
+            <span
+              style={{
+                position: 'absolute',
+                left: 4,
+                top: '50%',
+                width: 10,
+                height: 1,
+                backgroundColor: '#353534',
+                pointerEvents: 'none',
+              }}
+            />
+          </>
+        )}
         <div
           onClick={(e) => {
             if (e.shiftKey) {
@@ -476,12 +771,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             setRenamingId(el.id);
             setTempName(el.name);
           }}
+          onContextMenu={(e) => openLayerContextMenu(e, el)}
           className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors ${
             isSelected
               ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
           } ${isChildOfGroup ? 'pl-2.5' : ''}`}
         >
+          {/* Drag handle */}
+          <span
+            className="shrink-0 cursor-grab active:cursor-grabbing text-[#555] opacity-0 group-hover:opacity-100 transition-opacity mr-0.5"
+            title="Drag to reorder"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-3 h-3" />
+          </span>
+
           <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
             {isGroup && (
               <span
@@ -584,18 +889,38 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </div>
         </div>
 
-        {/* Nested children inside group */}
-        {isGroup && isExpanded && groupChildren.length > 0 && (
-          <div className="pl-3 border-l border-[#353534]/70 ml-3 space-y-0.5">
-            {groupChildren
-              .filter(
-                (child) =>
-                  !layerSearch ||
-                  child.name.toLowerCase().includes(layerSearch.toLowerCase())
-              )
-              .map((child) => renderLayerItem(child, true))}
-          </div>
+        {/* Drop indicator line — after */}
+        {isDragTarget && dropPosition === 'after' && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: isChildOfGroup ? 16 : 0,
+              right: 0,
+              height: 2,
+              backgroundColor: '#0d99ff',
+              borderRadius: 1,
+              zIndex: 50,
+              pointerEvents: 'none',
+            }}
+          />
         )}
+
+        {/* Nested children inside group */}
+        {isGroup && isExpanded && groupChildren.length > 0 && (() => {
+          const filtered = groupChildren.filter(
+            (child) =>
+              !layerSearch ||
+              child.name.toLowerCase().includes(layerSearch.toLowerCase())
+          );
+          return (
+            <div className="ml-1">
+              {filtered.map((child, idx) =>
+                renderLayerItem(child, true, idx === filtered.length - 1)
+              )}
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -996,7 +1321,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </div>
 
                 {expandedNodes['page-group'] && (
-                  <div className="pl-3 space-y-0.5 border-l border-[#353534] ml-3">
+                  <div className="pl-3 space-y-0.5 ml-3">
                     {/* Desktop Frame Item */}
                     <div
                       onClick={() => {
@@ -1047,17 +1372,20 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     </div>
 
                     {/* Children of Desktop Frame (including dynamically added elements!) */}
-                    {expandedNodes['desktop-1440'] && (
-                      <div className="pl-3 space-y-0.5 border-l border-[#353534] ml-3">
-                        {desktopChildren
-                          .filter(
-                            (el) =>
-                              !layerSearch ||
-                              el.name.toLowerCase().includes(layerSearch.toLowerCase())
-                          )
-                          .map((el) => renderLayerItem(el))}
-                      </div>
-                    )}
+                    {expandedNodes['desktop-1440'] && (() => {
+                      const filtered = desktopChildren.filter(
+                        (el) =>
+                          !layerSearch ||
+                          el.name.toLowerCase().includes(layerSearch.toLowerCase())
+                      );
+                      return (
+                        <div className="ml-1">
+                          {filtered.map((el, idx) =>
+                            renderLayerItem(el, true, idx === filtered.length - 1)
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Mobile App View Frame */}
                     <div
@@ -1095,17 +1423,20 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     </div>
 
                     {/* Children of Mobile View Frame */}
-                    {expandedNodes['mobile-app-view'] && (
-                      <div className="pl-3 space-y-0.5 border-l border-[#353534] ml-3 mt-1">
-                        {mobileChildren
-                          .filter(
-                            (el) =>
-                              !layerSearch ||
-                              el.name.toLowerCase().includes(layerSearch.toLowerCase())
-                          )
-                          .map((el) => renderLayerItem(el))}
-                      </div>
-                    )}
+                    {expandedNodes['mobile-app-view'] && (() => {
+                      const filtered = mobileChildren.filter(
+                        (el) =>
+                          !layerSearch ||
+                          el.name.toLowerCase().includes(layerSearch.toLowerCase())
+                      );
+                      return (
+                        <div className="ml-1 mt-1">
+                          {filtered.map((el, idx) =>
+                            renderLayerItem(el, true, idx === filtered.length - 1)
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Free floating elements outside desktop frame */}
                     {otherElements.length > 0 && (
@@ -1625,6 +1956,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </div>
       )}
+      {/* Layer Context Menu */}
+      <ContextMenu menu={layerContextMenu} onClose={() => setLayerContextMenu(null)} />
     </>
   );
 };

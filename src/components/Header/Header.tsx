@@ -30,6 +30,8 @@ export interface HeaderProps {
   onImportAllMaterials?: () => void;
   collaborators?: Collaborator[];
   onNewDesign?: () => void;
+  isSaving?: boolean;
+  selectedElementIds?: string[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -56,6 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
   onImportAllMaterials,
   collaborators,
   onNewDesign,
+  isSaving,
+  selectedElementIds = [],
 }) => {
   return (
     <header
@@ -71,6 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
           onGoToHome={() => setCurrentView('dashboard')}
           onGoToProject={() => setCurrentView('editor')}
           onToggleView={() => setCurrentView(currentView === 'editor' ? 'dashboard' : 'editor')}
+          isSaving={isSaving}
         />
 
         {currentView === 'editor' && (
@@ -96,6 +101,29 @@ export const Header: React.FC<HeaderProps> = ({
           />
         )}
       </div>
+
+      {/* Center: Boolean Operations (Visible only on multi-select) */}
+      {currentView === 'editor' && selectedElementIds.length >= 2 && (
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#201f1f] rounded-lg p-1 border border-[#353534]">
+          <button className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors" title="Union Selection">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4H10V10H4V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 6H12V12H6V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors" title="Subtract Selection">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4H10V10H4V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 6H12V12H6V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 2"/>
+            </svg>
+          </button>
+          <button className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors" title="Intersect Selection">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="6" width="4" height="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Right side: ViewControls, ExportButton, CollaborationControls */}
       <div className="flex items-center gap-3">

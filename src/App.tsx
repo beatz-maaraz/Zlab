@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Header } from './components/Header';
 import { LeftSidebar } from './components/LeftSidebar';
 import { FloatingToolbar } from './components/FloatingToolbar';
@@ -134,6 +134,16 @@ export default function App() {
     }
   }, [route, projects, activeProjectId, setActiveProject]);
 
+  // Auto-Save Indicator state
+  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    setIsSaving(true);
+    const timeout = setTimeout(() => {
+      setIsSaving(false);
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [elements]);
+
   // Handle device preview change while preserving selected elements and document state
   const handleDeviceChange = useCallback(
     (mode: 'desktop' | 'mobile') => {
@@ -196,6 +206,19 @@ export default function App() {
       updateElementsWithHistory(updated);
     },
     [elements, selectedElementId, updateElementsWithHistory]
+  );
+
+  const handleUpdateMultipleElements = useCallback(
+    (updatesMap: Record<string, Partial<CanvasElement>>) => {
+      const updated = { ...elements };
+      for (const [id, updates] of Object.entries(updatesMap)) {
+        if (updated[id]) {
+          updated[id] = { ...updated[id], ...updates };
+        }
+      }
+      updateElementsWithHistory(updated);
+    },
+    [elements, updateElementsWithHistory]
   );
 
   const handleInsertElement = useCallback(
@@ -985,6 +1008,8 @@ export default function App() {
             onImportAllMaterials={handleImportAllMaterials}
             collaborators={collaborators}
             onNewDesign={handleNewDesign}
+            isSaving={isSaving}
+            selectedElementIds={selectedElementIds}
           />
         )}
 
@@ -1038,13 +1063,6 @@ export default function App() {
               onDeletePage={(pageId) => deletePage(pageId)}
             />
 
-            {/* Floating Toolbar */}
-            <FloatingToolbar
-              currentTool={currentTool}
-              setCurrentTool={setCurrentTool}
-              commentCount={1}
-            />
-
             {/* Central Infinite Canvas */}
             <div
               id="canvas-container"
@@ -1054,6 +1072,14 @@ export default function App() {
               }}
               className="canvas-container min-w-0 min-h-0 flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
             >
+              {/* Floating Toolbar */}
+              <FloatingToolbar
+                currentTool={currentTool}
+                setCurrentTool={setCurrentTool}
+                commentCount={1}
+                enableDragAndDrop={userSettings.enableToolbarDrag ?? true}
+              />
+
               <Canvas
                 zoom={zoom}
                 setZoom={setZoom}
@@ -1096,6 +1122,7 @@ export default function App() {
                 setSelectedElementIds([id]);
               }}
               onUpdateElement={handleUpdateSelectedElement}
+              onUpdateMultipleElements={handleUpdateMultipleElements}
               onExportSelected={() => openModal('export')}
               onOpenPrototype={() => openModal('prototype')}
               onDeleteElement={handleDeleteElement}

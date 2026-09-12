@@ -13,6 +13,14 @@ import {
   FolderPlus,
   FolderMinus,
   Layers,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignCenterHorizontal,
+  AlignEndHorizontal,
+  AlignHorizontalSpaceAround,
+  AlignVerticalSpaceAround,
 } from 'lucide-react';
 import { CanvasElement, InspectorTab } from '../../types';
 import { PositionSection } from './PositionSection';
@@ -40,6 +48,7 @@ export interface InspectorProps {
   onGroup?: () => void;
   onUngroup?: (groupId?: string) => void;
   onSelectElement?: (id: string) => void;
+  onUpdateMultipleElements?: (updates: Record<string, Partial<CanvasElement>>) => void;
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
 }
@@ -58,10 +67,70 @@ export const Inspector: React.FC<InspectorProps> = ({
   onGroup,
   onUngroup,
   onSelectElement,
+  onUpdateMultipleElements,
   width = 288,
   onStartResize,
 }) => {
   const [activeTab, setActiveTab] = useState<InspectorTab>('design');
+
+  const handleAlign = (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distributeH' | 'distributeV') => {
+    if (!selectedElementIds || selectedElementIds.length < 2 || !onUpdateMultipleElements || !allElements) return;
+    
+    const elements = selectedElementIds.map(id => allElements[id]).filter(Boolean);
+    if (elements.length < 2) return;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    elements.forEach(el => {
+      if (el.x < minX) minX = el.x;
+      if (el.y < minY) minY = el.y;
+      if (el.x + el.width > maxX) maxX = el.x + el.width;
+      if (el.y + el.height > maxY) maxY = el.y + el.height;
+    });
+
+    const updates: Record<string, Partial<CanvasElement>> = {};
+
+    if (type === 'distributeH' || type === 'distributeV') {
+      const sorted = [...elements].sort((a, b) => type === 'distributeH' ? a.x - b.x : a.y - b.y);
+      if (sorted.length > 2) {
+        const first = sorted[0];
+        const last = sorted[sorted.length - 1];
+        if (type === 'distributeH') {
+          const totalWidth = last.x + last.width - first.x;
+          let sumWidths = 0;
+          sorted.forEach(el => sumWidths += el.width);
+          const gap = (totalWidth - sumWidths) / (sorted.length - 1);
+          let currentX = first.x + first.width + gap;
+          for (let i = 1; i < sorted.length - 1; i++) {
+            updates[sorted[i].id] = { x: currentX };
+            currentX += sorted[i].width + gap;
+          }
+        } else {
+          const totalHeight = last.y + last.height - first.y;
+          let sumHeights = 0;
+          sorted.forEach(el => sumHeights += el.height);
+          const gap = (totalHeight - sumHeights) / (sorted.length - 1);
+          let currentY = first.y + first.height + gap;
+          for (let i = 1; i < sorted.length - 1; i++) {
+            updates[sorted[i].id] = { y: currentY };
+            currentY += sorted[i].height + gap;
+          }
+        }
+      }
+    } else {
+      elements.forEach(el => {
+        if (type === 'left') updates[el.id] = { x: minX };
+        if (type === 'right') updates[el.id] = { x: maxX - el.width };
+        if (type === 'center') updates[el.id] = { x: minX + (maxX - minX) / 2 - el.width / 2 };
+        if (type === 'top') updates[el.id] = { y: minY };
+        if (type === 'bottom') updates[el.id] = { y: maxY - el.height };
+        if (type === 'middle') updates[el.id] = { y: minY + (maxY - minY) / 2 - el.height / 2 };
+      });
+    }
+
+    if (Object.keys(updates).length > 0) {
+      onUpdateMultipleElements(updates);
+    }
+  };
 
   const isArtboard =
     selectedElement.id === 'desktop-1440' ||
@@ -244,12 +313,29 @@ export const Inspector: React.FC<InspectorProps> = ({
                 {onGroup && (
                   <button
                     onClick={onGroup}
-                    className="w-full py-1.5 px-3 bg-[#0d99ff] hover:bg-[#007acc] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
+                    className="w-full py-1.5 px-3 mb-3 bg-[#0d99ff] hover:bg-[#007acc] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
                     <span>Group Selection (⌘G)</span>
                   </button>
                 )}
+                
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <div className="flex gap-1">
+                    <button onClick={() => handleAlign('left')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Left"><AlignStartVertical className="w-4 h-4" /></button>
+                    <button onClick={() => handleAlign('center')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Horizontal Center"><AlignCenterVertical className="w-4 h-4" /></button>
+                    <button onClick={() => handleAlign('right')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Right"><AlignEndVertical className="w-4 h-4" /></button>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleAlign('top')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Top"><AlignStartHorizontal className="w-4 h-4" /></button>
+                    <button onClick={() => handleAlign('middle')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Vertical Center"><AlignCenterHorizontal className="w-4 h-4" /></button>
+                    <button onClick={() => handleAlign('bottom')} className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Align Bottom"><AlignEndHorizontal className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                    <button onClick={() => handleAlign('distributeH')} className="flex-1 p-1.5 flex justify-center text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Distribute Horizontally"><AlignHorizontalSpaceAround className="w-4 h-4" /></button>
+                    <button onClick={() => handleAlign('distributeV')} className="flex-1 p-1.5 flex justify-center text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors" title="Distribute Vertically"><AlignVerticalSpaceAround className="w-4 h-4" /></button>
+                </div>
               </div>
             )}
 
