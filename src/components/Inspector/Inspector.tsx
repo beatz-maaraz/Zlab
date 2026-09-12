@@ -144,7 +144,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     <aside
       id="inspector-sidebar"
       style={{ width }}
-      className="fixed top-16 right-0 bottom-0 bg-[#171717] border-l border-[#201f1f] flex flex-col z-30 select-none shadow-xl"
+      className="fixed top-16 right-0 bottom-8 bg-[#171717] border-l border-[#201f1f] flex flex-col z-30 select-none shadow-xl"
     >
       {/* Left resize handle */}
       {onStartResize && (

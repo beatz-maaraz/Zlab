@@ -83,6 +83,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             </div>
           )}
         </div>
+
+        <div className="h-3 w-[1px] bg-[#3f4753]" />
+        
+        {/* Portal target for Canvas Zoom Indicator */}
+        <div id="canvas-zoom-indicator-portal" className="flex items-center" />
       </div>
 
       {/* Right multiplayer collaborator presence */}

@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   ArrowRight,
@@ -180,6 +181,11 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Context Menu state
   const [canvasContextMenu, setCanvasContextMenu] = useState<ContextMenuState | null>(null);
+
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalTarget(document.getElementById('canvas-zoom-indicator-portal'));
+  }, []);
 
   const handleCanvasContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1801,15 +1807,18 @@ export const Canvas: React.FC<CanvasProps> = ({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* Zoom / Artboard Resolution Badge Indicator in Top Left */}
-      <div className="absolute top-4 left-4 bg-[#141416]/90 border border-[#353534]/60 px-2.5 py-1 rounded-md text-[11px] font-mono text-[#89919e] z-30 pointer-events-none flex items-center gap-2 shadow-lg backdrop-blur">
-        <span>{Math.round(zoom * 100)}% Zoom</span>
-        <span>•</span>
-        <span className="text-[#e5e2e1] font-semibold">{artboardWidth} × {artboardHeight}</span>
-        <span>•</span>
-        <span className="text-[#9fcaff] capitalize">{devicePreview} ({Math.round(previewScale * 100)}% fit)</span>
-        {showGrid && <span className="text-[#34d399]">[Grid]</span>}
-      </div>
+      {/* Zoom / Artboard Resolution Badge Indicator in Footer Portal */}
+      {portalTarget && createPortal(
+        <div className="flex items-center gap-2 text-[11px] font-mono text-[#89919e] ml-3">
+          <span>{Math.round(zoom * 100)}% Zoom</span>
+          <span>•</span>
+          <span className="text-[#e5e2e1] font-semibold">{artboardWidth} × {artboardHeight}</span>
+          <span>•</span>
+          <span className="text-[#9fcaff] capitalize">{devicePreview} ({Math.round(previewScale * 100)}% fit)</span>
+          {showGrid && <span className="text-[#34d399]">[Grid]</span>}
+        </div>,
+        portalTarget
+      )}
 
       {/* Bottom-right: Scale Slider + Reset + Grid Toggle */}
       <div className="absolute bottom-6 right-5 z-30 flex items-center gap-2">
