@@ -213,12 +213,21 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const openLayerContextMenu = useCallback((e: React.MouseEvent, el: CanvasElement) => {
     e.preventDefault();
     e.stopPropagation();
-    // Select the item being right-clicked
-    setSelectedElementId(el.id);
-    setSelectedElementIds?.([el.id]);
+    
+    // Select the item being right-clicked if it's not already in the selection
+    const currentSelection = selectedElementIds || [];
+    const isCurrentlySelected = currentSelection.includes(el.id);
+    let targetIds = currentSelection;
+    
+    if (!isCurrentlySelected) {
+      setSelectedElementId(el.id);
+      setSelectedElementIds?.([el.id]);
+      targetIds = [el.id];
+    }
 
     const isLocked = el.locked;
     const isVisible = el.visible !== false;
+    const isMultiSelect = targetIds.length > 1;
 
     const items: ContextMenuItem[] = [
       {
@@ -226,41 +235,55 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         label: 'Rename',
         icon: <Edit3 className="w-3.5 h-3.5" />,
         shortcut: 'F2',
+        disabled: isMultiSelect,
         action: () => {
+          if (isMultiSelect) return;
           setRenamingId(el.id);
           setTempName(el.name);
         },
       },
       {
         id: 'duplicate',
-        label: 'Duplicate',
+        label: isMultiSelect ? `Duplicate (${targetIds.length})` : 'Duplicate',
         icon: <Copy className="w-3.5 h-3.5" />,
         shortcut: '⌘D',
-        action: () => onDuplicateElement(el.id),
+        action: () => {
+          targetIds.forEach(id => onDuplicateElement(id));
+        },
       },
       {
         id: 'visibility',
-        label: isVisible ? 'Hide' : 'Show',
+        label: isVisible ? (isMultiSelect ? 'Hide All' : 'Hide') : (isMultiSelect ? 'Show All' : 'Show'),
         icon: isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />,
         shortcut: '⌘⇧H',
         action: () => {
           setElements((prev) => {
-            const current = prev[el.id];
-            if (!current) return prev;
-            return { ...prev, [el.id]: { ...current, visible: !isVisible } };
+            const next = { ...prev };
+            targetIds.forEach(id => {
+              const current = next[id];
+              if (current) {
+                next[id] = { ...current, visible: !isVisible };
+              }
+            });
+            return next;
           });
         },
       },
       {
         id: 'lock',
-        label: isLocked ? 'Unlock' : 'Lock',
+        label: isLocked ? (isMultiSelect ? 'Unlock All' : 'Unlock') : (isMultiSelect ? 'Lock All' : 'Lock'),
         icon: isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />,
         shortcut: '⌘⇧L',
         action: () => {
           setElements((prev) => {
-            const current = prev[el.id];
-            if (!current) return prev;
-            return { ...prev, [el.id]: { ...current, locked: !isLocked } };
+            const next = { ...prev };
+            targetIds.forEach(id => {
+              const current = next[id];
+              if (current) {
+                next[id] = { ...current, locked: !isLocked };
+              }
+            });
+            return next;
           });
         },
       },
@@ -322,18 +345,30 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         },
       },
       {
+        id: 'group',
+        label: `Group (${targetIds.length})`,
+        icon: <FolderPlus className="w-3.5 h-3.5" />,
+        shortcut: '⌘G',
+        disabled: !isMultiSelect || !onGroup,
+        action: () => {
+          if (onGroup) onGroup();
+        },
+      },
+      {
         id: 'delete',
-        label: 'Delete',
+        label: isMultiSelect ? `Delete (${targetIds.length})` : 'Delete',
         icon: <Trash2 className="w-3.5 h-3.5" />,
         shortcut: 'Del',
         danger: true,
         separator: true,
-        action: () => onDeleteElement(el.id),
+        action: () => {
+          targetIds.forEach(id => onDeleteElement(id));
+        },
       },
     ];
 
     setLayerContextMenu({ x: e.clientX, y: e.clientY, targetId: el.id, items });
-  }, [elements, setElements, setSelectedElementId, setSelectedElementIds, onDuplicateElement, onDeleteElement, handleLayerDrop, setRenamingId, setTempName]);
+  }, [selectedElementIds, elements, setElements, setSelectedElementId, setSelectedElementIds, onDuplicateElement, onDeleteElement, onGroup, handleLayerDrop, setRenamingId, setTempName]);
 
   const triggerNotice = (name: string) => {
     setInsertNotice(`Added "${name}" to canvas`);
@@ -759,7 +794,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         )}
         <div
           onClick={(e) => {
-            if (e.shiftKey) {
+            if (e.shiftKey || e.ctrlKey || e.metaKey) {
               e.stopPropagation();
               toggleElementSelection?.(el.id);
             } else {

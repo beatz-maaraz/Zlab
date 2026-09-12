@@ -144,6 +144,15 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [elements]);
 
+  // Toast State
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   // Handle device preview change while preserving selected elements and document state
   const handleDeviceChange = useCallback(
     (mode: 'desktop' | 'mobile') => {
@@ -183,6 +192,7 @@ export default function App() {
     const previousSnapshot = undo();
     if (previousSnapshot) {
       updateActiveProjectElements(previousSnapshot);
+      setToastMessage('Undo');
     }
   }, [undo, updateActiveProjectElements]);
 
@@ -190,6 +200,7 @@ export default function App() {
     const nextSnapshot = redo();
     if (nextSnapshot) {
       updateActiveProjectElements(nextSnapshot);
+      setToastMessage('Redo');
     }
   }, [redo, updateActiveProjectElements]);
 
@@ -1170,6 +1181,13 @@ export default function App() {
             }}
             onOpenShortcuts={() => openModal('shortcuts')}
           />
+        )}
+
+        {/* Global Toast Notification */}
+        {toastMessage && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#1c1b1b] text-white px-4 py-2 rounded-full shadow-2xl border border-[#353534] flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <span className="text-sm font-medium">{toastMessage}</span>
+          </div>
         )}
 
         {/* Settings Modal */}

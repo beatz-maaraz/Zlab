@@ -258,8 +258,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <button
               id={`tool-btn-${t.id}`}
               onClick={() => setCurrentTool(t.id)}
-              title={`${t.label} (${t.shortcut}) — drag to reorder`}
-              className={`p-2 rounded-lg flex items-center justify-center transition-all ${
+              className={`group relative p-2 rounded-lg flex items-center justify-center transition-all ${
                 isActive
                   ? 'bg-[#0d99ff] text-[#002f55] shadow-md scale-105 font-medium'
                   : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#353534]'
@@ -267,6 +266,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               style={{ cursor: enableDragAndDrop ? 'grab' : 'pointer' }}
             >
               {t.icon}
+              
+              {/* Custom Tooltip with 300ms Delay */}
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-300 duration-200 z-50">
+                <div className="bg-[#131313] text-[#e5e2e1] text-[10px] font-medium px-2 py-1 rounded border border-[#353534] whitespace-nowrap shadow-xl">
+                  {t.label} ({t.shortcut})
+                </div>
+              </div>
             </button>
           </div>
         );

@@ -76,7 +76,7 @@ const MiniCanvasPreview = ({ elements, previewType }: { elements?: Record<string
             </div>
           )}
           {(el as any).type === 'image' && (el as any).src && (
-            <img src={(el as any).src} alt="" style={{ width: '100%', height: '100%', objectFit: (el as any).objectFit || 'cover', borderRadius: el.borderRadius }} />
+            <img src={(el as any).src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: (el as any).objectFit || 'cover', borderRadius: el.borderRadius }} />
           )}
         </div>
       ))}
@@ -281,6 +281,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <img
                 src={user.photoURL}
                 alt="Avatar"
+                loading="lazy"
                 className="w-7 h-7 rounded-full object-cover border border-[#444746]"
                 referrerPolicy="no-referrer"
               />

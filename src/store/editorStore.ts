@@ -30,6 +30,8 @@ interface EditorStoreState {
     value: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })
   ) => void;
   resetPan: () => void;
+  documentColors: string[];
+  addDocumentColor: (color: string) => void;
 }
 
 export const useEditorStore = create<EditorStoreState>((set) => ({
@@ -101,4 +103,11 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
       pan: typeof value === 'function' ? value(state.pan) : value,
     })),
   resetPan: () => set({ pan: { x: 0, y: 0 } }),
+
+  documentColors: [],
+  addDocumentColor: (color) =>
+    set((state) => {
+      if (state.documentColors.includes(color)) return state;
+      return { documentColors: [...state.documentColors, color] };
+    }),
 }));

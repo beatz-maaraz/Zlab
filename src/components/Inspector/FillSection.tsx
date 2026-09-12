@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Plus } from 'lucide-react';
 import { CanvasElement } from '../../types';
+import { useEditorStore } from '../../store/editorStore';
 import { NumberAdjustInput } from './NumberAdjustInput';
 import {
   MATERIAL_3_PRESETS,
@@ -20,6 +21,8 @@ export const FillSection: React.FC<FillSectionProps> = ({
   disabled = false,
 }) => {
   const [materialTab, setMaterialTab] = useState<'m3' | 'ios' | 'glass'>('m3');
+
+  const { documentColors, addDocumentColor } = useEditorStore();
 
   const currentColor = element.fill || '#0D99FF';
   const currentOpacity = element.fillOpacity ?? 100;
@@ -69,8 +72,40 @@ export const FillSection: React.FC<FillSectionProps> = ({
         </div>
       </div>
 
-      {/* Design System Preset Tokens Swatches */}
+      {/* Document Colors */}
       <div className="pt-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] text-[#89919e] uppercase font-bold tracking-wider flex items-center gap-1">
+            Document Colors
+          </span>
+          <button
+            onClick={() => addDocumentColor(currentColor)}
+            disabled={disabled}
+            className="w-4 h-4 flex items-center justify-center rounded bg-[#353534] hover:bg-[#0d99ff] text-[#e5e2e1] transition-colors disabled:opacity-50"
+            title="Save color to document"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {documentColors.length === 0 && (
+            <div className="text-[10px] text-[#555] italic w-full">No saved colors yet.</div>
+          )}
+          {documentColors.map((color) => (
+            <button
+              key={color}
+              onClick={() => onUpdate({ fill: color })}
+              disabled={disabled}
+              className="w-5 h-5 rounded-md border border-[#353534] hover:scale-110 transition-transform"
+              style={{ backgroundColor: color }}
+              title={`Use ${color}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Design System Preset Tokens Swatches */}
+      <div className="pt-1 border-t border-[#201f1f] mt-1">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] text-[#89919e] uppercase font-bold tracking-wider flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5 text-[#9fcaff]" /> Presets

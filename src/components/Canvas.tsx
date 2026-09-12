@@ -35,6 +35,7 @@ import { CanvasViewport } from '../features/editor/components/CanvasViewport';
 import { PreviewStage } from '../features/editor/components/PreviewStage';
 import { DeviceFrame } from '../features/editor/components/DeviceFrame';
 import { Artboard } from '../features/editor/components/Artboard';
+import { ContextMenu, ContextMenuItem, ContextMenuState } from './ContextMenu';
 
 interface CanvasProps {
   zoom: number;
@@ -176,6 +177,87 @@ export const Canvas: React.FC<CanvasProps> = ({
     },
   ]);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+
+  // Context Menu state
+  const [canvasContextMenu, setCanvasContextMenu] = useState<ContextMenuState | null>(null);
+
+  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Determine context (empty canvas vs selected elements)
+    const isMultiSelect = selectedElementIds.length > 1;
+    const hasSelection = selectedElementId !== 'desktop-1440' && selectedElementId !== 'mobile-app-view';
+
+    const items: ContextMenuItem[] = [];
+
+    if (hasSelection) {
+      items.push({
+        id: 'duplicate',
+        label: isMultiSelect ? `Duplicate (${selectedElementIds.length})` : 'Duplicate',
+        icon: <Copy className="w-3.5 h-3.5" />,
+        shortcut: '⌘D',
+        action: () => {
+          if (onDuplicateElement) {
+            selectedElementIds.forEach(id => onDuplicateElement(id));
+          }
+        },
+      });
+
+      if (onGroup) {
+        items.push({
+          id: 'group',
+          label: isMultiSelect ? `Group (${selectedElementIds.length})` : 'Group',
+          icon: <FolderPlus className="w-3.5 h-3.5" />,
+          shortcut: '⌘G',
+          disabled: !isMultiSelect,
+          action: () => onGroup(),
+        });
+      }
+
+      if (onUngroup && !isMultiSelect && elements[selectedElementId]?.type === 'group') {
+        items.push({
+          id: 'ungroup',
+          label: 'Ungroup',
+          icon: <FolderMinus className="w-3.5 h-3.5" />,
+          shortcut: '⌘⇧G',
+          action: () => onUngroup(selectedElementId),
+        });
+      }
+
+      items.push({
+        id: 'delete',
+        label: isMultiSelect ? `Delete (${selectedElementIds.length})` : 'Delete',
+        icon: <Trash2 className="w-3.5 h-3.5" />,
+        shortcut: 'Del',
+        danger: true,
+        separator: true,
+        action: () => {
+          if (onDeleteElement) {
+            selectedElementIds.forEach(id => onDeleteElement(id));
+          }
+        },
+      });
+    } else {
+      // Empty Canvas Menu
+      items.push({
+        id: 'toggle-grid',
+        label: showGrid ? 'Hide Grid' : 'Show Grid',
+        icon: <LayoutDashboard className="w-3.5 h-3.5" />,
+        shortcut: '⌘\'',
+        action: () => {
+          if (onToggleGrid) onToggleGrid();
+        },
+      });
+    }
+
+    setCanvasContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      targetId: selectedElementId,
+      items,
+    });
+  };
 
   // Canvas background panning
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -1714,6 +1796,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       showGrid={showGrid}
       zoom={zoom}
       onMouseDown={handleCanvasMouseDown}
+      onContextMenu={handleCanvasContextMenu}
       onWheel={handleWheel}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -1940,6 +2023,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           </Artboard>
         </DeviceFrame>
       </PreviewStage>
+      {/* Context Menu */}
+      <ContextMenu
+        menu={canvasContextMenu}
+        onClose={() => setCanvasContextMenu(null)}
+      />
     </CanvasViewport>
   );
 };
