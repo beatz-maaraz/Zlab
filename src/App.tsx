@@ -18,6 +18,8 @@ import { PrototypeModal } from './components/PrototypeModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { motion, AnimatePresence } from 'motion/react';
+import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 
 import {
   CanvasElement,
@@ -939,29 +941,37 @@ export default function App() {
           isOpen={activeModal === 'newDesign'}
           onClose={closeModal}
           onSubmit={(details) => {
-            const newProj = createProject(details.name, undefined, devicePreview, details);
+            const targetDevice = details.previewType || (details.projectType === 'Mobile App' ? 'mobile' : devicePreview);
+            const newProj = createProject(details.name, undefined, targetDevice, details);
+            setDevicePreview(targetDevice);
             closeModal();
             navigate({ type: 'editor', projectId: newProj.id });
-            setSelectedElementId(devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
-            showToast(`Created new project "${newProj.name}"`, 'success');
+            setSelectedElementId(targetDevice === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
+            showToast(`Created new design "${newProj.name}"`, 'success');
           }}
         />
 
         {/* Toast Notification Alert */}
-        {toast && (
-          <div className="fixed bottom-12 right-6 z-50 flex items-center gap-2 bg-[#201f1f] text-[#e5e2e1] border border-[#353534] px-4 py-2.5 rounded-lg shadow-2xl text-xs">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                toast.type === 'success'
-                  ? 'bg-[#34d399]'
-                  : toast.type === 'warning'
-                  ? 'bg-[#f59e0b]'
-                  : 'bg-[#9fcaff]'
-              }`}
-            />
-            <span>{toast.message}</span>
-          </div>
-        )}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed bottom-10 right-6 z-50 flex items-center gap-2.5 bg-[#181818] text-[#e5e2e1] border border-[#353534] px-4 py-2.5 rounded-xl shadow-2xl text-xs backdrop-blur-md"
+            >
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : (
+                <Info className="w-4 h-4 text-[#9fcaff] shrink-0" />
+              )}
+              <span className="font-medium">{toast.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </ErrorBoundary>
   );
