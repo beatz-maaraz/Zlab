@@ -276,37 +276,44 @@ export default function App() {
 
   const handleOpenFile = useCallback(
     (file: ProjectFile) => {
-      if (projects[file.id]) {
-        setActiveProject(file.id);
-        navigate({ type: 'editor', projectId: file.id });
-        if (file.previewType === 'mobile') {
-          setDevicePreview('mobile');
-          setSelectedElementId('mobile-app-view');
-        } else {
-          setDevicePreview('desktop');
-          setSelectedElementId('desktop-1440');
-        }
+      const storeProjects = useProjectStore.getState().projects;
+      const targetProj = storeProjects[file.id] || projects[file.id];
+      const targetId = targetProj ? file.id : (activeProjectId || file.id);
+
+      setActiveProject(targetId);
+      navigate({ type: 'editor', projectId: targetId });
+
+      const pType = targetProj?.previewType || file.previewType || 'desktop';
+      if (pType === 'mobile') {
+        setDevicePreview('mobile');
+        setSelectedElementId('mobile-app-view');
+      } else {
+        setDevicePreview('desktop');
+        setSelectedElementId('desktop-1440');
       }
     },
-    [projects, setActiveProject, navigate, setDevicePreview, setSelectedElementId]
+    [projects, activeProjectId, setActiveProject, navigate, setDevicePreview, setSelectedElementId]
   );
 
   const handleSelectTemplate = useCallback(
     (template: TemplateItem) => {
       if (template.id === 'm3-full-kit') {
         const proj = createProject('Material 3 Design System', getMaterial3KitElements(), 'desktop');
+        setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
         setSelectedElementId('m3-kit-frame');
         return;
       }
       if (template.id === 'ios-full-kit') {
         const proj = createProject('iOS 18 Design System', getIOSKitElements(), 'mobile');
+        setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
         setSelectedElementId('ios-kit-frame');
         return;
       }
       if (template.id === 'all-materials-kit') {
         const proj = createProject('Complete Design Systems', getAllMaterialsElements(), 'desktop');
+        setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
         setSelectedElementId('m3-kit-frame');
         return;
@@ -314,11 +321,12 @@ export default function App() {
 
       const isMobile = template.id === 'ios-starter';
       const proj = createProject(`${template.title} Draft`, undefined, isMobile ? 'mobile' : 'desktop');
+      setActiveProject(proj.id);
       navigate({ type: 'editor', projectId: proj.id });
       setDevicePreview(isMobile ? 'mobile' : 'desktop');
       setSelectedElementId(isMobile ? 'mobile-app-view' : 'desktop-1440');
     },
-    [createProject, navigate, setDevicePreview, setSelectedElementId]
+    [createProject, setActiveProject, navigate, setDevicePreview, setSelectedElementId]
   );
 
   // Command palette & shortcuts execution
@@ -754,7 +762,11 @@ export default function App() {
             <LeftSidebar
               currentView="editor"
               setCurrentView={(view) => {
-                if (view === 'dashboard') navigate({ type: 'dashboard' });
+                if (view === 'dashboard') {
+                  navigate({ type: 'dashboard' });
+                } else {
+                  navigate({ type: 'editor', projectId: activeProject.id });
+                }
               }}
               selectedElementId={selectedElementId}
               setSelectedElementId={setSelectedElementId}

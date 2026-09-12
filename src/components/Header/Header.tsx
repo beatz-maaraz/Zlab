@@ -64,6 +64,8 @@ export const Header: React.FC<HeaderProps> = ({
           projectTitle={projectTitle}
           onUpdateTitle={setProjectTitle}
           currentView={currentView}
+          onGoToHome={() => setCurrentView('dashboard')}
+          onGoToProject={() => setCurrentView('editor')}
           onToggleView={() => setCurrentView(currentView === 'editor' ? 'dashboard' : 'editor')}
         />
 

@@ -63,23 +63,50 @@ export function routeToPath(route: AppRoute): string {
   }
 }
 
+let activeRouteState: AppRoute = parseRoute(typeof window !== 'undefined' ? window.location.pathname : '/');
+const routeListeners = new Set<(route: AppRoute) => void>();
+
 export function navigate(route: AppRoute | string) {
+  const parsed = typeof route === 'string' ? parseRoute(route) : route;
   const path = typeof route === 'string' ? route : routeToPath(route);
-  if (window.location.pathname !== path) {
-    window.history.pushState({}, '', path);
+
+  try {
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  } catch {
+    // Ignore pushState sandbox or security restrictions inside iframes
+  }
+
+  activeRouteState = parsed;
+  routeListeners.forEach((fn) => fn(parsed));
+
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
 }
 
 export function useRouter() {
-  const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.pathname));
+  const [route, setRoute] = useState<AppRoute>(() => activeRouteState);
 
   useEffect(() => {
-    const onPop = () => {
-      setRoute(parseRoute(window.location.pathname));
+    const onRouteUpdate = (newRoute: AppRoute) => {
+      setRoute(newRoute);
     };
+
+    const onPop = () => {
+      const parsed = parseRoute(window.location.pathname);
+      activeRouteState = parsed;
+      setRoute(parsed);
+    };
+
+    routeListeners.add(onRouteUpdate);
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+
+    return () => {
+      routeListeners.delete(onRouteUpdate);
+      window.removeEventListener('popstate', onPop);
+    };
   }, []);
 
   const goTo = useCallback((nextRoute: AppRoute | string) => {

@@ -59,7 +59,7 @@ const MiniCanvasPreview = ({ elements, previewType }: { elements?: Record<string
             <div style={{
               width: '100%',
               height: '100%',
-              color: el.color || '#000',
+              color: el.textColor || '#000',
               fontSize: el.fontSize || 14,
               fontWeight: el.fontWeight || 400,
               display: 'flex',
@@ -70,8 +70,8 @@ const MiniCanvasPreview = ({ elements, previewType }: { elements?: Record<string
               {el.textContent}
             </div>
           )}
-          {el.type === 'image' && el.src && (
-            <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'cover', borderRadius: el.borderRadius }} />
+          {(el as any).type === 'image' && (el as any).src && (
+            <img src={(el as any).src} alt="" style={{ width: '100%', height: '100%', objectFit: (el as any).objectFit || 'cover', borderRadius: el.borderRadius }} />
           )}
         </div>
       ))}
@@ -316,6 +316,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     >
                       {/* Visual Thumbnail */}
                       <div 
+                        id={`card-thumb-${file.id}`}
                         className="h-40 bg-[#201f1f] flex items-center justify-center relative overflow-hidden p-4 cursor-pointer"
                         onClick={() => {
                           if (activeNav !== 'trash') onOpenFile(file);
@@ -353,11 +354,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </>
                           )}
                         </div>
+
+                        {/* Hover Overlay: Go to Project Button */}
+                        {activeNav !== 'trash' && (
+                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none group-hover:pointer-events-auto z-10">
+                            <button
+                              id={`btn-card-go-to-project-${file.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenFile(file);
+                              }}
+                              className="px-3.5 py-1.5 rounded-lg bg-[#0d99ff] hover:bg-[#0b85e0] text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                              title={`Open ${file.title} in Editor`}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Go to Project</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Info */}
                       <div className="p-4 flex items-center justify-between bg-[#1c1b1b] relative">
                         <div 
+                          id={`card-info-${file.id}`}
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
                           onClick={() => {
                             if (activeNav !== 'trash') onOpenFile(file);
@@ -389,6 +409,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {/* More Menu */}
                         <div className="relative" ref={openMenuId === file.id ? menuRef : null}>
                           <button
+                            id={`btn-menu-${file.id}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(openMenuId === file.id ? null : file.id);
@@ -406,13 +427,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             >
                               {activeNav !== 'trash' && (
                                 <button
+                                  id={`btn-dropdown-go-project-${file.id}`}
                                   onClick={() => {
                                     onOpenFile(file);
                                     setOpenMenuId(null);
                                   }}
-                                  className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#2a2a2a]"
+                                  className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#2a2a2a] text-[#9fcaff] font-medium"
                                 >
-                                  <ExternalLink className="w-3.5 h-3.5 text-[#9fcaff]" /> Open in Editor
+                                  <ExternalLink className="w-3.5 h-3.5" /> Go to Project
                                 </button>
                               )}
                               

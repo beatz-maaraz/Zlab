@@ -1,5 +1,5 @@
 import { CanvasElement } from '../types';
-import { toPng, toSvg } from 'html-to-image';
+import { toPng, toSvg, toJpeg } from 'html-to-image';
 
 /**
  * Escapes HTML characters for safe embedding
@@ -478,6 +478,197 @@ export async function downloadPng(
     URL.revokeObjectURL(dataUrl);
   } catch (error) {
     console.error('Error exporting PNG:', error);
+  }
+}
+
+/**
+ * Generates and downloads a compressed JPG image using html-to-image to accurately reflect current state.
+ */
+export async function downloadJpeg(
+  projectTitle: string,
+  elements: Record<string, CanvasElement>,
+  selectedElementId?: string,
+  scale: number = 2,
+  options?: {
+    quality?: number;
+    backgroundColor?: string;
+  }
+) {
+  const targetId = selectedElementId || 'desktop-1440';
+  const targetElementId = targetId === 'desktop-1440' || targetId === 'mobile-app-view' 
+    ? targetId 
+    : `canvas-el-${targetId}`;
+    
+  const targetElement = document.getElementById(targetElementId);
+  
+  if (!targetElement) {
+    console.error(`Export failed: DOM node for element ${targetId} not found.`);
+    return;
+  }
+
+  try {
+    const filterUiOverlays = (node: HTMLElement) => {
+      if (!node.classList) return true;
+      if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
+      if (node.classList.contains('ring-2')) return false;
+      if (
+        node.classList.contains('absolute') && 
+        (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
+        node.className.includes('bg-[#0d99ff]')
+      ) {
+        return false;
+      }
+      return true;
+    };
+
+    const targetElementFill = elements[targetId]?.fill || '#131313';
+    const bgColor = options?.backgroundColor || targetElementFill || '#131313';
+    const quality = options?.quality !== undefined ? options.quality : 0.92;
+
+    const dataUrl = await toJpeg(targetElement, {
+      quality,
+      pixelRatio: scale,
+      backgroundColor: bgColor,
+      skipFonts: false,
+      filter: filterUiOverlays,
+      style: {
+        transform: 'none',
+        margin: '0'
+      }
+    });
+
+    const targetSlug = (elements[targetId]?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const qualityPct = Math.round(quality * 100);
+    const fileName = `${projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetSlug}@${scale}x-q${qualityPct}.jpg`;
+    
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(dataUrl);
+  } catch (error) {
+    console.error('Error exporting JPEG:', error);
+  }
+}
+
+export interface ExportPreviewData {
+  dataUrl: string;
+  byteSize: number;
+  width: number;
+  height: number;
+  svgText?: string;
+  format: 'png' | 'svg' | 'jpg';
+  scale: number;
+  quality?: number;
+}
+
+export async function generateExportPreview(
+  targetId: string,
+  format: 'png' | 'svg' | 'jpg',
+  scale: number,
+  options?: {
+    quality?: number;
+    transparentBackground?: boolean;
+    backgroundColor?: string;
+  }
+): Promise<ExportPreviewData | null> {
+  const targetElementId = targetId === 'desktop-1440' || targetId === 'mobile-app-view' 
+    ? targetId 
+    : `canvas-el-${targetId}`;
+    
+  const targetElement = document.getElementById(targetElementId);
+  if (!targetElement) return null;
+
+  const filterUiOverlays = (node: HTMLElement) => {
+    if (!node.classList) return true;
+    if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
+    if (node.classList.contains('ring-2')) return false;
+    if (
+      node.classList.contains('absolute') && 
+      (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
+      node.className.includes('bg-[#0d99ff]')
+    ) {
+      return false;
+    }
+    return true;
+  };
+
+  const rect = targetElement.getBoundingClientRect();
+  const width = Math.round((targetElement.offsetWidth || rect.width) * scale);
+  const height = Math.round((targetElement.offsetHeight || rect.height) * scale);
+
+  try {
+    let dataUrl = '';
+    let svgText: string | undefined = undefined;
+
+    if (format === 'svg') {
+      dataUrl = await toSvg(targetElement, {
+        backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
+        skipFonts: false,
+        filter: filterUiOverlays,
+      });
+
+      if (dataUrl.startsWith('data:image/svg+xml;charset=utf-8,')) {
+        svgText = decodeURIComponent(dataUrl.replace('data:image/svg+xml;charset=utf-8,', ''));
+      } else if (dataUrl.startsWith('data:image/svg+xml;base64,')) {
+        try {
+          svgText = atob(dataUrl.replace('data:image/svg+xml;base64,', ''));
+        } catch {
+          // ignore decode error
+        }
+      }
+    } else if (format === 'jpg') {
+      const quality = options?.quality !== undefined ? options.quality : 0.9;
+      dataUrl = await toJpeg(targetElement, {
+        quality,
+        pixelRatio: scale,
+        backgroundColor: options?.backgroundColor || '#131313',
+        skipFonts: false,
+        filter: filterUiOverlays,
+        style: {
+          transform: 'none',
+          margin: '0'
+        }
+      });
+    } else {
+      dataUrl = await toPng(targetElement, {
+        pixelRatio: scale,
+        backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
+        skipFonts: false,
+        filter: filterUiOverlays,
+        style: {
+          transform: 'none',
+          margin: '0'
+        }
+      });
+    }
+
+    let byteSize = 0;
+    if (svgText) {
+      byteSize = new Blob([svgText]).size;
+    } else if (dataUrl.includes('base64,')) {
+      const base64Str = dataUrl.split('base64,')[1] || '';
+      const padding = (base64Str.match(/=/g) || []).length;
+      byteSize = Math.max(0, Math.floor((base64Str.length * 3) / 4) - padding);
+    } else {
+      byteSize = dataUrl.length;
+    }
+
+    return {
+      dataUrl,
+      byteSize,
+      width,
+      height,
+      svgText,
+      format,
+      scale,
+      quality: options?.quality
+    };
+  } catch (err) {
+    console.error('generateExportPreview error:', err);
+    return null;
   }
 }
 
