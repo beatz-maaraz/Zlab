@@ -81,6 +81,36 @@ export interface CanvasElement {
   glassEffect?: 'frosted' | 'neon' | 'smoke' | 'prism' | 'none';
   materialPreset?: 'm3' | 'ios' | 'glass' | 'none';
   prototype?: InteractionPrototype;
+  // Dynamic Header & Input & Tab & Data Grid Properties
+  placeholder?: string;
+  label?: string;
+  activeTab?: string;
+  tabs?: { id: string; label: string; icon?: string; badge?: string }[];
+  columns?: { key: string; label: string; width?: string }[];
+  items?: any[];
+  searchQuery?: string;
+  helperText?: string;
+  isFocused?: boolean;
+  hasFloatingLabel?: boolean;
+  typographyVariant?:
+    | 'm3-display-lg'
+    | 'm3-headline-md'
+    | 'm3-title-md'
+    | 'm3-body-md'
+    | 'm3-label-lg'
+    | 'ios-large-title'
+    | 'ios-title-1'
+    | 'ios-body'
+    | 'ios-callout'
+    | 'ios-caption';
+  colorVariantToken?:
+    | 'm3-primary'
+    | 'm3-secondary-container'
+    | 'm3-surface-variant'
+    | 'm3-outline'
+    | 'ios-system-blue'
+    | 'ios-grouped-bg'
+    | 'ios-vibrancy';
   // Auto-Layout Properties
   layoutMode?: 'none' | 'horizontal' | 'vertical';
   gap?: number;

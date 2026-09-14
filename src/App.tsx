@@ -4,11 +4,11 @@
  */
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { Header } from './components/Header';
+import { Header } from './components/Header/Header';
 import { LeftSidebar } from './components/LeftSidebar';
 import { FloatingToolbar } from './components/FloatingToolbar';
 import { Canvas } from './components/Canvas';
-import { Inspector } from './components/Inspector';
+import { Inspector } from './components/Inspector/Inspector';
 import { StatusBar } from './components/StatusBar';
 import { DashboardView } from './components/DashboardView';
 import { AuthView } from './components/AuthView';

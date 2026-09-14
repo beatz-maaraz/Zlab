@@ -28,6 +28,17 @@ import {
   Folder,
   FolderPlus,
   FolderMinus,
+  Search,
+  Filter,
+  X,
+  Eye,
+  EyeOff,
+  MoreVertical,
+  Grid,
+  User,
+  Check,
+  Mail,
+  ChevronRight,
 } from 'lucide-react';
 import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
 import { DynamicIcon } from './DynamicIcon';
@@ -864,7 +875,71 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Render individual element content based on its type
   const renderElementContent = (el: CanvasElement) => {
-    // 1. Navigation Header Frame
+    // 1. Navigation Header Frame & Dynamic Headers
+    if (el.variant === 'm3-dynamic-header' || el.variant === 'ios-dynamic-header') {
+      const isM3 = el.materialPreset === 'm3' || el.variant === 'm3-dynamic-header';
+      return (
+        <div
+          style={{
+            backgroundColor: el.fill,
+            borderRadius: `${el.borderRadius ?? 16}px`,
+            border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
+            boxShadow: `0px ${el.shadowY ?? 4}px ${el.shadowBlur ?? 12}px rgba(0,0,0,0.3)`,
+          }}
+          className="w-full h-full px-4 flex items-center justify-between gap-3 text-xs select-none relative overflow-hidden"
+        >
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isM3 ? 'bg-[#d0bcff]/20 text-[#d0bcff]' : 'bg-[#007aff]/20 text-[#007aff]'}`}>
+              {isM3 ? 'M3' : 'iOS'}
+            </div>
+            <span className="font-semibold text-white tracking-tight hidden sm:inline">
+              {el.label || 'Header'}
+            </span>
+          </div>
+
+          {/* Integrated Search Action Bar */}
+          <div className="flex-1 max-w-md h-9 bg-[#17161b] rounded-full border border-[#35343a] flex items-center px-3 gap-2">
+            <Search className="w-3.5 h-3.5 text-[#89919e] shrink-0" />
+            <input
+              type="text"
+              value={el.searchQuery || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setElements((prev) => ({
+                  ...prev,
+                  [el.id]: { ...prev[el.id], searchQuery: val },
+                }));
+              }}
+              placeholder={el.textContent || 'Search assets & views...'}
+              className="bg-transparent text-white placeholder-[#89919e] outline-none text-xs w-full"
+            />
+            {el.searchQuery && (
+              <button
+                onClick={() => {
+                  setElements((prev) => ({
+                    ...prev,
+                    [el.id]: { ...prev[el.id], searchQuery: '' },
+                  }));
+                }}
+                className="text-[#89919e] hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[#89919e] shrink-0">
+            <button className="p-1.5 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+              <Filter className="w-3.5 h-3.5" />
+            </button>
+            <button className="p-1.5 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (el.id === 'navbar-frame' || el.name.toLowerCase().includes('nav')) {
       return (
         <div className="w-full h-full flex items-center justify-between px-8 text-[#e5e2e1] select-none">
@@ -894,47 +969,63 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
-    // Mobile Navigation Bar
-    if (el.id === 'mobile-nav-bar') {
-      return (
-        <div className="w-full h-full flex items-center justify-between px-3 text-[#e5e2e1] select-none bg-[#1c1b1b] rounded-xl border border-[#353534]">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#0d99ff] to-[#005299] flex items-center justify-center font-black text-white text-[11px] shadow border border-[#9fcaff]/30">
-              Z
-            </div>
-            <span className="font-bold text-xs tracking-tight text-[#e5e2e1]">
-              ZLab
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] bg-[#201f1f] border border-[#353534] text-[#9fcaff] px-2 py-0.5 rounded-full font-medium">
-              iOS 18
-            </span>
-          </div>
-        </div>
-      );
-    }
+    // 1.5 Footer Tabs Component
+    if (el.variant === 'm3-footer-tabs' || el.variant === 'ios-footer-tabs' || el.id === 'mobile-tab-bar') {
+      const isM3 = el.materialPreset === 'm3' || el.variant === 'm3-footer-tabs';
+      const activeTabId = el.activeTab || 'home';
+      const tabs = el.tabs || [
+        { id: 'home', label: 'Home', icon: 'LayoutDashboard' },
+        { id: 'search', label: 'Search', icon: 'Search' },
+        { id: 'grid', label: 'Data Grid', icon: 'Grid', badge: '12' },
+        { id: 'profile', label: 'Profile', icon: 'User' },
+      ];
 
-    // Mobile Bottom Tab Bar
-    if (el.id === 'mobile-tab-bar') {
       return (
-        <div className="w-full h-full flex items-center justify-around px-2 text-[#89919e] select-none bg-[#1c1b1b]/95 backdrop-blur-md rounded-2xl border border-[#353534]">
-          <div className="flex flex-col items-center text-[#9fcaff] cursor-pointer">
-            <LayoutDashboard className="w-4 h-4" />
-            <span className="text-[9px] font-medium mt-0.5">Design</span>
-          </div>
-          <div className="flex flex-col items-center hover:text-[#e5e2e1] cursor-pointer">
-            <Layers className="w-4 h-4" />
-            <span className="text-[9px] font-medium mt-0.5">Layers</span>
-          </div>
-          <div className="flex flex-col items-center hover:text-[#e5e2e1] cursor-pointer">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-[9px] font-medium mt-0.5">Assets</span>
-          </div>
-          <div className="flex flex-col items-center hover:text-[#e5e2e1] cursor-pointer">
-            <Sliders className="w-4 h-4" />
-            <span className="text-[9px] font-medium mt-0.5">Inspect</span>
-          </div>
+        <div
+          style={{
+            backgroundColor: el.fill,
+            borderRadius: `${el.borderRadius ?? 24}px`,
+            border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
+            boxShadow: `0px ${el.shadowY ?? 6}px ${el.shadowBlur ?? 20}px rgba(0,0,0,0.35)`,
+            backdropFilter: el.backdropBlur ? `blur(${el.backdropBlur}px)` : 'none',
+          }}
+          className="w-full h-full flex items-center justify-around px-3 select-none text-xs relative overflow-hidden"
+        >
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTabId;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setElements((prev) => ({
+                    ...prev,
+                    [el.id]: { ...prev[el.id], activeTab: tab.id },
+                  }));
+                }}
+                className={`flex flex-col items-center justify-center gap-1 transition-all py-1 px-3 rounded-xl relative ${
+                  isActive
+                    ? isM3
+                      ? 'text-[#d0bcff] font-bold'
+                      : 'text-[#007aff] font-bold'
+                    : 'text-[#89919e] hover:text-white'
+                }`}
+              >
+                {/* M3 Active Indicator Pill */}
+                {isActive && isM3 && (
+                  <div className="absolute inset-0 bg-[#d0bcff]/20 rounded-xl border border-[#d0bcff]/40 -z-0 animate-fadeIn" />
+                )}
+                <div className="relative z-10 flex items-center justify-center">
+                  <DynamicIcon name={tab.icon || 'Sparkles'} className="w-4 h-4 shrink-0" />
+                  {tab.badge && (
+                    <span className="absolute -top-1 -right-2 bg-[#ef4444] text-white text-[9px] font-bold px-1 rounded-full">
+                      {tab.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight relative z-10">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       );
     }
@@ -960,7 +1051,108 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
-    // 2. Feature Cards Grid Container
+    // 2. Feature Cards Grid & Adaptive Data Grids
+    if (el.variant === 'm3-adaptive-grid' || el.variant === 'ios-adaptive-grid' || (el.type === 'grid' && el.items)) {
+      const isM3 = el.materialPreset === 'm3' || el.variant === 'm3-adaptive-grid';
+      const items = el.items || [
+        { id: '1', name: 'Primary Filled Button', type: 'Material 3', status: 'Published', updated: '2 mins ago' },
+        { id: '2', name: 'Dynamic Top App Bar', type: 'Material 3', status: 'In Review', updated: '1 hr ago' },
+        { id: '3', name: 'Interactive Floating Input', type: 'Material 3', status: 'Published', updated: 'Yesterday' },
+        { id: '4', name: 'Footer Navigation Bar', type: 'Material 3', status: 'Draft', updated: '3 days ago' },
+      ];
+      const query = (el.searchQuery || '').toLowerCase();
+      const filteredItems = items.filter(
+        (item: any) =>
+          !query ||
+          (item.name && item.name.toLowerCase().includes(query)) ||
+          (item.title && item.title.toLowerCase().includes(query)) ||
+          (item.type && item.type.toLowerCase().includes(query)) ||
+          (item.category && item.category.toLowerCase().includes(query))
+      );
+
+      return (
+        <div
+          style={{
+            backgroundColor: el.fill,
+            borderRadius: `${el.borderRadius ?? 16}px`,
+            border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
+            boxShadow: `0px ${el.shadowY ?? 4}px ${el.shadowBlur ?? 16}px rgba(0,0,0,0.3)`,
+          }}
+          className="w-full h-full p-4 flex flex-col justify-between text-xs select-none relative overflow-hidden"
+        >
+          {/* Header Bar with Search & Title */}
+          <div className="flex items-center justify-between pb-3 border-b border-[#2d2d32]">
+            <div className="flex items-center gap-2">
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs ${isM3 ? 'bg-[#d0bcff]/20 text-[#d0bcff]' : 'bg-[#007aff]/20 text-[#007aff]'}`}>
+                <Grid className="w-3.5 h-3.5" />
+              </div>
+              <h4 className="font-bold text-white tracking-tight">{el.label || el.name}</h4>
+              <span className="text-[10px] bg-[#27272a] text-[#9fcaff] px-2 py-0.5 rounded-full font-mono font-medium">
+                {filteredItems.length} items
+              </span>
+            </div>
+
+            {/* Quick Search */}
+            <div className="w-44 h-7 bg-[#17161b] rounded-lg border border-[#35343a] flex items-center px-2 gap-1.5 text-[11px]">
+              <Search className="w-3 h-3 text-[#89919e] shrink-0" />
+              <input
+                type="text"
+                value={el.searchQuery || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setElements((prev) => ({
+                    ...prev,
+                    [el.id]: { ...prev[el.id], searchQuery: val },
+                  }));
+                }}
+                placeholder="Filter grid..."
+                className="bg-transparent text-white placeholder-[#89919e] outline-none text-[11px] w-full"
+              />
+            </div>
+          </div>
+
+          {/* Adaptive List Rows */}
+          <div className="flex-1 overflow-auto py-2 space-y-1.5">
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-6 text-[#89919e] text-[11px]">
+                No items matching &quot;{el.searchQuery}&quot;
+              </div>
+            ) : (
+              filteredItems.map((item: any, idx: number) => (
+                <div
+                  key={item.id || idx}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#17161b] border border-[#27272a] hover:border-[#9fcaff] transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <div className="w-2 h-2 rounded-full bg-[#0d99ff]" />
+                    <span className="font-semibold text-white truncate text-xs">
+                      {item.name || item.title || `Item ${idx + 1}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 text-[11px]">
+                    <span className="text-[#89919e] font-mono">{item.type || item.category || 'Asset'}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium font-mono ${
+                        item.status === 'Published' || item.badge === 'Active'
+                          ? 'bg-[#064e3b] text-[#34d399]'
+                          : item.status === 'In Review'
+                          ? 'bg-[#78350f] text-[#fde047]'
+                          : 'bg-[#27272a] text-[#bfc7d5]'
+                      }`}
+                    >
+                      {item.status || item.badge || 'Ready'}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-[#89919e]" />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (el.id === 'feature-grid-container' || el.type === 'grid') {
       return (
         <div className="w-full h-full p-6 grid grid-cols-3 gap-6 select-none">
@@ -1242,26 +1434,121 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
-    // 7. Inputs
+    // 7. Interactive Inputs with Floating Labels
     if (el.type === 'input') {
+      const isFloating = el.hasFloatingLabel || el.variant?.includes('floating');
+      const isM3 = el.materialPreset === 'm3' || el.variant?.includes('m3');
+      const isIos = el.materialPreset === 'ios' || el.variant?.includes('ios');
+      const isPassword = el.iconName === 'Lock' || el.name.toLowerCase().includes('password');
+
+      const value = el.textContent || '';
+      const hasValue = value.length > 0;
+      const isFocused = el.isFocused || false;
+      const shouldFloat = isFloating && (hasValue || isFocused);
+
       return (
         <div
           style={{
             backgroundColor: el.fill,
-            borderRadius: `${el.borderRadius ?? 8}px`,
-            border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
-            boxShadow: `0px ${el.shadowY ?? 2}px ${el.shadowBlur ?? 8}px rgba(0,0,0,0.2)`,
+            borderRadius: `${el.borderRadius ?? (isIos ? 14 : isM3 ? 12 : 8)}px`,
+            border: `${el.strokeWidth ?? 1}px solid ${
+              isFocused
+                ? isM3
+                  ? '#d0bcff'
+                  : isIos
+                  ? '#007aff'
+                  : '#0d99ff'
+                : el.stroke ?? '#353534'
+            }`,
+            boxShadow: isFocused
+              ? `0px 0px 10px ${isM3 ? 'rgba(208,188,255,0.4)' : isIos ? 'rgba(0,122,255,0.4)' : 'rgba(13,153,255,0.4)'}`
+              : `0px ${el.shadowY ?? 2}px ${el.shadowBlur ?? 8}px rgba(0,0,0,0.2)`,
           }}
-          className="w-full h-full px-3 py-2 flex items-center justify-between text-xs overflow-hidden select-none"
+          className="w-full h-full px-3 py-1.5 flex flex-col justify-center text-xs relative select-none group transition-all"
         >
-          <div className="flex items-center gap-2 truncate">
-            <DynamicIcon name={el.iconName || 'Search'} className="w-3.5 h-3.5 text-[#89919e] shrink-0" />
-            <span className="text-[#89919e] truncate">{el.textContent || 'Search components...'}</span>
+          {/* Floating Label / Standard Label */}
+          {el.label && (
+            <label
+              style={{
+                transition: 'all 0.2s ease-out',
+                transform: shouldFloat ? 'translateY(-2px) scale(0.85)' : 'translateY(10px) scale(1)',
+                transformOrigin: 'left top',
+                color: shouldFloat
+                  ? isM3
+                    ? '#d0bcff'
+                    : isIos
+                    ? '#007aff'
+                    : '#9fcaff'
+                  : '#89919e',
+              }}
+              className="text-[11px] font-semibold block pointer-events-none truncate z-10"
+            >
+              {el.label}
+            </label>
+          )}
+
+          <div className="flex items-center gap-2 w-full mt-0.5">
+            {el.iconName && (
+              <DynamicIcon
+                name={el.iconName}
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  isM3 ? 'text-[#d0bcff]' : isIos ? 'text-[#007aff]' : 'text-[#89919e]'
+                }`}
+              />
+            )}
+            <input
+              type={isPassword ? 'password' : 'text'}
+              value={value}
+              onFocus={() => {
+                setElements((prev) => ({
+                  ...prev,
+                  [el.id]: { ...prev[el.id], isFocused: true },
+                }));
+              }}
+              onBlur={() => {
+                setElements((prev) => ({
+                  ...prev,
+                  [el.id]: { ...prev[el.id], isFocused: false },
+                }));
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setElements((prev) => ({
+                  ...prev,
+                  [el.id]: { ...prev[el.id], textContent: val },
+                }));
+              }}
+              placeholder={!shouldFloat ? el.placeholder || el.textContent || 'Type value...' : ''}
+              className="bg-transparent text-white placeholder-[#89919e] outline-none text-xs w-full font-medium"
+            />
+
+            {/* Clear Button or Toggle Switch */}
+            {hasValue && (
+              <button
+                onClick={() => {
+                  setElements((prev) => ({
+                    ...prev,
+                    [el.id]: { ...prev[el.id], textContent: '' },
+                  }));
+                }}
+                className="text-[#89919e] hover:text-white transition-colors p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+
+            {el.variant === 'toggle' && (
+              <div className="w-9 h-5 rounded-full bg-[#0d99ff] p-0.5 flex items-center justify-end">
+                <div className="w-4 h-4 rounded-full bg-white shadow" />
+              </div>
+            )}
           </div>
-          {el.variant === 'toggle' && (
-            <div className="w-9 h-5 rounded-full bg-[#0d99ff] p-0.5 flex items-center justify-end">
-              <div className="w-4 h-4 rounded-full bg-white shadow" />
-            </div>
+
+          {/* Helper Text below input */}
+          {el.helperText && (
+            <span className="text-[9px] text-[#89919e] mt-0.5 block truncate">
+              {el.helperText}
+            </span>
           )}
         </div>
       );
