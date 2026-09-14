@@ -1412,6 +1412,37 @@ export const Canvas: React.FC<CanvasProps> = ({
               <span>🕹 Arcade</span>
               <span>🔍 Search</span>
             </div>
+          ) : el.variant?.includes('dynamic-header') ? (
+            <div className="flex items-center justify-between w-full px-4 text-xs">
+              <span className="font-semibold text-white">{el.materialPreset === 'ios' ? '‹ Back' : '≡'}</span>
+              <div className={`flex-1 mx-3 px-3 py-1.5 flex items-center gap-2 ${el.materialPreset === 'ios' ? 'bg-[#3a3a3c]' : 'bg-[#353534]'} rounded-full text-[#8e8e93]`}>
+                <span>🔍</span>
+                <span>Search...</span>
+              </div>
+              <span className="font-semibold text-white">{el.materialPreset === 'ios' ? 'Edit' : '⚙'}</span>
+            </div>
+          ) : el.variant?.includes('footer-tabs') ? (
+            <div className={`flex items-center justify-around w-full px-2 text-[11px] ${el.materialPreset === 'ios' ? 'text-[#8e8e93]' : 'text-[#cac4d0]'}`}>
+              <div className={`flex flex-col items-center ${el.materialPreset === 'ios' ? 'text-[#007aff]' : 'text-[#d0bcff]'}`}>
+                <span className={`px-3 py-0.5 rounded-full ${el.materialPreset === 'ios' ? '' : 'bg-[#4a4458]'} font-semibold`}>🏠 Home</span>
+              </div>
+              <span>🔍 Browse</span>
+              <span>👤 Profile</span>
+            </div>
+          ) : el.variant?.includes('data-grid') ? (
+            <div className="flex flex-col w-full h-full p-2 overflow-hidden gap-1.5">
+              {(el.textContent || '').split('\n').map((line, idx) => (
+                <div key={idx} className={`flex justify-between p-2 rounded-lg ${el.materialPreset === 'ios' ? 'bg-[#2c2c2e]' : 'bg-[#353534]'} text-xs font-medium`}>
+                  <span>{line.split('$')[0].trim()}</span>
+                  <span className={el.materialPreset === 'ios' ? 'text-[#007aff]' : 'text-[#d0bcff]'}>${line.split('$')[1]}</span>
+                </div>
+              ))}
+            </div>
+          ) : el.variant?.includes('floating-input') ? (
+            <div className="flex flex-col justify-center w-full px-3 text-left">
+              <span className={`text-[9px] font-semibold ${el.materialPreset === 'ios' ? 'text-[#007aff]' : 'text-[#d0bcff]'}`}>Email Address</span>
+              <span className="text-white text-xs font-medium mt-0.5">{el.subText}</span>
+            </div>
           ) : (
             <div className="flex items-center gap-2 truncate">
               {el.iconName && <DynamicIcon name={el.iconName} className="w-4 h-4 shrink-0" />}

@@ -14,6 +14,9 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
+  Layers,
+  LayoutDashboard,
+  Users,
 } from 'lucide-react';
 import { CanvasElement } from '../types';
 import { downloadInteractivePrototypeHtml } from '../utils/exportUtils';
@@ -622,24 +625,79 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
                 </div>
               </div>
 
+              {/* Projects Dashboard Screen Specific Form (Smoothly slide up and fade in) */}
+              <div
+                style={{
+                  transition: easingTransition,
+                  opacity: mobileScreen === 'projects' ? 1 : 0,
+                  transform:
+                    mobileScreen === 'projects' ? 'translateY(16px)' : 'translateY(80px)',
+                  pointerEvents: mobileScreen === 'projects' ? 'auto' : 'none',
+                  display: mobileScreen === 'projects' ? 'block' : 'none',
+                }}
+                className="space-y-4 mt-2"
+              >
+                <div className="flex items-center justify-between text-xs text-[#89919e] font-medium border-b border-[#2d2d32] pb-2">
+                  <span>Recent Designs</span>
+                  <span className="text-[#9fcaff]">View All</span>
+                </div>
+                
+                {/* Data Grid Mockup */}
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 bg-[#1c1c21] p-3 rounded-xl border border-[#2d2d32] hover:border-[#9fcaff] transition-colors cursor-pointer group">
+                      <div className="w-10 h-10 rounded-lg bg-[#2a2a2f] flex items-center justify-center group-hover:bg-[#0d99ff] transition-colors">
+                        <Layers className="w-4 h-4 text-[#89919e] group-hover:text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold text-white">Design System {i}</div>
+                        <div className="text-[10px] text-[#89919e]">Edited 2 hrs ago</div>
+                      </div>
+                      <div className="text-xs text-[#89919e]">⋮</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer Tabs Mockup */}
+                <div className="flex items-center justify-around w-full mt-4 pt-4 border-t border-[#2d2d32] text-[11px] text-[#89919e]">
+                  <div className="flex flex-col items-center text-[#9fcaff]">
+                    <div className="w-8 h-8 rounded-full bg-[#9fcaff]/10 flex items-center justify-center mb-1">
+                      <LayoutDashboard className="w-4 h-4" />
+                    </div>
+                    <span className="font-semibold">Home</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center mb-1">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <span>Explore</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center mb-1">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <span>Team</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Shared Element 3: Bottom Action CTA Button */}
               <div className="mt-auto pt-6 space-y-3">
                 <button
                   onClick={() => {
                     if (mobileScreen === 'welcome') {
                       triggerSmartAnimate('signin');
+                    } else if (mobileScreen === 'signin') {
+                      showToast('Successfully signed in! Accessing dashboard...');
+                      triggerSmartAnimate('projects');
                     } else {
-                      showToast('Successfully signed in! Accessing canvas...');
-                      setTimeout(() => {
-                        onClose();
-                        triggerSmartAnimate('welcome');
-                      }, 1200);
+                      triggerSmartAnimate('welcome');
                     }
                   }}
                   style={{
                     transition: easingTransition,
-                    backgroundColor: mobileScreen === 'welcome' ? '#9fcaff' : '#0d99ff',
-                    color: mobileScreen === 'welcome' ? '#003259' : '#ffffff',
+                    backgroundColor: mobileScreen === 'welcome' ? '#9fcaff' : mobileScreen === 'projects' ? '#201f1f' : '#0d99ff',
+                    color: mobileScreen === 'welcome' ? '#003259' : mobileScreen === 'projects' ? '#ffffff' : '#ffffff',
                   }}
                   className="proto-hotspot w-full py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all hover:brightness-110 active:scale-98"
                 >
@@ -647,6 +705,8 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
                   <span>
                     {mobileScreen === 'welcome'
                       ? 'Get Started (On Tap ➔ Smart Animate)'
+                      : mobileScreen === 'projects'
+                      ? 'Sign Out'
                       : 'Sign In to Workspace'}
                   </span>
                 </button>
@@ -658,14 +718,14 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
                   >
                     Already have an account? <span className="underline font-medium">Sign in</span>
                   </button>
-                ) : (
+                ) : mobileScreen === 'signin' ? (
                   <button
                     onClick={() => triggerSmartAnimate('welcome')}
                     className="proto-hotspot w-full text-center text-xs text-[#89919e] hover:text-white py-1 transition-colors"
                   >
                     ← Cancel and return to Welcome Screen
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
 
