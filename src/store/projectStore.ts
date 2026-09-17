@@ -59,6 +59,18 @@ const loadInitialProjects = (): Record<string, Project> => {
 let lastProjectsState: Record<string, Project> | null = null;
 let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 
+const pendingFirestoreSyncs: Record<string, ReturnType<typeof setTimeout>> = {};
+
+const debouncedSyncProjectToFirestore = (project: Project, userId: string) => {
+  if (pendingFirestoreSyncs[project.id]) {
+    clearTimeout(pendingFirestoreSyncs[project.id]);
+  }
+  pendingFirestoreSyncs[project.id] = setTimeout(() => {
+    syncProjectToFirestore(project, userId).catch(console.error);
+    delete pendingFirestoreSyncs[project.id];
+  }, 2000); // 2 second debounce for Firestore writes
+};
+
 const persistProjects = (projects: Record<string, Project>) => {
   lastProjectsState = projects;
   if (persistTimeout) clearTimeout(persistTimeout);
@@ -153,7 +165,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
           const next = { [userProject.id]: userProject };
           set({ projects: next, activeProjectId: userProject.id });
           persistProjects(next);
-          await syncProjectToFirestore(userProject, userId);
+          await debouncedSyncProjectToFirestore(userProject, userId);
         }
       } catch (err) {
         console.warn('Failed to sync projects with Firestore:', err);
@@ -266,7 +278,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
       const { currentUserId } = get();
       if (currentUserId) {
-        syncProjectToFirestore(newProject, currentUserId);
+        debouncedSyncProjectToFirestore(newProject, currentUserId);
       }
 
       return newProject;
@@ -304,7 +316,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
       const { currentUserId } = get();
       if (currentUserId && updatedProject) {
-        syncProjectToFirestore(updatedProject, currentUserId);
+        debouncedSyncProjectToFirestore(updatedProject, currentUserId);
       }
     },
 
@@ -337,7 +349,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
       const { currentUserId } = get();
       if (currentUserId && updatedProject) {
-        syncProjectToFirestore(updatedProject, currentUserId);
+        debouncedSyncProjectToFirestore(updatedProject, currentUserId);
       }
     },
 
@@ -401,7 +413,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
       const { currentUserId } = get();
       if (currentUserId) {
-        syncProjectToFirestore(cloned, currentUserId);
+        debouncedSyncProjectToFirestore(cloned, currentUserId);
       }
 
       return cloned;

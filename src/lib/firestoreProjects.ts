@@ -11,12 +11,13 @@ import {
   handleFirestoreError,
 } from './firebase';
 import { Project } from '../types';
+import { isQuotaExceeded, setQuotaExceeded } from './firebaseQuota';
 
 /**
  * Saves or updates a project document in Firestore.
  */
 export async function syncProjectToFirestore(project: Project, userId: string): Promise<void> {
-  if (!userId || !project?.id) return;
+  if (isQuotaExceeded || !userId || !project?.id) return;
   const path = `projects/${project.id}`;
   try {
     const projRef = doc(db, 'projects', project.id);
@@ -42,6 +43,11 @@ export async function syncProjectToFirestore(project: Project, userId: string): 
     };
     await setDoc(projRef, projectData, { merge: true });
   } catch (err: any) {
+    if (err?.code === 'resource-exhausted') {
+      console.warn('Firestore quota exceeded. Stopping cloud sync for this session.');
+      setQuotaExceeded(true);
+      return;
+    }
     console.warn('Error saving project to Firestore:', err);
     if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
       handleFirestoreError(err, OperationType.WRITE, path);
