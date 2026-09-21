@@ -67,13 +67,13 @@ export const useUIStore = create<UIStoreState>((set) => ({
 
   leftSidebarWidth: 300,
   setLeftSidebarWidth: (leftSidebarWidth) => set({ leftSidebarWidth }),
-  isLeftSidebarCollapsed: false,
+  isLeftSidebarCollapsed: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
   toggleLeftSidebar: () =>
     set((state) => ({ isLeftSidebarCollapsed: !state.isLeftSidebarCollapsed })),
 
   inspectorWidth: 288,
   setInspectorWidth: (inspectorWidth) => set({ inspectorWidth }),
-  isInspectorCollapsed: false,
+  isInspectorCollapsed: typeof window !== 'undefined' ? window.innerWidth < 1024 : false,
   toggleInspector: () =>
     set((state) => ({ isInspectorCollapsed: !state.isInspectorCollapsed })),
 

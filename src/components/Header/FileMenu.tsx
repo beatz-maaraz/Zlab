@@ -67,15 +67,15 @@ export const FileMenu: React.FC<FileMenuProps> = ({
   }, []);
 
   return (
-    <nav ref={menuRef} className="hidden lg:flex items-center gap-1 ml-6 relative">
+    <nav ref={menuRef} className="hidden lg:flex items-center gap-0.5 relative shrink-0">
       {/* File Menu */}
       <div className="relative">
         <button
           id="menu-btn-file"
           onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
-          className={`px-2.5 py-1.5 rounded text-xs transition-colors ${
+          className={`h-8 px-2.5 rounded-lg text-xs font-medium transition-colors ${
             activeMenu === 'file'
-              ? 'bg-[#0d99ff] text-[#002f55] font-medium'
+              ? 'bg-[#0d99ff] text-[#002f55]'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
           }`}
         >
@@ -154,9 +154,9 @@ export const FileMenu: React.FC<FileMenuProps> = ({
         <button
           id="menu-btn-edit"
           onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
-          className={`px-2.5 py-1.5 rounded text-xs transition-colors ${
+          className={`h-8 px-2.5 rounded-lg text-xs font-medium transition-colors ${
             activeMenu === 'edit'
-              ? 'bg-[#0d99ff] text-[#002f55] font-medium'
+              ? 'bg-[#0d99ff] text-[#002f55]'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
           }`}
         >
@@ -224,14 +224,14 @@ export const FileMenu: React.FC<FileMenuProps> = ({
         <button
           id="menu-btn-kits"
           onClick={() => setActiveMenu(activeMenu === 'kits' ? null : 'kits')}
-          className={`px-2.5 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 ${
+          className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
             activeMenu === 'kits'
               ? 'bg-[#0d99ff] text-[#002f55] font-semibold'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-[#9fcaff]" />
-          <span>Design Kits</span>
+          <span><span className="hidden xl:inline">Design </span>Kits</span>
         </button>
         {activeMenu === 'kits' && (
           <div className="absolute left-0 top-full mt-1 w-64 bg-[#1c1b1b] border border-[#353534] rounded-lg shadow-2xl py-1 z-50 text-xs text-[#e5e2e1]">
@@ -287,7 +287,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
         <button
           id="menu-btn-view"
           onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
-          className={`px-2.5 py-1.5 rounded text-xs transition-colors ${
+          className={`h-8 px-2.5 rounded-lg text-xs font-medium transition-colors ${
             activeMenu === 'view'
               ? 'bg-[#0d99ff] text-[#002f55] font-medium'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
@@ -361,7 +361,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
         <button
           id="menu-btn-plugins"
           onClick={() => setActiveMenu(activeMenu === 'plugins' ? null : 'plugins')}
-          className={`px-2.5 py-1.5 rounded text-xs transition-colors ${
+          className={`h-8 px-2.5 rounded-lg text-xs font-medium transition-colors ${
             activeMenu === 'plugins'
               ? 'bg-[#0d99ff] text-[#002f55] font-medium'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'

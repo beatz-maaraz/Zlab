@@ -15,8 +15,9 @@ export function calculatePreviewScale(
   if (containerWidth <= 0 || containerHeight <= 0 || artboardWidth <= 0 || artboardHeight <= 0) {
     return 1;
   }
-  const availableWidth = Math.max(1, containerWidth - padding);
-  const availableHeight = Math.max(1, containerHeight - padding);
+  const effectivePadding = containerWidth < 640 ? Math.min(padding, 20) : padding;
+  const availableWidth = Math.max(1, containerWidth - effectivePadding);
+  const availableHeight = Math.max(1, containerHeight - effectivePadding);
 
   const scaleX = availableWidth / artboardWidth;
   const scaleY = availableHeight / artboardHeight;

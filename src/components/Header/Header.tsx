@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sliders } from 'lucide-react';
 import { AppView, Collaborator } from '../../types';
 import { ProjectTitle } from './ProjectTitle';
 import { FileMenu } from './FileMenu';
@@ -32,6 +33,10 @@ export interface HeaderProps {
   onNewDesign?: () => void;
   isSaving?: boolean;
   selectedElementIds?: string[];
+  isLeftSidebarCollapsed?: boolean;
+  onToggleLeftSidebar?: () => void;
+  isInspectorCollapsed?: boolean;
+  onToggleInspector?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -60,14 +65,18 @@ export const Header: React.FC<HeaderProps> = ({
   onNewDesign,
   isSaving,
   selectedElementIds = [],
+  isLeftSidebarCollapsed = false,
+  onToggleLeftSidebar,
+  isInspectorCollapsed = false,
+  onToggleInspector,
 }) => {
   return (
     <header
       id="app-header"
-      className="fixed top-0 left-0 right-0 h-16 bg-[#131313]/90 backdrop-blur-xl z-50 flex items-center justify-between px-6 border-b border-[#201f1f] select-none"
+      className="fixed top-0 left-0 right-0 h-16 bg-[#131313]/90 backdrop-blur-xl z-50 flex items-center justify-between px-3 sm:px-6 border-b border-[#201f1f] select-none gap-2"
     >
-      {/* Left side: Branding & Project Title */}
-      <div className="flex items-center gap-2">
+      {/* Left side: Branding & Project Title & File Menu */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
         <ProjectTitle
           projectTitle={projectTitle}
           onUpdateTitle={setProjectTitle}
@@ -79,32 +88,35 @@ export const Header: React.FC<HeaderProps> = ({
         />
 
         {currentView === 'editor' && (
-          <FileMenu
-            onGoToDashboard={() => setCurrentView('dashboard')}
-            onNewDesign={onNewDesign || (() => setProjectTitle('Untitled Design v' + (Math.random() * 5 + 2).toFixed(1)))}
-            onOpenSettings={onOpenSettings}
-            onExport={onExport}
-            onOpenShortcuts={onOpenShortcuts}
-            onImportMaterialKit={onImportMaterialKit}
-            onImportIOSKit={onImportIOSKit}
-            onImportAllMaterials={onImportAllMaterials}
-            onUndo={onUndo}
-            onRedo={onRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onGroup={onGroup}
-            onUngroup={onUngroup}
-            zoom={zoom}
-            setZoom={setZoom}
-            devicePreview={devicePreview}
-            setDevicePreview={setDevicePreview}
-          />
+          <>
+            <div className="h-4 w-[1px] bg-[#252525] hidden lg:block mx-1 shrink-0" />
+            <FileMenu
+              onGoToDashboard={() => setCurrentView('dashboard')}
+              onNewDesign={onNewDesign || (() => setProjectTitle('Untitled Design v' + (Math.random() * 5 + 2).toFixed(1)))}
+              onOpenSettings={onOpenSettings}
+              onExport={onExport}
+              onOpenShortcuts={onOpenShortcuts}
+              onImportMaterialKit={onImportMaterialKit}
+              onImportIOSKit={onImportIOSKit}
+              onImportAllMaterials={onImportAllMaterials}
+              onUndo={onUndo}
+              onRedo={onRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onGroup={onGroup}
+              onUngroup={onUngroup}
+              zoom={zoom}
+              setZoom={setZoom}
+              devicePreview={devicePreview}
+              setDevicePreview={setDevicePreview}
+            />
+          </>
         )}
       </div>
 
-      {/* Center: Boolean Operations (Visible only on multi-select) */}
+      {/* Center: Boolean Operations (Visible only on multi-select on larger screens) */}
       {currentView === 'editor' && selectedElementIds.length >= 2 && (
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#201f1f] rounded-lg p-1 border border-[#353534]">
+        <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 bg-[#201f1f] rounded-lg p-1 border border-[#353534] shadow-md z-10">
           <button className="p-1.5 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] rounded transition-colors" title="Union Selection">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M4 4H10V10H4V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -125,8 +137,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Right side: ViewControls, ExportButton, CollaborationControls */}
-      <div className="flex items-center gap-3">
+      {/* Right side: ViewControls, Inspector toggle, ExportButton, CollaborationControls */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {currentView === 'editor' && (
           <>
             <ViewControls
@@ -139,6 +151,21 @@ export const Header: React.FC<HeaderProps> = ({
               devicePreview={devicePreview}
               setDevicePreview={setDevicePreview}
             />
+
+            {onToggleInspector && (
+              <button
+                id="btn-toggle-inspector"
+                onClick={onToggleInspector}
+                className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors shrink-0 ${
+                  !isInspectorCollapsed
+                    ? 'bg-[#201f1f] text-[#0d99ff] border-[#0d99ff]/40 shadow-sm'
+                    : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] border-[#353534]/50'
+                }`}
+                title={!isInspectorCollapsed ? 'Collapse Inspector (Right Panel)' : 'Expand Inspector (Right Panel)'}
+              >
+                <Sliders className="w-4 h-4" />
+              </button>
+            )}
 
             <ExportButton onExport={onExport} />
           </>

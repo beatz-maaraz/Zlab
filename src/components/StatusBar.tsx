@@ -24,19 +24,19 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <footer
       id="canvas-status-bar"
-      className="fixed bottom-0 left-0 right-0 h-8 bg-[#1c1b1b] border-t border-[#353534] px-4 flex items-center justify-between z-30 text-xs text-[#bfc7d5] select-none"
+      className="fixed bottom-0 left-0 right-0 h-8 bg-[#1c1b1b] border-t border-[#353534] px-2 sm:px-4 flex items-center justify-between z-30 text-xs text-[#bfc7d5] select-none"
     >
       {/* Left sync & page status */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="text-[11px] text-[#e5e2e1]">Canvas Synchronized</span>
+          <span className="text-[10px] sm:text-[11px] text-[#e5e2e1] hidden xs:inline">Canvas Synchronized</span>
         </div>
 
-        <div className="h-3 w-[1px] bg-[#3f4753]" />
+        <div className="h-3 w-[1px] bg-[#3f4753] hidden xs:block" />
 
         {/* Page selector with decrease/increase */}
         <div className="relative flex items-center gap-0.5">
@@ -52,9 +52,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <button
             id="btn-page-selector"
             onClick={() => setShowPageMenu(!showPageMenu)}
-            className="hover:text-[#e5e2e1] transition-colors cursor-pointer text-[11px] px-1 py-0.5 rounded hover:bg-[#201f1f]"
+            className="hover:text-[#e5e2e1] transition-colors cursor-pointer text-[10px] sm:text-[11px] px-1 py-0.5 rounded hover:bg-[#201f1f]"
           >
-            Page {currentPage} of {totalPages}
+            P.{currentPage}/{totalPages}
           </button>
 
           <button
@@ -84,18 +84,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           )}
         </div>
 
-        <div className="h-3 w-[1px] bg-[#3f4753]" />
+        <div className="h-3 w-[1px] bg-[#3f4753] hidden sm:block" />
         
         {/* Portal target for Canvas Zoom Indicator */}
-        <div id="canvas-zoom-indicator-portal" className="flex items-center" />
+        <div id="canvas-zoom-indicator-portal" className="hidden sm:flex items-center" />
       </div>
 
       {/* Right multiplayer collaborator presence */}
-      <div className="flex items-center gap-3 relative">
+      <div className="flex items-center gap-2 sm:gap-3 relative">
         {onOpenShortcuts && (
           <button
             onClick={onOpenShortcuts}
-            className="text-[11px] text-[#89919e] hover:text-[#e5e2e1] flex items-center gap-1 transition-colors mr-2"
+            className="hidden md:flex text-[11px] text-[#89919e] hover:text-[#e5e2e1] items-center gap-1 transition-colors mr-1 sm:mr-2"
             title="Keyboard Shortcuts & Settings"
           >
             <span>Shortcuts (⌘/)</span>
@@ -121,7 +121,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
         <button
           onClick={() => setShowUsersPopup(!showUsersPopup)}
-          className="text-[11px] hover:text-[#e5e2e1] cursor-pointer"
+          className="text-[11px] hover:text-[#e5e2e1] cursor-pointer hidden sm:inline"
         >
           {safeCollaborators.length} active users
         </button>

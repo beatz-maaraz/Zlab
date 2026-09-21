@@ -10,6 +10,9 @@ export interface CanvasViewportProps {
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   onMouseMove?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onMouseUp?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onTouchStart?: (e: React.TouchEvent<HTMLDivElement>) => void;
+  onTouchMove?: (e: React.TouchEvent<HTMLDivElement>) => void;
+  onTouchEnd?: (e: React.TouchEvent<HTMLDivElement>) => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
   onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -27,6 +30,9 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
       onMouseDown,
       onMouseMove,
       onMouseUp,
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
       onContextMenu,
       onWheel,
       onDragOver,
@@ -43,6 +49,9 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         onContextMenu={onContextMenu}
         onWheel={onWheel}
         onDragOver={onDragOver}
@@ -61,7 +70,7 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
               ? 'cell'
               : 'default',
         }}
-        className="canvas-viewport w-full h-full relative overflow-hidden select-none bg-[#0e0e0e] outline-none flex items-center justify-center"
+        className="canvas-viewport w-full h-full relative overflow-hidden select-none bg-[#0e0e0e] outline-none flex items-center justify-center touch-none"
       >
         {/* Visual Dots & Grids Background */}
         <CanvasGrid showGrid={showGrid} zoom={zoom} />

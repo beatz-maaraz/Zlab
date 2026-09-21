@@ -305,9 +305,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Modal Main Content: Split Two-Column Layout */}
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden text-xs text-[#e5e2e1]">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto md:overflow-hidden text-xs text-[#e5e2e1]">
           {/* Left Column: Settings, Quality & Controls */}
-          <div className="w-full md:w-[420px] shrink-0 border-b md:border-b-0 md:border-r border-[#27272a] p-5 space-y-4 overflow-y-auto bg-[#161619]">
+          <div className="w-full md:w-[420px] shrink-0 border-b md:border-b-0 md:border-r border-[#27272a] p-4 sm:p-5 space-y-4 overflow-y-auto bg-[#161619] max-h-[50vh] md:max-h-none">
             {/* Export Scope Switcher */}
             <div>
               <div className="flex items-center justify-between mb-2">

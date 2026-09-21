@@ -20,6 +20,7 @@ import {
   Globe,
   Search,
   Plus,
+  X,
   Trash2,
   Copy,
   Edit3,
@@ -962,10 +963,21 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   return (
     <>
+      {/* Mobile Backdrop when Left Sidebar is open */}
+      {!isCollapsed && onToggleCollapse && (
+        <div
+          id="sidebar-mobile-backdrop"
+          onClick={onToggleCollapse}
+          className="md:hidden fixed inset-0 top-16 bottom-8 bg-black/60 backdrop-blur-xs z-30 animate-fadeIn"
+        />
+      )}
+
       {/* Primary Rail Navigation (compact 56px / w-14) */}
       <aside
         id="sidebar-primary-nav"
-        className="fixed left-0 top-16 bottom-8 w-14 bg-[#181717] border-r border-[#27272a] z-40 flex flex-col items-center py-3 select-none justify-between"
+        className={`fixed left-0 top-16 bottom-8 w-14 bg-[#181717] border-r border-[#27272a] z-40 flex flex-col items-center py-3 select-none justify-between transition-transform duration-200 ${
+          isCollapsed ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
+        }`}
       >
         <div className="flex flex-col items-center gap-4 w-full">
           {/* Logo / App Switcher */}
@@ -1066,13 +1078,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         <div
           id="panel-layer-tree"
           style={{ left: '56px', width: `${Math.max(180, (width || 300) - 56)}px` }}
-          className="fixed top-16 bottom-8 bg-[#1c1b1b] border-r border-[#353534]/60 flex flex-col z-20 select-none overflow-hidden"
+          className="fixed top-16 bottom-8 bg-[#1c1b1b] border-r border-[#353534]/60 flex flex-col z-40 select-none overflow-hidden max-w-[calc(100vw-56px)] shadow-2xl transition-all duration-200"
         >
           {/* Resizer Handle on the Right Edge of Drawer */}
           {onStartResize && (
             <div
               onMouseDown={onStartResize}
-              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#0d99ff] active:bg-[#0d99ff] transition-colors z-30 group"
+              className="hidden md:block absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#0d99ff] active:bg-[#0d99ff] transition-colors z-30 group"
               title="Drag to resize sidebar"
             >
               <div className="w-0.5 h-6 bg-[#3f4753] group-hover:bg-[#0d99ff] rounded-full mx-auto my-auto absolute top-1/2 -translate-y-1/2 right-0.5" />
@@ -1087,40 +1099,53 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </span>
             </div>
 
-            {/* Quick Action Button */}
-            {activeNavTab === 'layers' && (
-              <button
-                onClick={() => {
-                  const timestamp = Date.now();
-                  const newEl: CanvasElement = {
-                    id: `rect_${timestamp}`,
-                    name: `Rectangle ${Object.keys(elements).length + 1}`,
-                    type: 'rectangle',
-                    x: 300,
-                    y: 200,
-                    width: 140,
-                    height: 80,
-                    rotation: 0,
-                    borderRadius: 8,
-                    fill: '#201f1f',
-                    fillOpacity: 100,
-                    stroke: '#353534',
-                    strokeWidth: 1,
-                    shadowBlur: 8,
-                    shadowY: 2,
-                    shadowSpread: 0,
-                    visible: true,
-                    locked: false,
-                    parentId: 'desktop-1440',
-                  };
-                  onInsertElement(newEl);
-                }}
-                className="p-1 rounded text-[#9fcaff] hover:bg-[#2a2a2a]"
-                title="Add New Rectangle Element"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {/* Quick Action Button */}
+              {activeNavTab === 'layers' && (
+                <button
+                  onClick={() => {
+                    const timestamp = Date.now();
+                    const newEl: CanvasElement = {
+                      id: `rect_${timestamp}`,
+                      name: `Rectangle ${Object.keys(elements).length + 1}`,
+                      type: 'rectangle',
+                      x: 300,
+                      y: 200,
+                      width: 140,
+                      height: 80,
+                      rotation: 0,
+                      borderRadius: 8,
+                      fill: '#201f1f',
+                      fillOpacity: 100,
+                      stroke: '#353534',
+                      strokeWidth: 1,
+                      shadowBlur: 8,
+                      shadowY: 2,
+                      shadowSpread: 0,
+                      visible: true,
+                      locked: false,
+                      parentId: 'desktop-1440',
+                    };
+                    onInsertElement(newEl);
+                  }}
+                  className="p-1 rounded text-[#9fcaff] hover:bg-[#2a2a2a] transition-colors"
+                  title="Add New Rectangle Element"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Close Drawer Button on Mobile */}
+              {onToggleCollapse && (
+                <button
+                  onClick={onToggleCollapse}
+                  className="md:hidden p-1 rounded text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] transition-colors"
+                  title="Close Drawer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Insertion Feedback Banner */}

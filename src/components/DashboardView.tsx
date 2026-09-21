@@ -166,7 +166,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Left Navigation in Dashboard */}
       <aside
         id="dashboard-sidebar-nav"
-        className="w-64 bg-[#1c1b1b] border-r border-[#353534] flex flex-col p-4 space-y-6 z-20"
+        className="hidden md:flex w-64 bg-[#1c1b1b] border-r border-[#353534] flex-col p-4 space-y-6 z-20 shrink-0"
       >
         <div className="space-y-1">
           <button
@@ -322,11 +322,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </aside>
 
       {/* Main Content Pane */}
-      <main className="flex-1 overflow-y-auto p-8 space-y-8">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
         {/* Header Greeting & Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-[#e5e2e1]">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#e5e2e1]">
               {getGreeting()}, Creator
             </h1>
             <p className="text-xs text-[#bfc7d5]">
@@ -334,11 +334,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               id="btn-dashboard-new-design"
               onClick={onNewDesign}
-              className="bg-[#9fcaff] text-[#003259] px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#0d99ff] hover:text-[#002f55] transition-all shadow-lg shadow-[#9fcaff]/20 hover:scale-102 cursor-pointer"
+              className="bg-[#9fcaff] text-[#003259] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#0d99ff] hover:text-[#002f55] transition-all shadow-lg shadow-[#9fcaff]/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New design</span>
@@ -347,12 +347,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               id="btn-dashboard-import"
               onClick={handleImport}
-              className="bg-[#201f1f] hover:bg-[#2a2a2a] text-[#e5e2e1] px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-[#353534] transition-colors"
+              className="bg-[#201f1f] hover:bg-[#2a2a2a] text-[#e5e2e1] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-[#353534] transition-colors cursor-pointer"
             >
               <Upload className="w-4 h-4 text-[#9fcaff]" />
               <span>{importNotification ? 'Opening...' : 'Import JSON'}</span>
             </button>
           </div>
+        </div>
+
+        {/* Mobile Navigation Tabs (visible only on mobile) */}
+        <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-2 border-b border-[#2d2d32] no-scrollbar">
+          {[
+            { id: 'all', label: 'All Files', icon: Folder },
+            { id: 'recents', label: 'Recents', icon: Clock },
+            { id: 'shared', label: 'Shared', icon: Users },
+            { id: 'trash', label: 'Trash', icon: Trash2 },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeNav === tab.id && !activeFolder;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveNav(tab.id as any);
+                  setActiveFolder(null);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors ${
+                  isActive
+                    ? 'bg-[#0d99ff] text-[#002f55] font-semibold'
+                    : 'bg-[#201f1f] text-[#bfc7d5] hover:text-[#e5e2e1]'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {(!activeFolder) && (

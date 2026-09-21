@@ -192,7 +192,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     <div
       id="floating-canvas-toolbar"
       ref={containerRef}
-      className="absolute top-6 left-6 z-30 flex items-center gap-1 bg-[#2a2a2a]/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-2xl border border-[#353534]"
+      className="absolute top-3 sm:top-6 left-3 sm:left-6 z-30 flex items-center gap-0.5 sm:gap-1 bg-[#2a2a2a]/95 backdrop-blur-md px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl shadow-2xl border border-[#353534] max-w-[calc(100vw-24px)] overflow-x-auto no-scrollbar"
       style={{
         transform: `translate(${position.x}px, ${position.y}px) scale(0.8)`,
         transformOrigin: 'top left',

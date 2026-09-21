@@ -55,17 +55,17 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 relative">
+    <div className="flex items-center gap-1.5 sm:gap-2 relative shrink-0">
       {/* Play Prototype Button */}
       {onOpenPrototype && (
         <button
           id="btn-header-play-proto"
           onClick={onOpenPrototype}
-          className="bg-[#201f1f] hover:bg-[#2a2a2a] text-[#34d399] border border-[#353534] px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+          className="h-8 bg-[#201f1f] hover:bg-[#2a2a2a] text-[#34d399] border border-[#353534] px-2.5 sm:px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer shrink-0"
           title="Play Interactive Prototype (Shift+P)"
         >
           <Play className="w-3.5 h-3.5 fill-current" />
-          <span>Prototype</span>
+          <span className="hidden sm:inline">Prototype</span>
         </button>
       )}
 
@@ -74,7 +74,7 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
         <button
           id="btn-header-shortcuts"
           onClick={onOpenShortcuts}
-          className="p-1.5 rounded-lg bg-[#201f1f] text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] border border-[#353534]/60 transition-colors shadow-sm cursor-pointer"
+          className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-[#201f1f] text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] border border-[#353534]/60 transition-colors shadow-sm cursor-pointer shrink-0"
           title="Keyboard Shortcuts & Commands Cheat-Sheet (⌘/ or ?)"
         >
           <Keyboard className="w-4 h-4" />
@@ -82,11 +82,11 @@ export const CollaborationControls: React.FC<CollaborationControlsProps> = ({
       )}
 
       {/* User Profile Avatar & Dropdown */}
-      <div className="relative" ref={menuRef}>
+      <div className="relative shrink-0" ref={menuRef}>
         <button
           id="btn-header-user-avatar"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#003259] to-[#0d99ff] text-white flex items-center justify-center font-bold text-xs ring-2 ring-[#131313] hover:ring-[#0d99ff] transition-all ml-1 cursor-pointer overflow-hidden shadow-sm"
+          className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#003259] to-[#0d99ff] text-white flex items-center justify-center font-bold text-xs ring-2 ring-[#131313] hover:ring-[#0d99ff] transition-all cursor-pointer overflow-hidden shadow-sm shrink-0"
           title={`Signed in as ${displayName}`}
         >
           {photoURL ? (

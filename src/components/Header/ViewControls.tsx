@@ -36,38 +36,38 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
   }, []);
 
   return (
-    <div className="flex items-center gap-1 bg-[#201f1f] px-2 py-1 rounded-lg border border-[#353534]/50">
+    <div className="h-8 flex items-center gap-0.5 sm:gap-1 bg-[#201f1f] px-1 sm:px-1.5 rounded-lg border border-[#353534]/50 shrink-0">
       {/* Undo */}
       <button
         id="btn-header-undo"
         onClick={onUndo}
         disabled={!canUndo}
-        className={`p-1.5 rounded transition-colors ${
+        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
           canUndo
             ? 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
             : 'text-[#89919e]/40 cursor-not-allowed'
         }`}
         title="Undo (⌘Z)"
       >
-        <Undo className="w-4 h-4" />
+        <Undo className="w-3.5 h-3.5" />
       </button>
       {/* Redo */}
       <button
         id="btn-header-redo"
         onClick={onRedo}
         disabled={!canRedo}
-        className={`p-1.5 rounded transition-colors ${
+        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
           canRedo
             ? 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
             : 'text-[#89919e]/40 cursor-not-allowed'
         }`}
         title="Redo (⇧⌘Z)"
       >
-        <Redo className="w-4 h-4" />
+        <Redo className="w-3.5 h-3.5" />
       </button>
 
-      {/* Zoom Adjust Controls (Decrease / Percentage Menu / Increase) */}
-      <div ref={zoomRef} className="relative flex items-center bg-[#141416] rounded-lg border border-[#353534] p-0.5">
+      {/* Zoom Adjust Controls (Decrease / Percentage Menu / Increase) - hidden on small screens */}
+      <div ref={zoomRef} className="relative hidden md:flex items-center h-6 bg-[#141416] rounded-md border border-[#353534] px-0.5">
         <button
           id="btn-header-zoom-decrease"
           type="button"
@@ -134,7 +134,7 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
         )}
       </div>
 
-      <div className="h-4 w-[1px] bg-[#3f4753] mx-1" />
+      <div className="hidden md:block h-4 w-[1px] bg-[#3f4753] mx-1" />
 
       {/* Device Change Control (Desktop / Mobile) */}
       <div
@@ -145,7 +145,7 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
         <button
           id="btn-change-control-desktop"
           onClick={() => setDevicePreview('desktop')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all ${
+          className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-xs transition-all ${
             devicePreview === 'desktop'
               ? 'bg-[#0d99ff] text-[#002f55] font-semibold shadow-sm'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
@@ -153,12 +153,12 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
           title="Desktop Artboard (1440 × 900)"
         >
           <Monitor className="w-3.5 h-3.5" />
-          <span>Desktop</span>
+          <span className="hidden xl:inline">Desktop</span>
         </button>
         <button
           id="btn-change-control-mobile"
           onClick={() => setDevicePreview('mobile')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all ${
+          className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-xs transition-all ${
             devicePreview === 'mobile'
               ? 'bg-[#0d99ff] text-[#002f55] font-semibold shadow-sm'
               : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
@@ -166,7 +166,7 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
           title="Mobile Artboard (390 × 844)"
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span>Mobile</span>
+          <span className="hidden xl:inline">Mobile</span>
         </button>
       </div>
     </div>

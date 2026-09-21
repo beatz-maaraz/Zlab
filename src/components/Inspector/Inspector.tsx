@@ -6,6 +6,7 @@ import {
   PinOff,
   Copy,
   Trash2,
+  X,
   Sliders,
   Play,
   Code2,
@@ -51,6 +52,8 @@ export interface InspectorProps {
   onUpdateMultipleElements?: (updates: Record<string, Partial<CanvasElement>>) => void;
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
+  onClose?: () => void;
+  isMobile?: boolean;
 }
 
 export const Inspector: React.FC<InspectorProps> = ({
@@ -70,6 +73,8 @@ export const Inspector: React.FC<InspectorProps> = ({
   onUpdateMultipleElements,
   width = 288,
   onStartResize,
+  onClose,
+  isMobile = false,
 }) => {
   const [activeTab, setActiveTab] = useState<InspectorTab>('design');
 
@@ -155,98 +160,127 @@ export const Inspector: React.FC<InspectorProps> = ({
   const canAlign = selectedElementIds && (selectedElementIds.length > 1 || (selectedElementIds.length === 1 && selectedElement?.parentId));
   const canDistribute = selectedElementIds && selectedElementIds.length > 2;
 
+  const isShown = width > 0;
+
   return (
-    <aside
-      id="inspector-sidebar"
-      style={{ width }}
-      className="fixed top-16 right-0 bottom-8 bg-[#171717] border-l border-[#201f1f] flex flex-col z-30 select-none shadow-xl"
-    >
-      {/* Left resize handle */}
-      {onStartResize && (
+    <>
+      {/* Mobile Backdrop when Inspector is open */}
+      {isMobile && isShown && onClose && (
         <div
-          onMouseDown={onStartResize}
-          className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-[#0d99ff]/30 transition-colors z-40"
-          title="Drag to resize Inspector panel"
+          id="inspector-mobile-backdrop"
+          onClick={onClose}
+          className="md:hidden fixed inset-0 top-16 bottom-8 bg-black/60 backdrop-blur-xs z-40 animate-fadeIn"
         />
       )}
 
-      {/* Header: Element Title, Pin, Lock, Duplicate, Delete */}
-      <div className="h-12 border-b border-[#201f1f] px-4 flex items-center justify-between shrink-0 bg-[#131313]">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <span className="text-xs font-bold text-[#e5e2e1] truncate max-w-[140px]">
-            {selectedElement.name}
-          </span>
-          <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#2a2a2a] text-[#89919e]">
-            {selectedElement.type}
-          </span>
+      <aside
+        id="inspector-sidebar"
+        style={{
+          width: isMobile ? (isShown ? 'min(88vw, 320px)' : 0) : (isShown ? width : 0),
+          transform: !isShown ? 'translateX(100%)' : 'translateX(0)',
+          pointerEvents: isShown ? 'auto' : 'none',
+        }}
+        className="fixed top-16 right-0 bottom-8 bg-[#171717] border-l border-[#201f1f] flex flex-col z-40 select-none shadow-xl transition-transform duration-200 ease-in-out overflow-hidden"
+      >
+        {/* Left resize handle (desktop only when panel is open) */}
+        {isShown && onStartResize && (
+          <div
+            id="inspector-resize-handle"
+            onMouseDown={onStartResize}
+            className="hidden md:block absolute -left-1 top-0 bottom-0 w-2.5 cursor-ew-resize hover:bg-[#0d99ff]/50 active:bg-[#0d99ff] transition-colors z-50"
+            title="Drag to resize Inspector panel"
+          />
+        )}
+
+        {/* Header: Element Title, Pin, Lock, Duplicate, Delete, Close */}
+        <div className="h-12 border-b border-[#201f1f] px-3 sm:px-4 flex items-center justify-between shrink-0 bg-[#131313]">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="text-xs font-bold text-[#e5e2e1] truncate max-w-[120px] sm:max-w-[140px]">
+              {selectedElement.name}
+            </span>
+            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#2a2a2a] text-[#89919e]">
+              {selectedElement.type}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Ungroup button for group elements */}
+            {selectedElement.type === 'group' && onUngroup && (
+              <button
+                onClick={() => onUngroup(selectedElement.id)}
+                className="p-1 text-[#f59e0b] hover:text-[#fbbf24] hover:bg-[#f59e0b]/20 rounded transition-colors"
+                title="Ungroup components (⌘⇧G)"
+              >
+                <FolderMinus className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Pin/Fix toggle */}
+            <button
+              onClick={() =>
+                onUpdateElement({
+                  pinned: !isPinned,
+                  fixed: !isPinned,
+                })
+              }
+              className={`p-1 rounded transition-colors ${
+                isPinned
+                  ? 'text-[#0d99ff] bg-[#0d99ff]/20'
+                  : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+              }`}
+              title={isPinned ? 'Unpin from artboard' : 'Pin to artboard (Fixed position)'}
+            >
+              {isPinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Lock toggle */}
+            <button
+              onClick={() => onUpdateElement({ locked: !isLocked })}
+              className={`p-1 rounded transition-colors ${
+                isLocked
+                  ? 'text-[#f59e0b] bg-[#f59e0b]/20'
+                  : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+              }`}
+              title={isLocked ? 'Unlock element' : 'Lock element'}
+            >
+              {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Duplicate */}
+            {!isArtboard && onDuplicateElement && (
+              <button
+                onClick={() => onDuplicateElement(selectedElement.id)}
+                className="p-1 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors"
+                title="Duplicate (⌘D)"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Delete */}
+            {!isArtboard && onDeleteElement && (
+              <button
+                onClick={() => onDeleteElement(selectedElement.id)}
+                className="p-1 text-[#89919e] hover:text-[#ffb4ab] hover:bg-[#201f1f] rounded transition-colors"
+                title="Delete element (Del)"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Close Inspector button */}
+            {onClose && (
+              <button
+                id="btn-close-inspector"
+                onClick={onClose}
+                className="p-1 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors ml-0.5"
+                title="Collapse Inspector panel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
-
-        <div className="flex items-center gap-1">
-          {/* Ungroup button for group elements */}
-          {selectedElement.type === 'group' && onUngroup && (
-            <button
-              onClick={() => onUngroup(selectedElement.id)}
-              className="p-1 text-[#f59e0b] hover:text-[#fbbf24] hover:bg-[#f59e0b]/20 rounded transition-colors"
-              title="Ungroup components (⌘⇧G)"
-            >
-              <FolderMinus className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Pin/Fix toggle */}
-          <button
-            onClick={() =>
-              onUpdateElement({
-                pinned: !isPinned,
-                fixed: !isPinned,
-              })
-            }
-            className={`p-1 rounded transition-colors ${
-              isPinned
-                ? 'text-[#0d99ff] bg-[#0d99ff]/20'
-                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
-            }`}
-            title={isPinned ? 'Unpin from artboard' : 'Pin to artboard (Fixed position)'}
-          >
-            {isPinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Lock toggle */}
-          <button
-            onClick={() => onUpdateElement({ locked: !isLocked })}
-            className={`p-1 rounded transition-colors ${
-              isLocked
-                ? 'text-[#f59e0b] bg-[#f59e0b]/20'
-                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
-            }`}
-            title={isLocked ? 'Unlock element' : 'Lock element'}
-          >
-            {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Duplicate */}
-          {!isArtboard && onDuplicateElement && (
-            <button
-              onClick={() => onDuplicateElement(selectedElement.id)}
-              className="p-1 text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] rounded transition-colors"
-              title="Duplicate (⌘D)"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Delete */}
-          {!isArtboard && onDeleteElement && (
-            <button
-              onClick={() => onDeleteElement(selectedElement.id)}
-              className="p-1 text-[#89919e] hover:text-[#ffb4ab] hover:bg-[#201f1f] rounded transition-colors"
-              title="Delete element (Del)"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Lock banner if locked or pinned */}
       {(isLocked || isPinned) && (
@@ -462,5 +496,6 @@ export const Inspector: React.FC<InspectorProps> = ({
         {activeTab === 'inspect' && <InspectTab element={selectedElement} />}
       </div>
     </aside>
-  );
+  </>
+);
 };

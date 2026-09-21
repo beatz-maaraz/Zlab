@@ -121,7 +121,7 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
       className="fixed inset-0 z-50 bg-[#09090b]/92 backdrop-blur-md flex flex-col select-none animate-fadeIn"
     >
       {/* Top Controls Bar */}
-      <header className="h-14 bg-[#141416] border-b border-[#27272a] px-5 flex items-center justify-between z-10 shrink-0">
+      <header className="min-h-14 bg-[#141416] border-b border-[#27272a] px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 z-10 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-[#0d99ff] flex items-center justify-center font-bold text-white text-xs shadow">
             V
@@ -322,7 +322,7 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
       {/* Main Interactive Stage */}
       <main
         onClick={handleStageClick}
-        className="flex-1 overflow-auto flex items-center justify-center p-8 relative"
+        className="flex-1 overflow-auto flex items-center justify-center p-3 sm:p-6 md:p-8 relative"
         style={{
           backgroundImage: 'radial-gradient(circle, #2d2d32 1.2px, transparent 1.2px)',
           backgroundSize: '24px 24px',
@@ -331,7 +331,7 @@ export const PrototypeModal: React.FC<PrototypeModalProps> = ({
         {device === 'desktop' ? (
           /* Desktop Browser Window Bezel */
           <div
-            className={`w-[960px] h-[640px] bg-[#141416] rounded-xl shadow-2xl border border-[#2d2d32] flex flex-col overflow-hidden transition-all duration-300 ${
+            className={`w-[960px] max-w-full h-[540px] sm:h-[640px] bg-[#141416] rounded-xl shadow-2xl border border-[#2d2d32] flex flex-col overflow-hidden transition-all duration-300 shrink-0 ${
               flashKey ? 'ring-2 ring-[#0d99ff]/50' : ''
             }`}
           >

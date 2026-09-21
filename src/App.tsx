@@ -106,9 +106,20 @@ export default function App() {
     inspectorWidth,
     setInspectorWidth,
     isInspectorCollapsed,
+    toggleInspector,
     toast,
     showToast,
   } = useUIStore();
+
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // History store
   const {
@@ -920,12 +931,18 @@ export default function App() {
     const startX = e.clientX;
     const startW = inspectorWidth;
 
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+
     const onMouseMove = (moveEv: MouseEvent) => {
-      const newWidth = Math.min(460, Math.max(240, startW - (moveEv.clientX - startX)));
+      const delta = moveEv.clientX - startX;
+      const newWidth = Math.min(520, Math.max(240, startW - delta));
       setInspectorWidth(newWidth);
     };
 
     const onMouseUp = () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -1021,6 +1038,10 @@ export default function App() {
             onNewDesign={handleNewDesign}
             isSaving={isSaving}
             selectedElementIds={selectedElementIds}
+            isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+            onToggleLeftSidebar={toggleLeftSidebar}
+            isInspectorCollapsed={isInspectorCollapsed}
+            onToggleInspector={toggleInspector}
           />
         )}
 
@@ -1078,10 +1099,10 @@ export default function App() {
             <div
               id="canvas-container"
               style={{
-                marginLeft: `${isLeftSidebarCollapsed ? 56 : leftSidebarWidth}px`,
-                marginRight: `${isInspectorCollapsed ? 0 : inspectorWidth}px`,
+                marginLeft: isMobile ? 0 : `${isLeftSidebarCollapsed ? 56 : leftSidebarWidth}px`,
+                marginRight: isMobile ? 0 : `${isInspectorCollapsed ? 0 : inspectorWidth}px`,
               }}
-              className="canvas-container min-w-0 min-h-0 flex-1 relative h-full flex overflow-hidden transition-[margin] duration-75"
+              className="canvas-container min-w-0 min-h-0 flex-1 relative h-full flex overflow-hidden transition-[margin] duration-200"
             >
               {/* Floating Toolbar */}
               <FloatingToolbar
@@ -1140,6 +1161,8 @@ export default function App() {
               onDuplicateElement={handleDuplicateElement}
               width={isInspectorCollapsed ? 0 : inspectorWidth}
               onStartResize={handleStartResizeInspector}
+              onClose={toggleInspector}
+              isMobile={isMobile}
             />
           </div>
         ) : (

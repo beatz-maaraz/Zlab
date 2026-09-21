@@ -296,6 +296,27 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      if (currentTool === 'hand') {
+        setIsPanning(true);
+        setStartPan({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+      } else if (currentTool === 'move') {
+        if (
+          e.target === containerRef.current ||
+          (e.target as HTMLElement).id === 'canvas-viewport' ||
+          (e.target as HTMLElement).id === 'preview-stage'
+        ) {
+          const rootId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+          setSelectedElementId(rootId);
+          if (setSelectedElementIds) setSelectedElementIds([rootId]);
+          setEditingTextId(null);
+        }
+      }
+    }
+  };
+
   // Global mouse handlers for panning, dragging, resizing, rotating, and drawing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -614,11 +635,29 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        handleMouseMove({
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        } as MouseEvent);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      handleMouseUp();
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [
     isPanning,
@@ -2120,6 +2159,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       showGrid={showGrid}
       zoom={zoom}
       onMouseDown={handleCanvasMouseDown}
+      onTouchStart={handleCanvasTouchStart}
       onContextMenu={handleCanvasContextMenu}
       onWheel={handleWheel}
       onDragOver={handleDragOver}
@@ -2138,31 +2178,39 @@ export const Canvas: React.FC<CanvasProps> = ({
         portalTarget
       )}
 
-      {/* Bottom-right: Scale Slider + Reset + Grid Toggle */}
-      <div className="absolute bottom-6 right-5 z-30 flex items-center gap-2">
+      {/* Bottom-right: Scale Slider + Reset + Grid Toggle (Desktop & Mobile) */}
+      <div
+        id="canvas-bottom-right-slider-widget"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        className="absolute bottom-3 right-3 sm:bottom-6 sm:right-5 z-20 flex items-center gap-1 sm:gap-2 bg-[#141416]/90 backdrop-blur-md p-1 sm:p-1.5 rounded-xl border border-[#353534]/60 shadow-xl max-w-[calc(100vw-24px)] select-none"
+      >
         {/* Fit / Reset button */}
         <button
+          id="btn-desktop-zoom-fit"
           onClick={() => {
             setZoom?.(1);
             setPan({ x: 0, y: 0 });
           }}
           title="Reset zoom to 100% and center artboard"
-          className="px-2 py-1 bg-[#141416]/90 border border-[#353534]/60 rounded text-[10px] font-mono text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50 transition-all shadow"
+          className="px-2 py-1 bg-[#1c1b1b] border border-[#353534]/60 rounded-lg text-[10px] font-mono text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50 transition-all shadow"
         >
           Fit View
         </button>
 
         {/* Grid Toggle */}
         <button
+          id="btn-desktop-grid-toggle"
           onClick={onToggleGrid}
           title="Toggle grid lines"
-          className={`p-1.5 rounded-lg border text-[11px] font-medium transition-all shadow ${
+          className={`p-1 sm:p-1.5 rounded-lg border text-[11px] font-medium transition-all shadow ${
             showGrid
               ? 'bg-[#34d399]/20 border-[#34d399]/50 text-[#34d399]'
-              : 'bg-[#141416]/90 border-[#353534]/60 text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50'
+              : 'bg-[#1c1b1b] border-[#353534]/60 text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50'
           }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
             <rect x="14" y="14" width="7" height="7"/>
@@ -2172,30 +2220,37 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         {/* Zoom out */}
         <button
-          onClick={() => setZoom?.((z) => Math.max(0.1, Math.round((z - 0.1) * 10) / 10))}
-          className="w-6 h-6 bg-[#141416]/90 border border-[#353534]/60 rounded text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-sm font-bold shadow"
+          id="btn-desktop-zoom-out"
+          onClick={() => setZoom?.((z) => Math.max(0.2, Math.round((z - 0.1) * 10) / 10))}
+          className="w-5 h-5 sm:w-6 sm:h-6 bg-[#1c1b1b] border border-[#353534]/60 rounded-lg text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-xs sm:text-sm font-bold shadow"
         >−</button>
 
-        {/* Zoom Slider */}
+        {/* Zoom Slider (Desktop right zoom slider) */}
         <input
+          id="desktop-zoom-slider"
           type="range"
-          min={10}
+          min={20}
           max={300}
           step={5}
           value={Math.round(zoom * 100)}
           onChange={(e) => setZoom?.(Number(e.target.value) / 100)}
-          className="w-24 h-1.5 accent-[#0d99ff] cursor-pointer"
-          title={`Zoom: ${Math.round(zoom * 100)}%`}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="hidden sm:block w-20 md:w-28 h-1.5 accent-[#0d99ff] cursor-pointer bg-[#2a2a2a] rounded-lg"
+          title={`Desktop Zoom Slider: ${Math.round(zoom * 100)}%`}
         />
 
         {/* Zoom in */}
         <button
+          id="btn-desktop-zoom-in"
           onClick={() => setZoom?.((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10))}
-          className="w-6 h-6 bg-[#141416]/90 border border-[#353534]/60 rounded text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-sm font-bold shadow"
+          className="w-5 h-5 sm:w-6 sm:h-6 bg-[#1c1b1b] border border-[#353534]/60 rounded-lg text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/60 transition-all flex items-center justify-center text-xs sm:text-sm font-bold shadow"
         >+</button>
 
         {/* Zoom label */}
-        <span className="text-[11px] font-mono text-[#89919e] bg-[#141416]/90 border border-[#353534]/60 px-2 py-0.5 rounded shadow min-w-[44px] text-center">
+        <span
+          id="desktop-zoom-label"
+          className="text-[10px] sm:text-[11px] font-mono text-[#89919e] bg-[#1c1b1b] border border-[#353534]/60 px-1.5 sm:px-2 py-0.5 rounded-lg shadow min-w-[36px] sm:min-w-[44px] text-center"
+        >
           {Math.round(zoom * 100)}%
         </span>
       </div>
