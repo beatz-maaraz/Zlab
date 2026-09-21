@@ -88,6 +88,8 @@ export default function App() {
     showGrid,
     setShowGrid,
     toggleGrid,
+    snapToGuides,
+    toggleSnapToGuides,
     collaborators,
     setCollaborators,
   } = useEditorStore();
@@ -1156,6 +1158,8 @@ export default function App() {
                 onDeleteElement={handleDeleteElement}
                 showGrid={showGrid}
                 onToggleGrid={toggleGrid}
+                snapToGuides={snapToGuides}
+                onToggleSnapToGuides={toggleSnapToGuides}
                 onDropElement={(el) => {
                   handleInsertElement(el);
                   setSelectedElementId(el.id);

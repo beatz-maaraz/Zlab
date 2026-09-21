@@ -1,5 +1,5 @@
 import React from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Grid, Monitor, Smartphone } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Grid, Monitor, Smartphone, Magnet } from 'lucide-react';
 
 interface CanvasControlsProps {
   zoom: number;
@@ -8,6 +8,8 @@ interface CanvasControlsProps {
   onZoomReset: () => void;
   showGrid: boolean;
   onToggleGrid?: () => void;
+  snapToGuides?: boolean;
+  onToggleSnap?: () => void;
   devicePreview: 'desktop' | 'mobile';
   onDeviceChange: (device: 'desktop' | 'mobile') => void;
 }
@@ -19,6 +21,8 @@ export const CanvasControls: React.FC<CanvasControlsProps> = ({
   onZoomReset,
   showGrid,
   onToggleGrid,
+  snapToGuides = true,
+  onToggleSnap,
   devicePreview,
   onDeviceChange,
 }) => {
@@ -65,6 +69,21 @@ export const CanvasControls: React.FC<CanvasControlsProps> = ({
           title="Toggle Canvas Grid (G)"
         >
           <Grid className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {/* Smart Snapping & Guides Toggle */}
+      {onToggleSnap && (
+        <button
+          onClick={onToggleSnap}
+          className={`p-1 rounded-lg transition-colors ${
+            snapToGuides
+              ? 'text-[#ff007a] bg-[#ff007a]/15'
+              : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
+          }`}
+          title={snapToGuides ? 'Smart Snapping & Dynamic Guides Active (Hold Alt to bypass)' : 'Enable Smart Snapping & Dynamic Guides'}
+        >
+          <Magnet className="w-3.5 h-3.5" />
         </button>
       )}
 

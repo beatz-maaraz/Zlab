@@ -21,6 +21,9 @@ interface EditorStoreState {
   toggleGrid: () => void;
   snapToGrid: boolean;
   setSnapToGrid: (snap: boolean) => void;
+  snapToGuides: boolean;
+  setSnapToGuides: (value: boolean | ((prev: boolean) => boolean)) => void;
+  toggleSnapToGuides: () => void;
   collaborators: Collaborator[];
   setCollaborators: (
     value: Collaborator[] | ((prev: Collaborator[]) => Collaborator[])
@@ -90,6 +93,13 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
 
   snapToGrid: false,
   setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
+
+  snapToGuides: true,
+  setSnapToGuides: (value) =>
+    set((state) => ({
+      snapToGuides: typeof value === 'function' ? value(state.snapToGuides) : value,
+    })),
+  toggleSnapToGuides: () => set((state) => ({ snapToGuides: !state.snapToGuides })),
 
   collaborators: INITIAL_COLLABORATORS,
   setCollaborators: (value) =>

@@ -39,6 +39,7 @@ import {
   Check,
   Mail,
   ChevronRight,
+  Magnet,
 } from 'lucide-react';
 import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
 import { DynamicIcon } from './DynamicIcon';
@@ -48,6 +49,12 @@ import { PreviewStage } from '../features/editor/components/PreviewStage';
 import { DeviceFrame } from '../features/editor/components/DeviceFrame';
 import { Artboard } from '../features/editor/components/Artboard';
 import { ContextMenu, ContextMenuItem, ContextMenuState } from './ContextMenu';
+import {
+  computeSmartSnapping,
+  AlignmentGuide,
+  DistanceMarker,
+} from '../utils/smartSnapping';
+import { AlignmentGuidelines } from './Canvas/AlignmentGuidelines';
 
 interface CanvasProps {
   zoom: number;
@@ -70,6 +77,8 @@ interface CanvasProps {
   onDeleteElement?: (id: string) => void;
   showGrid?: boolean;
   onToggleGrid?: () => void;
+  snapToGuides?: boolean;
+  onToggleSnapToGuides?: () => void;
   onDropElement?: (el: CanvasElement) => void;
 }
 
@@ -94,6 +103,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onDeleteElement,
   showGrid = false,
   onToggleGrid,
+  snapToGuides,
+  onToggleSnapToGuides,
   onDropElement,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,6 +112,18 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+
+  // Smart snapping toggle state
+  const [internalSnapEnabled, setInternalSnapEnabled] = useState(true);
+  const isSnapEnabled = snapToGuides !== undefined ? snapToGuides : internalSnapEnabled;
+  const toggleSnap = onToggleSnapToGuides || (() => setInternalSnapEnabled((prev) => !prev));
+
+  // Dynamic Alignment Guidelines & Gap Distance Markers state
+  const [activeGuides, setActiveGuides] = useState<AlignmentGuide[]>([]);
+  const [activeDistanceMarkers, setActiveDistanceMarkers] = useState<DistanceMarker[]>([]);
+
+  // Drag start positions for multiple selected elements
+  const [dragStartElements, setDragStartElements] = useState<Record<string, { x: number; y: number }> | null>(null);
 
   const {
     artboardWidth,
@@ -258,6 +281,13 @@ export const Canvas: React.FC<CanvasProps> = ({
     } else {
       // Empty Canvas Menu
       items.push({
+        id: 'toggle-snapping',
+        label: isSnapEnabled ? 'Disable Smart Snapping' : 'Enable Smart Snapping',
+        icon: <Magnet className="w-3.5 h-3.5" />,
+        shortcut: 'S',
+        action: toggleSnap,
+      });
+      items.push({
         id: 'toggle-grid',
         label: showGrid ? 'Hide Grid' : 'Show Grid',
         icon: <LayoutDashboard className="w-3.5 h-3.5" />,
@@ -338,34 +368,79 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         const currentEl = elements[draggingId];
         if (currentEl) {
-          const elCenterX = newX + currentEl.width / 2;
-          const artboardCenterX = artboardWidth / 2;
-          // Snap horizontal center (threshold 6px)
-          if (Math.abs(elCenterX - artboardCenterX) < 7) {
-            newX = Math.round(artboardCenterX - currentEl.width / 2);
-            setSnapGuideX(artboardCenterX);
-          } else {
-            setSnapGuideX(null);
-          }
+          if (isSnapEnabled && !e.altKey) {
+            // Exclude current element and any other currently selected elements from snapping candidates
+            const excludedIds = new Set(
+              selectedElementIds.includes(draggingId) ? selectedElementIds : [draggingId]
+            );
 
-          const elCenterY = newY + currentEl.height / 2;
-          const artboardCenterY = artboardHeight / 2;
-          // Snap vertical center (threshold 6px)
-          if (Math.abs(elCenterY - artboardCenterY) < 7) {
-            newY = Math.round(artboardCenterY - currentEl.height / 2);
-            setSnapGuideY(artboardCenterY);
+            const candidateNeighbors = (Object.values(elements) as CanvasElement[]).filter(
+              (item) =>
+                !excludedIds.has(item.id) &&
+                item.id !== 'desktop-1440' &&
+                item.id !== 'mobile-app-view' &&
+                item.id !== 'default-artboard-frame' &&
+                item.id !== 'hero-bg' &&
+                item.visible !== false
+            );
+
+            const snapResult = computeSmartSnapping(
+              {
+                x: newX,
+                y: newY,
+                width: currentEl.width || 100,
+                height: currentEl.height || 40,
+              },
+              candidateNeighbors,
+              {
+                artboardWidth,
+                artboardHeight,
+                threshold: 6,
+                snapToArtboard: true,
+                snapToNeighbors: true,
+                snapToEqualGaps: true,
+              }
+            );
+
+            newX = snapResult.x;
+            newY = snapResult.y;
+            setActiveGuides(snapResult.guides);
+            setActiveDistanceMarkers(snapResult.distanceMarkers);
           } else {
-            setSnapGuideY(null);
+            setActiveGuides([]);
+            setActiveDistanceMarkers([]);
           }
         }
 
+        const shiftX = newX - dragStart.initialX;
+        const shiftY = newY - dragStart.initialY;
+        const isMultiDrag =
+          selectedElementIds &&
+          selectedElementIds.length > 1 &&
+          selectedElementIds.includes(draggingId);
+
         setElements((prev) => {
-          const el = prev[draggingId];
-          if (!el) return prev;
+          if (!prev[draggingId]) return prev;
+
+          if (isMultiDrag) {
+            const updated = { ...prev };
+            for (const id of selectedElementIds) {
+              const el = prev[id];
+              if (el && dragStartElements && dragStartElements[id]) {
+                updated[id] = {
+                  ...el,
+                  x: Math.round(dragStartElements[id].x + shiftX),
+                  y: Math.round(dragStartElements[id].y + shiftY),
+                };
+              }
+            }
+            return updated;
+          }
+
           return {
             ...prev,
             [draggingId]: {
-              ...el,
+              ...prev[draggingId],
               x: newX,
               y: newY,
             },
@@ -413,6 +488,212 @@ export const Canvas: React.FC<CanvasProps> = ({
             if (resizeHandle === 'se' || resizeHandle === 'nw' || resizeHandle === 'ne' || resizeHandle === 'sw') {
               newH = Math.round(newW / resizeStart.aspectRatio);
             }
+          }
+
+          // Smart Snapping during resize
+          if (isSnapEnabled && !e.altKey) {
+            const candidateNeighbors = (Object.values(prev) as CanvasElement[]).filter(
+              (item) =>
+                item.id !== resizingId &&
+                item.id !== 'desktop-1440' &&
+                item.id !== 'mobile-app-view' &&
+                item.id !== 'default-artboard-frame' &&
+                item.id !== 'hero-bg' &&
+                item.visible !== false
+            );
+
+            const resizeGuides: AlignmentGuide[] = [];
+            const threshold = 6;
+
+            if (resizeHandle.includes('e')) {
+              const currentRight = newX + newW;
+              let bestDelta = threshold + 1;
+              let bestTarget = currentRight;
+              let guideLabel = '';
+              let guideTargetName = '';
+
+              for (const nb of candidateNeighbors) {
+                const points = [
+                  { pos: nb.x, label: 'Align to Left' },
+                  { pos: nb.x + nb.width / 2, label: 'Center Align' },
+                  { pos: nb.x + nb.width, label: 'Align to Right' },
+                ];
+                for (const p of points) {
+                  const d = Math.abs(currentRight - p.pos);
+                  if (d < bestDelta) {
+                    bestDelta = d;
+                    bestTarget = p.pos;
+                    guideLabel = p.label;
+                    guideTargetName = nb.name;
+                  }
+                }
+              }
+              const dArt = Math.abs(currentRight - artboardWidth);
+              if (dArt < bestDelta) {
+                bestDelta = dArt;
+                bestTarget = artboardWidth;
+                guideLabel = 'Artboard Right';
+                guideTargetName = '';
+              }
+
+              if (bestDelta <= threshold) {
+                newW = Math.max(20, Math.round(bestTarget - newX));
+                resizeGuides.push({
+                  id: `resize-v-${bestTarget}`,
+                  orientation: 'vertical',
+                  position: bestTarget,
+                  start: 0,
+                  end: artboardHeight,
+                  type: 'edge',
+                  label: guideLabel,
+                  sourceTarget: guideTargetName,
+                });
+              }
+            }
+
+            if (resizeHandle.includes('w')) {
+              let bestDelta = threshold + 1;
+              let bestTarget = newX;
+              let guideLabel = '';
+              let guideTargetName = '';
+
+              for (const nb of candidateNeighbors) {
+                const points = [
+                  { pos: nb.x, label: 'Align to Left' },
+                  { pos: nb.x + nb.width / 2, label: 'Center Align' },
+                  { pos: nb.x + nb.width, label: 'Align to Right' },
+                ];
+                for (const p of points) {
+                  const d = Math.abs(newX - p.pos);
+                  if (d < bestDelta) {
+                    bestDelta = d;
+                    bestTarget = p.pos;
+                    guideLabel = p.label;
+                    guideTargetName = nb.name;
+                  }
+                }
+              }
+              if (Math.abs(newX) < bestDelta) {
+                bestDelta = Math.abs(newX);
+                bestTarget = 0;
+                guideLabel = 'Artboard Left';
+                guideTargetName = '';
+              }
+
+              if (bestDelta <= threshold) {
+                const diff = newX - bestTarget;
+                newX = bestTarget;
+                newW = Math.max(20, Math.round(newW + diff));
+                resizeGuides.push({
+                  id: `resize-v-${bestTarget}`,
+                  orientation: 'vertical',
+                  position: bestTarget,
+                  start: 0,
+                  end: artboardHeight,
+                  type: 'edge',
+                  label: guideLabel,
+                  sourceTarget: guideTargetName,
+                });
+              }
+            }
+
+            if (resizeHandle.includes('s')) {
+              const currentBottom = newY + newH;
+              let bestDelta = threshold + 1;
+              let bestTarget = currentBottom;
+              let guideLabel = '';
+              let guideTargetName = '';
+
+              for (const nb of candidateNeighbors) {
+                const points = [
+                  { pos: nb.y, label: 'Align to Top' },
+                  { pos: nb.y + nb.height / 2, label: 'Center Align' },
+                  { pos: nb.y + nb.height, label: 'Align to Bottom' },
+                ];
+                for (const p of points) {
+                  const d = Math.abs(currentBottom - p.pos);
+                  if (d < bestDelta) {
+                    bestDelta = d;
+                    bestTarget = p.pos;
+                    guideLabel = p.label;
+                    guideTargetName = nb.name;
+                  }
+                }
+              }
+              const dArt = Math.abs(currentBottom - artboardHeight);
+              if (dArt < bestDelta) {
+                bestDelta = dArt;
+                bestTarget = artboardHeight;
+                guideLabel = 'Artboard Bottom';
+                guideTargetName = '';
+              }
+
+              if (bestDelta <= threshold) {
+                newH = Math.max(20, Math.round(bestTarget - newY));
+                resizeGuides.push({
+                  id: `resize-h-${bestTarget}`,
+                  orientation: 'horizontal',
+                  position: bestTarget,
+                  start: 0,
+                  end: artboardWidth,
+                  type: 'edge',
+                  label: guideLabel,
+                  sourceTarget: guideTargetName,
+                });
+              }
+            }
+
+            if (resizeHandle.includes('n')) {
+              let bestDelta = threshold + 1;
+              let bestTarget = newY;
+              let guideLabel = '';
+              let guideTargetName = '';
+
+              for (const nb of candidateNeighbors) {
+                const points = [
+                  { pos: nb.y, label: 'Align to Top' },
+                  { pos: nb.y + nb.height / 2, label: 'Center Align' },
+                  { pos: nb.y + nb.height, label: 'Align to Bottom' },
+                ];
+                for (const p of points) {
+                  const d = Math.abs(newY - p.pos);
+                  if (d < bestDelta) {
+                    bestDelta = d;
+                    bestTarget = p.pos;
+                    guideLabel = p.label;
+                    guideTargetName = nb.name;
+                  }
+                }
+              }
+              if (Math.abs(newY) < bestDelta) {
+                bestDelta = Math.abs(newY);
+                bestTarget = 0;
+                guideLabel = 'Artboard Top';
+                guideTargetName = '';
+              }
+
+              if (bestDelta <= threshold) {
+                const diff = newY - bestTarget;
+                newY = bestTarget;
+                newH = Math.max(20, Math.round(newH + diff));
+                resizeGuides.push({
+                  id: `resize-h-${bestTarget}`,
+                  orientation: 'horizontal',
+                  position: bestTarget,
+                  start: 0,
+                  end: artboardWidth,
+                  type: 'edge',
+                  label: guideLabel,
+                  sourceTarget: guideTargetName,
+                });
+              }
+            }
+
+            setActiveGuides(resizeGuides);
+            setActiveDistanceMarkers([]);
+          } else {
+            setActiveGuides([]);
+            setActiveDistanceMarkers([]);
           }
 
           return {
@@ -514,6 +795,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (draggingId) {
         setDraggingId(null);
         setDragStart(null);
+        setDragStartElements(null);
+        setActiveGuides([]);
+        setActiveDistanceMarkers([]);
         setSnapGuideX(null);
         setSnapGuideY(null);
         if (onUpdateElementWithHistory) {
@@ -525,6 +809,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         setResizingId(null);
         setResizeHandle(null);
         setResizeStart(null);
+        setActiveGuides([]);
+        setActiveDistanceMarkers([]);
         if (onUpdateElementWithHistory) {
           onUpdateElementWithHistory(elements);
         }
@@ -664,6 +950,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     startPan,
     draggingId,
     dragStart,
+    dragStartElements,
+    isSnapEnabled,
+    selectedElementIds,
     resizingId,
     resizeStart,
     resizeHandle,
@@ -781,9 +1070,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
-    setSelectedElementId(el.id);
-    if (setSelectedElementIds) {
-      setSelectedElementIds([el.id]);
+    const isAlreadySelected = selectedElementIds?.includes(el.id);
+    if (!isAlreadySelected) {
+      setSelectedElementId(el.id);
+      if (setSelectedElementIds) {
+        setSelectedElementIds([el.id]);
+      }
+    } else {
+      setSelectedElementId(el.id);
     }
 
     if (el.locked || currentTool === 'hand' || currentTool !== 'move') return;
@@ -795,6 +1089,17 @@ export const Canvas: React.FC<CanvasProps> = ({
       initialX: el.x,
       initialY: el.y,
     });
+
+    const startMap: Record<string, { x: number; y: number }> = {};
+    const idsToDrag = isAlreadySelected && selectedElementIds && selectedElementIds.length > 0
+      ? selectedElementIds
+      : [el.id];
+    idsToDrag.forEach((id) => {
+      if (elements[id]) {
+        startMap[id] = { x: elements[id].x, y: elements[id].y };
+      }
+    });
+    setDragStartElements(startMap);
   };
 
   // Start resizing an element
@@ -2199,6 +2504,20 @@ export const Canvas: React.FC<CanvasProps> = ({
           Fit View
         </button>
 
+        {/* Smart Snapping & Dynamic Guidelines Toggle */}
+        <button
+          id="btn-desktop-snapping-toggle"
+          onClick={toggleSnap}
+          title={isSnapEnabled ? 'Smart Snapping & Dynamic Guidelines Active (Press S to toggle, hold Alt to bypass)' : 'Enable Smart Snapping & Dynamic Alignment Guidelines (S)'}
+          className={`p-1 sm:p-1.5 rounded-lg border text-[11px] font-medium transition-all shadow flex items-center gap-1 ${
+            isSnapEnabled
+              ? 'bg-[#ff007a]/20 border-[#ff007a]/50 text-[#ff007a]'
+              : 'bg-[#1c1b1b] border-[#353534]/60 text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50'
+          }`}
+        >
+          <Magnet className="w-3.5 h-3.5" />
+        </button>
+
         {/* Grid Toggle */}
         <button
           id="btn-desktop-grid-toggle"
@@ -2282,7 +2601,14 @@ export const Canvas: React.FC<CanvasProps> = ({
             showGrid={showGrid}
             overlayGuides={
               <>
-                {/* Smart Snap Center Guidelines */}
+                {/* Dynamic Alignment Guidelines & Equal Gap Distance Indicators */}
+                <AlignmentGuidelines
+                  guides={activeGuides}
+                  distanceMarkers={activeDistanceMarkers}
+                  zoom={totalScale}
+                />
+
+                {/* Smart Snap Center Guidelines Fallback */}
                 {snapGuideX !== null && (
                   <div
                     style={{ left: `${snapGuideX}px` }}
