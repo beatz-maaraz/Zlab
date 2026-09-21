@@ -53,6 +53,13 @@ export const INITIAL_RECENT_FILES: ProjectFile[] = [];
 
 export const TEMPLATES: TemplateItem[] = [
   {
+    id: 'cyberpunk-cursors-kit',
+    title: 'ZLAB Cyberpunk HUD Cursor System',
+    description: 'Dark metallic obsidian console sheet with glowing cyan neon edges, directional chevrons, cybernetic hands, laser I-beams & tactical reticles.',
+    icon: 'terminal',
+    colorVariant: 'primary',
+  },
+  {
     id: 'm3-full-kit',
     title: 'Google Material Design 3 (M3) Kit',
     description: 'Complete M3 UI system: filled & tonal buttons, FABs, text fields, chips, elevation cards, and app bars.',

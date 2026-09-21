@@ -29,6 +29,8 @@ export interface HeaderProps {
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
   onImportAllMaterials?: () => void;
+  onOpenCyberpunkKit?: () => void;
+  onImportCyberpunkKit?: () => void;
   collaborators?: Collaborator[];
   onNewDesign?: () => void;
   isSaving?: boolean;
@@ -61,6 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
   onImportMaterialKit,
   onImportIOSKit,
   onImportAllMaterials,
+  onOpenCyberpunkKit,
+  onImportCyberpunkKit,
   collaborators,
   onNewDesign,
   isSaving,
@@ -99,6 +103,8 @@ export const Header: React.FC<HeaderProps> = ({
               onImportMaterialKit={onImportMaterialKit}
               onImportIOSKit={onImportIOSKit}
               onImportAllMaterials={onImportAllMaterials}
+              onOpenCyberpunkKit={onOpenCyberpunkKit}
+              onImportCyberpunkKit={onImportCyberpunkKit}
               onUndo={onUndo}
               onRedo={onRedo}
               canUndo={canUndo}

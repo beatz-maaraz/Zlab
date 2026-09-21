@@ -21,6 +21,8 @@ interface FileMenuProps {
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
   onImportAllMaterials?: () => void;
+  onOpenCyberpunkKit?: () => void;
+  onImportCyberpunkKit?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -42,6 +44,8 @@ export const FileMenu: React.FC<FileMenuProps> = ({
   onImportMaterialKit,
   onImportIOSKit,
   onImportAllMaterials,
+  onOpenCyberpunkKit,
+  onImportCyberpunkKit,
   onUndo,
   onRedo,
   canUndo,
@@ -263,6 +267,31 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                 <span>Apple iOS 18 (HIG) Kit</span>
               </span>
               <span className="text-[10px] text-[#89919e]">18 items</span>
+            </button>
+            <div className="h-[1px] bg-[#353534] my-1" />
+            <button
+              id="menu-btn-cyberpunk-cursors"
+              onClick={() => {
+                onOpenCyberpunkKit?.();
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-[#2a2a2a] group bg-[#00f0ff]/5 border-t border-b border-[#00f0ff]/20 text-[#00f0ff]"
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
+                <span className="font-semibold">ZLAB Cyberpunk Cursors (HUD)</span>
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00f0ff]/20 text-[#00f0ff] font-mono">14 Cursors</span>
+            </button>
+            <button
+              onClick={() => {
+                onImportCyberpunkKit?.();
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#2a2a2a] text-[11px] text-[#89919e] hover:text-[#e5e2e1]"
+            >
+              <span className="pl-4">↳ Insert 8K Sheet to Canvas</span>
+              <span className="text-[10px] text-[#89919e]">Artboard</span>
             </button>
             <div className="h-[1px] bg-[#353534] my-1" />
             <button

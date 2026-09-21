@@ -17,6 +17,7 @@ import { ExportModal } from './components/ExportModal';
 import { PrototypeModal } from './components/PrototypeModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
+import { CyberpunkCursorModal } from './components/CyberpunkCursorModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react';
@@ -33,6 +34,7 @@ import {
   getIOSKitElements,
   getAllMaterialsElements,
 } from './data/designKits';
+import { getCyberpunkCursorKitElements } from './data/cyberpunkCursors';
 
 import { useRouter } from './routes';
 import { useProjectStore } from './store/projectStore';
@@ -157,6 +159,7 @@ export default function App() {
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCyberpunkModalOpen, setIsCyberpunkModalOpen] = useState(false);
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 1500);
@@ -517,6 +520,15 @@ export default function App() {
     showToast('Design Systems imported successfully!', 'success');
   }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
 
+  const handleImportCyberpunkKit = useCallback(() => {
+    const cyberKit = getCyberpunkCursorKitElements();
+    const updated = { ...elements, ...cyberKit };
+    updateElementsWithHistory(updated);
+    setSelectedElementId('zlab-cyberpunk-cursor-sheet');
+    updateProject(activeProject.id, { name: 'ZLAB Cyberpunk HUD Cursor System' });
+    showToast('ZLAB Cyberpunk Cursor System imported successfully!', 'success');
+  }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
+
   // Project creation & loading
   const handleNewDesign = useCallback(() => {
     openModal('newDesign');
@@ -545,6 +557,13 @@ export default function App() {
 
   const handleSelectTemplate = useCallback(
     (template: TemplateItem) => {
+      if (template.id === 'cyberpunk-cursors-kit') {
+        const proj = createProject('ZLAB Cyberpunk HUD Cursor System', getCyberpunkCursorKitElements(), 'desktop');
+        setActiveProject(proj.id);
+        navigate({ type: 'editor', projectId: proj.id });
+        setSelectedElementId('zlab-cyberpunk-cursor-sheet');
+        return;
+      }
       if (template.id === 'm3-full-kit') {
         const proj = createProject('Material 3 Design System', getMaterial3KitElements(), 'desktop');
         setActiveProject(proj.id);
@@ -1034,6 +1053,8 @@ export default function App() {
             onImportMaterialKit={handleImportMaterialKit}
             onImportIOSKit={handleImportIOSKit}
             onImportAllMaterials={handleImportAllMaterials}
+            onOpenCyberpunkKit={() => setIsCyberpunkModalOpen(true)}
+            onImportCyberpunkKit={handleImportCyberpunkKit}
             collaborators={collaborators}
             onNewDesign={handleNewDesign}
             isSaving={isSaving}
@@ -1078,6 +1099,8 @@ export default function App() {
               onImportMaterialKit={handleImportMaterialKit}
               onImportIOSKit={handleImportIOSKit}
               onImportAllMaterials={handleImportAllMaterials}
+              onOpenCyberpunkKit={() => setIsCyberpunkModalOpen(true)}
+              onImportCyberpunkKit={handleImportCyberpunkKit}
               devicePreview={devicePreview}
               width={leftSidebarWidth}
               onStartResize={handleStartResizeLeft}
@@ -1268,6 +1291,21 @@ export default function App() {
             navigate({ type: 'editor', projectId: newProj.id });
             setSelectedElementId(targetDevice === 'desktop' ? 'desktop-1440' : 'mobile-app-view');
             showToast(`Created new design "${newProj.name}"`, 'success');
+          }}
+        />
+
+        {/* ZLAB Cyberpunk HUD Cursor System Modal */}
+        <CyberpunkCursorModal
+          isOpen={isCyberpunkModalOpen}
+          onClose={() => setIsCyberpunkModalOpen(false)}
+          onInsertToCanvas={handleImportCyberpunkKit}
+          onApplyEditorCursor={(cursorDataUri) => {
+            const canvasContainer = document.getElementById('canvas-container');
+            if (canvasContainer) {
+              canvasContainer.style.cursor = `url("${cursorDataUri}") 4 4, auto`;
+            }
+            document.body.style.cursor = `url("${cursorDataUri}") 4 4, auto`;
+            showToast('ZLAB Cyberpunk Cursor activated in workspace!', 'info');
           }}
         />
 

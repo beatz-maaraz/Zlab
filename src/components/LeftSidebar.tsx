@@ -78,6 +78,8 @@ interface LeftSidebarProps {
   onImportMaterialKit?: () => void;
   onImportIOSKit?: () => void;
   onImportAllMaterials?: () => void;
+  onOpenCyberpunkKit?: () => void;
+  onImportCyberpunkKit?: () => void;
   devicePreview?: 'desktop' | 'mobile';
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
@@ -112,6 +114,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onImportMaterialKit,
   onImportIOSKit,
   onImportAllMaterials,
+  onOpenCyberpunkKit,
+  onImportCyberpunkKit,
   devicePreview = 'desktop',
   width = 300,
   onStartResize,
@@ -1582,6 +1586,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <span>✦ iOS Material</span>
                     </button>
                   </div>
+                  <button
+                    id="btn-sidebar-cyberpunk-kit"
+                    onClick={() => onOpenCyberpunkKit?.()}
+                    className="w-full py-1.5 px-2 rounded-lg bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/40 text-[10px] text-[#00f0ff] font-mono font-bold transition-all flex items-center justify-between shadow-[0_0_10px_rgba(0,240,255,0.15)] cursor-pointer"
+                    title="Open ZLAB Cyberpunk HUD Cursor Console & Design System Sheet"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-ping" />
+                      <span>✦ ZLAB Cyberpunk Cursors (HUD)</span>
+                    </span>
+                    <span className="text-[9px] px-1 bg-[#00f0ff]/20 rounded border border-[#00f0ff]/30">8K</span>
+                  </button>
                   <button
                     onClick={() => onImportAllMaterials?.()}
                     className="w-full py-1.5 rounded-lg bg-gradient-to-r from-[#d0bcff]/20 to-[#007aff]/20 hover:from-[#d0bcff]/30 hover:to-[#007aff]/30 border border-white/10 text-[11px] text-white font-semibold transition-all flex items-center justify-center gap-1.5 shadow"
