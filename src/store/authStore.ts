@@ -127,6 +127,22 @@ async function syncUserProfile(user: FirebaseUser): Promise<UserProfile> {
 export const useAuthStore = create<AuthState>((set, get) => {
   // Setup persistent onAuthStateChanged listener
   onAuthStateChanged(auth, async (firebaseUser) => {
+    // ---- TEMPORARY BYPASS START ----
+    const dummyUser = { uid: 'guest-123', email: 'guest@zlab.app', displayName: 'Guest' };
+    const dummyProfile = { id: 'guest-123', email: 'guest@zlab.app', displayName: 'Guest', photoURL: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    set({
+      user: dummyUser as any,
+      profile: dummyProfile,
+      isLoading: false,
+      isInitialized: true,
+      authError: null,
+    });
+    
+    useUIStore.getState().setAuthenticated(true);
+    useProjectStore.getState().syncWithUser(dummyUser.uid);
+    return;
+    // ---- TEMPORARY BYPASS END ----
+
     if (firebaseUser) {
       const profile = await syncUserProfile(firebaseUser);
       set({
