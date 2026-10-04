@@ -29,10 +29,12 @@ export const useHistoryStore = create<HistoryStoreState>((set, get) => ({
 
   pushSnapshot: (newElements) => {
     set((state) => {
+      // Deep clone to ensure immutability in history snapshots
+      const clonedElements = JSON.parse(JSON.stringify(newElements));
       const upToCurrent = state.history.slice(0, state.historyIndex + 1);
       // Cap history depth to 40 steps to keep memory light and snappy
       const trimmed = upToCurrent.length > 40 ? upToCurrent.slice(upToCurrent.length - 39) : upToCurrent;
-      const nextHistory = [...trimmed, newElements];
+      const nextHistory = [...trimmed, clonedElements];
       const nextIndex = nextHistory.length - 1;
 
       return {

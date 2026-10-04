@@ -56,6 +56,7 @@ import {
 } from '../utils/smartSnapping';
 import { AlignmentGuidelines } from './Canvas/AlignmentGuidelines';
 import { useCanvasCoordinates } from '../hooks/useCanvasCoordinates';
+import { TransformGizmo } from './Canvas/TransformGizmo';
 
 interface CanvasProps {
   zoom: number;
@@ -1357,6 +1358,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             borderRadius: `${el.borderRadius ?? 16}px`,
             border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
             boxShadow: `0px ${el.shadowY ?? 4}px ${el.shadowBlur ?? 12}px rgba(0,0,0,0.3)`,
+            flexShrink: 0,
+            minWidth: 'fit-content',
           }}
           className="w-full h-full px-4 flex items-center justify-between gap-3 text-xs select-none relative overflow-hidden"
         >
@@ -1414,7 +1417,10 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (el.id === 'navbar-frame' || el.name.toLowerCase().includes('nav')) {
       return (
-        <div className="w-full h-full flex items-center justify-between px-8 text-[#e5e2e1] select-none">
+        <div 
+          style={{ flexShrink: 0, minWidth: 'fit-content' }}
+          className="w-full h-full flex items-center justify-between px-8 text-[#e5e2e1] select-none"
+        >
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0d99ff] to-[#005299] flex items-center justify-center font-black text-white text-xs shadow-md border border-[#9fcaff]/30">
               Z
@@ -1460,6 +1466,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
             boxShadow: `0px ${el.shadowY ?? 6}px ${el.shadowBlur ?? 20}px rgba(0,0,0,0.35)`,
             backdropFilter: el.backdropBlur ? `blur(${el.backdropBlur}px)` : 'none',
+            flexShrink: 0,
+            minWidth: 'fit-content',
           }}
           className="w-full h-full flex items-center justify-around px-3 select-none text-xs relative overflow-hidden"
         >
@@ -1505,7 +1513,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     // Mobile Feature Card
     if (el.id === 'mobile-feature-card') {
       return (
-        <div className="w-full h-full p-4 flex flex-col justify-between select-none bg-[#1c1b1b] rounded-2xl border border-[#2a2a2a] hover:border-[#353534] transition-colors">
+        <div 
+          style={{ flexShrink: 0, minWidth: 'fit-content' }}
+          className="w-full h-full p-4 flex flex-col justify-between select-none bg-[#1c1b1b] rounded-2xl border border-[#2a2a2a] hover:border-[#353534] transition-colors"
+        >
           <div>
             <div className="w-8 h-8 rounded-lg bg-[#0d99ff]/15 text-[#9fcaff] flex items-center justify-center mb-2">
               <Zap className="w-4 h-4" />
@@ -1549,6 +1560,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             borderRadius: `${el.borderRadius ?? 16}px`,
             border: `${el.strokeWidth ?? 1}px solid ${el.stroke ?? '#353534'}`,
             boxShadow: `0px ${el.shadowY ?? 4}px ${el.shadowBlur ?? 16}px rgba(0,0,0,0.3)`,
+            flexShrink: 0,
+            minWidth: 'fit-content',
           }}
           className="w-full h-full p-4 flex flex-col justify-between text-xs select-none relative overflow-hidden"
         >
@@ -1627,7 +1640,10 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (el.id === 'feature-grid-container' || el.type === 'grid') {
       return (
-        <div className="w-full h-full p-6 grid grid-cols-3 gap-6 select-none">
+        <div 
+          style={{ flexShrink: 0, minWidth: 'fit-content' }}
+          className="w-full h-full p-6 grid grid-cols-3 gap-6 select-none"
+        >
           {/* Card 1 */}
           <div className="bg-[#141416]/90 p-5 rounded-xl border border-[#2a2a2a] hover:border-[#353534] transition-colors flex flex-col justify-between">
             <div>
@@ -1709,6 +1725,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               fontSize: `${el.fontSize || 18}px`,
               color: el.textColor || el.fill || '#e5e2e1',
               fontWeight: el.id === 'main-hero-title' ? 700 : 400,
+              flexShrink: 0,
+              minWidth: 'fit-content',
             }}
             className="w-full h-full bg-transparent border-0 outline-none resize-none p-0 m-0 leading-tight"
           />
@@ -1727,8 +1745,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             opacity: (el.fillOpacity ?? 100) / 100,
             fontWeight: el.id === 'main-hero-title' ? 700 : 400,
             textAlign: (el.textAlign as any) || (el.id === 'main-hero-title' || el.id === 'hero-subtitle' ? 'center' : 'left'),
+            flexShrink: 0,
+            minWidth: 'fit-content',
           }}
-          className="w-full h-full flex flex-col justify-center select-none leading-tight"
+          className="w-full h-full flex flex-col justify-center select-none leading-tight pointer-events-auto"
           title="Double click to edit text"
         >
           <span>{el.textContent || el.name}</span>
@@ -1760,8 +1780,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             fontSize: `${el.fontSize || (isM3Fab ? 22 : 13)}px`,
             backdropFilter: el.backdropBlur ? `blur(${el.backdropBlur}px)` : isGlass ? 'blur(16px)' : undefined,
             WebkitBackdropFilter: el.backdropBlur ? `blur(${el.backdropBlur}px)` : isGlass ? 'blur(16px)' : undefined,
+            flexShrink: 0,
+            minWidth: 'fit-content',
           }}
-          className={`w-full h-full flex items-center justify-center font-bold px-4 transition-transform select-none gap-2 shadow relative overflow-hidden ${
+          className={`w-full h-full flex items-center justify-center font-bold px-4 transition-transform select-none gap-2 shadow relative overflow-hidden pointer-events-auto ${
             el.materialPreset === 'ios' ? 'tracking-tight font-semibold' : ''
           }`}
         >
@@ -2329,6 +2351,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           height: `${el.height}px`,
           transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
           zIndex: isSelected ? 40 : el.type === 'group' ? 15 : 20,
+          backgroundColor: 'transparent',
+          pointerEvents: 'auto',
         }}
         className={`group transition-shadow select-none ${
           el.locked ? 'cursor-not-allowed' : 'cursor-move'
@@ -2342,175 +2366,6 @@ export const Canvas: React.FC<CanvasProps> = ({
       >
         {/* Element Inner Content */}
         {renderElementContent(el)}
-
-        {/* SELECTION CONTROLS, 8 HANDLES, ROTATION HANDLE, TOOLBAR */}
-        {isSelected && (
-          <>
-            {/* Top Stem & Rotation Handle */}
-            <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-50">
-              <div
-                onPointerDown={(e) => handleRotateHandlePointerDown(e, el)}
-                className="w-3.5 h-3.5 rounded-full bg-[#131313] border-2 border-[#0d99ff] hover:bg-[#0d99ff] cursor-grab active:cursor-grabbing shadow-lg transition-transform hover:scale-125"
-                title="Drag to rotate element (Hold Shift for 15° steps)"
-              />
-              <div className="w-[1px] h-3.5 bg-[#0d99ff]" />
-            </div>
-
-            {/* Rotation Angle Tooltip */}
-            {currentRotationAngle !== null && rotatingId === el.id && (
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#0d99ff] text-[#002f55] text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow z-50">
-                {currentRotationAngle}°
-              </div>
-            )}
-
-            {/* 4 Corner Handles */}
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'nw')}
-              className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#131313] border-2 border-[#0d99ff] cursor-nwse-resize z-50 hover:scale-125 transition-transform"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'ne')}
-              className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-[#131313] border-2 border-[#0d99ff] cursor-nesw-resize z-50 hover:scale-125 transition-transform"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'sw')}
-              className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-[#131313] border-2 border-[#0d99ff] cursor-nesw-resize z-50 hover:scale-125 transition-transform"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'se')}
-              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#131313] border-2 border-[#0d99ff] cursor-nwse-resize z-50 hover:scale-125 transition-transform"
-            />
-
-            {/* 4 Edge Midpoint Handles */}
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'n')}
-              className="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-[#131313] border border-[#0d99ff] cursor-ns-resize z-50"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 's')}
-              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-[#131313] border border-[#0d99ff] cursor-ns-resize z-50"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'e')}
-              className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2.5 bg-[#131313] border border-[#0d99ff] cursor-ew-resize z-50"
-            />
-            <div
-              onPointerDown={(e) => handleResizeHandlePointerDown(e, el, 'w')}
-              className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2.5 bg-[#131313] border border-[#0d99ff] cursor-ew-resize z-50"
-            />
-
-            {/* Dimensions & Name Pill */}
-            <div className="absolute -bottom-6 left-0 bg-[#0d99ff] text-[#002f55] text-[9px] font-mono px-2 py-0.5 rounded font-bold shadow flex items-center gap-1.5 z-50 whitespace-nowrap">
-              {el.type === 'group' ? (
-                <span className="flex items-center gap-1">
-                  <Folder className="w-3 h-3" />
-                  {el.name} ({Object.values(elements).filter((c) => c.parentId === el.id).length} items)
-                </span>
-              ) : (
-                <span>{el.name}</span>
-              )}
-              <span className="opacity-75">
-                {el.width}×{el.height} • ({el.x}, {el.y})
-              </span>
-            </div>
-
-            {/* Quick Action Floating Bar */}
-            <div
-              className="absolute -top-9 right-0 bg-[#1c1b1b]/95 backdrop-blur border border-[#353534] rounded-md px-1.5 py-0.5 flex items-center gap-1 shadow-xl z-50 pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Group quick ungroup button */}
-              {el.type === 'group' && onUngroup && (
-                <button
-                  onClick={() => onUngroup(el.id)}
-                  className="px-1.5 py-0.5 rounded bg-[#f59e0b]/20 hover:bg-[#f59e0b]/35 text-[#fbbf24] text-[10px] font-semibold transition-colors flex items-center gap-1 mr-0.5"
-                  title="Ungroup components (⌘⇧G)"
-                >
-                  <FolderMinus className="w-3 h-3" />
-                  <span>Ungroup</span>
-                </button>
-              )}
-              {/* Unfix / Unlock quick action badge if locked/fixed */}
-              {(el.locked || el.fixed || el.pinned) && (
-                <button
-                  onClick={() => {
-                    const updated = {
-                      ...elements,
-                      [el.id]: { ...el, locked: false, fixed: false, pinned: false },
-                    };
-                    setElements(updated);
-                    if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
-                  }}
-                  className="px-1.5 py-0.5 rounded bg-[#0d99ff]/20 hover:bg-[#0d99ff]/40 text-[#9fcaff] text-[10px] font-bold transition-colors flex items-center gap-1 mr-0.5"
-                  title="Unfix position and unlock element controls"
-                >
-                  <Unlock className="w-2.5 h-2.5" />
-                  <span>Unfix</span>
-                </button>
-              )}
-
-              {/* Pin / Fix Position Toggle */}
-              <button
-                onClick={() => {
-                  const updated = {
-                    ...elements,
-                    [el.id]: { ...el, fixed: !el.fixed, pinned: !el.fixed },
-                  };
-                  setElements(updated);
-                  if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
-                }}
-                className={`p-1 rounded transition-colors ${
-                  el.fixed || el.pinned
-                    ? 'text-[#0d99ff] bg-[#0d99ff]/20'
-                    : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
-                }`}
-                title={el.fixed || el.pinned ? 'Unfix position (Unpin from viewport)' : 'Fix position (Pin to viewport)'}
-              >
-                {el.fixed || el.pinned ? <Pin className="w-3 h-3" /> : <PinOff className="w-3 h-3" />}
-              </button>
-
-              {/* Lock / Unlock Toggle */}
-              <button
-                onClick={() => {
-                  const updated = {
-                    ...elements,
-                    [el.id]: { ...el, locked: !el.locked },
-                  };
-                  setElements(updated);
-                  if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
-                }}
-                className={`p-1 rounded transition-colors ${
-                  el.locked
-                    ? 'text-[#f59e0b] bg-[#f59e0b]/20'
-                    : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a]'
-                }`}
-                title={el.locked ? 'Unlock element' : 'Lock element'}
-              >
-                {el.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-              </button>
-
-              {onDuplicateElement && (
-                <button
-                  onClick={() => onDuplicateElement(el.id)}
-                  className="p-1 rounded text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#2a2a2a] transition-colors"
-                  title="Duplicate (⌘D)"
-                >
-                  <Copy className="w-3 h-3" />
-                </button>
-              )}
-
-              {onDeleteElement && (
-                <button
-                  onClick={() => onDeleteElement(el.id)}
-                  className="p-1 rounded text-[#89919e] hover:text-[#ffb4ab] hover:bg-[#2a2a2a] transition-colors"
-                  title="Delete element (Del)"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          </>
-        )}
       </div>
     );
   };
@@ -2805,6 +2660,24 @@ export const Canvas: React.FC<CanvasProps> = ({
                     }}
                     className="border border-[#0d99ff] bg-[#0d99ff]/15 rounded pointer-events-none z-50 shadow-sm"
                   />
+                )}
+
+                {/* Top-level Selection Transform Gizmo */}
+                {selectedElementId && elements[selectedElementId] && selectedElementId !== 'desktop-1440' && selectedElementId !== 'mobile-app-view' && (
+                    <TransformGizmo
+                        selectedElement={elements[selectedElementId]}
+                        allElements={elements}
+                        zoom={totalScale}
+                        onUpdate={(id, updates) => {
+                            const updated = { ...elements, [id]: { ...elements[id], ...updates } };
+                            setElements(updated);
+                            if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
+                        }}
+                        onDuplicate={onDuplicateElement}
+                        onDelete={onDeleteElement}
+                        onUngroup={onUngroup}
+                        setElements={setElements}
+                    />
                 )}
               </>
             }
