@@ -14,9 +14,10 @@ export const PreviewStage: React.FC<PreviewStageProps> = ({ pan, isPanning, chil
   return (
     <div
       id="preview-stage"
-      className="preview-stage absolute inset-0 flex items-center justify-center pointer-events-none"
+      className="preview-stage absolute inset-0 pointer-events-none"
       style={{
-        transform: `translate(${pan.x}px, ${pan.y}px)`,
+        transform: `translate3d(${pan.x}px, ${pan.y}px, 0)`,
+        transformOrigin: '0 0',
         transition: isPanning ? 'none' : 'transform 0.08s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >

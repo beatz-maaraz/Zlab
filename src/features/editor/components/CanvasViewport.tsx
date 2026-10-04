@@ -70,7 +70,7 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
               ? 'cell'
               : 'default',
         }}
-        className="canvas-viewport w-full h-full relative overflow-hidden select-none bg-[#0e0e0e] outline-none flex items-center justify-center touch-none"
+        className="canvas-viewport w-full h-full relative overflow-hidden select-none bg-[#0e0e0e] outline-none touch-none"
       >
         {/* Visual Dots & Grids Background */}
         <CanvasGrid showGrid={showGrid} zoom={zoom} />

@@ -393,6 +393,11 @@ export async function downloadSvg(
       backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
       skipFonts: false,
       filter: filterUiOverlays,
+      style: {
+        transform: 'none',
+        transformOrigin: 'top left',
+        margin: '0'
+      }
     });
 
     const targetSlug = (elements[targetId]?.name || 'artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -435,23 +440,28 @@ export async function downloadPng(
   }
 
   try {
+    // Wait for fonts to be ready
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      await (document as any).fonts.ready;
+    }
+
     const filterUiOverlays = (node: HTMLElement) => {
-        if (!node.classList) return true;
-        
-        // Exclude editor selection bounds and resize handles
-        if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
-        if (node.classList.contains('ring-2')) return false;
-        
-        // Exclude dimension pills and rotation handles
-        if (
-            node.classList.contains('absolute') && 
-            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
-            node.className.includes('bg-[#0d99ff]')
-        ) {
-            return false;
-        }
-        
-        return true;
+      if (!node.classList) return true;
+      
+      // Exclude editor selection bounds and resize handles
+      if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
+      if (node.classList.contains('ring-2')) return false;
+      
+      // Exclude dimension pills and rotation handles
+      if (
+          node.classList.contains('absolute') && 
+          (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap')) &&
+          node.className.includes('bg-[#0d99ff]')
+      ) {
+          return false;
+      }
+      
+      return true;
     };
 
     // Some browsers have a bug rendering fonts in html-to-image without fetching them properly.
@@ -462,6 +472,7 @@ export async function downloadPng(
       filter: filterUiOverlays,
       style: {
         transform: 'none',
+        transformOrigin: 'top left',
         margin: '0'
       }
     });
@@ -507,6 +518,11 @@ export async function downloadJpeg(
   }
 
   try {
+    // Wait for fonts to be ready
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      await (document as any).fonts.ready;
+    }
+
     const filterUiOverlays = (node: HTMLElement) => {
       if (!node.classList) return true;
       if (node.classList.contains('pointer-events-none') && node.classList.contains('border-2')) return false;
@@ -533,6 +549,7 @@ export async function downloadJpeg(
       filter: filterUiOverlays,
       style: {
         transform: 'none',
+        transformOrigin: 'top left',
         margin: '0'
       }
     });
@@ -600,6 +617,11 @@ export async function generateExportPreview(
   const height = Math.round((targetElement.offsetHeight || rect.height) * scale);
 
   try {
+    // Wait for fonts to be ready
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      await (document as any).fonts.ready;
+    }
+
     let dataUrl = '';
     let svgText: string | undefined = undefined;
 
@@ -608,6 +630,11 @@ export async function generateExportPreview(
         backgroundColor: options?.transparentBackground ? 'transparent' : undefined,
         skipFonts: false,
         filter: filterUiOverlays,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          margin: '0'
+        }
       });
 
       if (dataUrl.startsWith('data:image/svg+xml;charset=utf-8,')) {
@@ -629,6 +656,7 @@ export async function generateExportPreview(
         filter: filterUiOverlays,
         style: {
           transform: 'none',
+          transformOrigin: 'top left',
           margin: '0'
         }
       });
@@ -640,6 +668,7 @@ export async function generateExportPreview(
         filter: filterUiOverlays,
         style: {
           transform: 'none',
+          transformOrigin: 'top left',
           margin: '0'
         }
       });

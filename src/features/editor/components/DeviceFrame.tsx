@@ -25,7 +25,7 @@ export const DeviceFrame: React.FC<DeviceFrameProps> = ({
       className="device-frame-container pointer-events-auto select-none"
       style={{
         transform: `scale(${totalScale})`,
-        transformOrigin: 'center center',
+        transformOrigin: '0 0',
         transition: isInteracting ? 'none' : 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
