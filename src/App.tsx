@@ -19,6 +19,7 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
 import { CyberpunkCursorModal } from './components/CyberpunkCursorModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import ZLabEditor from './components/ZLabEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react';
 
@@ -1069,7 +1070,9 @@ export default function App() {
         )}
 
         {/* Main View: Editor Workspace or Dashboard Browser or Auth */}
-        {['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) ? (
+        {route.type === 'simplified' ? (
+          <ZLabEditor />
+        ) : ['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) ? (
           <AuthView initialMode={route.type as 'login' | 'signup' | 'forgot-password' | 'verify-email'} />
         ) : !isAuthenticated ? (
           <div className="flex-1 bg-[#131313]" /> // Blank loading state while redirecting

@@ -1052,16 +1052,26 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      handleMouseUp(e as any);
+      if (e.changedTouches.length === 1) {
+        const touch = e.changedTouches[0];
+        handleMouseUp({
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          shiftKey: false,
+          altKey: false,
+        } as MouseEvent);
+      } else {
+        handleMouseUp(e as any);
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointermove', handleMouseMove as any);
+    window.addEventListener('pointerup', handleMouseUp as any);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointermove', handleMouseMove as any);
+      window.removeEventListener('pointerup', handleMouseUp as any);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };

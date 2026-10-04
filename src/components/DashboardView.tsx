@@ -228,6 +228,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Trash2 className="w-4 h-4 text-inherit" />
             <span>Trash</span>
           </button>
+
+          <button
+            onClick={() => navigate('/simplified')}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors text-left text-[#9fcaff] hover:bg-[#2a2a2a] border border-[#9fcaff]/20 mt-4"
+          >
+            <FileCode className="w-4 h-4 text-inherit" />
+            <span>Lite Editor (Clean)</span>
+          </button>
         </div>
 
         {/* Team Folders */}

@@ -8,7 +8,8 @@ export type AppRoute =
   | { type: 'login' }
   | { type: 'signup' }
   | { type: 'forgot-password' }
-  | { type: 'verify-email' };
+  | { type: 'verify-email' }
+  | { type: 'simplified' };
 
 export function parseRoute(pathname: string): AppRoute {
   // Support pathname or hash-based paths if hosted in subpaths
@@ -38,6 +39,9 @@ export function parseRoute(pathname: string): AppRoute {
   if (section === 'verify-email') {
     return { type: 'verify-email' };
   }
+  if (section === 'simplified') {
+    return { type: 'simplified' };
+  }
 
   return { type: 'dashboard' };
 }
@@ -60,6 +64,8 @@ export function routeToPath(route: AppRoute): string {
       return '/forgot-password';
     case 'verify-email':
       return '/verify-email';
+    case 'simplified':
+      return '/simplified';
   }
 }
 
