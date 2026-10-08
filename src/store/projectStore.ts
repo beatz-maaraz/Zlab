@@ -201,11 +201,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
 
       if (initialElements && Object.keys(initialElements).length > 0) {
         elements = computeAutoLayouts(initialElements);
-      } else if (previewType === 'mobile') {
-        elements = computeAutoLayouts({
-          'mobile-app-view': {
+        // Ensure mobile-app-view root frame exists if missing
+        if (!elements['mobile-app-view']) {
+          elements['mobile-app-view'] = {
             id: 'mobile-app-view',
-            name: 'Mobile Screen 1',
+            name: 'Mobile App View',
             type: 'frame',
             x: 0,
             y: 0,
@@ -216,14 +216,36 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
             fill: '#131313',
             fillOpacity: 100,
             stroke: '#3f4753',
-            strokeWidth: 1,
+            strokeWidth: 2,
             shadowBlur: 32,
             shadowY: 12,
             shadowSpread: 0,
             visible: true,
             locked: false,
-          },
-        });
+          };
+        }
+        if (!elements['desktop-1440']) {
+          elements['desktop-1440'] = {
+            id: 'desktop-1440',
+            name: 'Desktop Frame',
+            type: 'frame',
+            x: 0,
+            y: 0,
+            width: 1440,
+            height: 900,
+            rotation: 0,
+            borderRadius: 8,
+            fill: '#131313',
+            fillOpacity: 100,
+            stroke: '#3f4753',
+            strokeWidth: 1,
+            shadowBlur: 24,
+            shadowY: 8,
+            shadowSpread: 0,
+            visible: true,
+            locked: false,
+          };
+        }
       } else {
         elements = computeAutoLayouts({
           'desktop-1440': {
@@ -242,6 +264,26 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
             strokeWidth: 1,
             shadowBlur: 24,
             shadowY: 8,
+            shadowSpread: 0,
+            visible: true,
+            locked: false,
+          },
+          'mobile-app-view': {
+            id: 'mobile-app-view',
+            name: 'Mobile Screen 1',
+            type: 'frame',
+            x: 0,
+            y: 0,
+            width: 390,
+            height: 844,
+            rotation: 0,
+            borderRadius: 44,
+            fill: '#131313',
+            fillOpacity: 100,
+            stroke: '#3f4753',
+            strokeWidth: 2,
+            shadowBlur: 32,
+            shadowY: 12,
             shadowSpread: 0,
             visible: true,
             locked: false,

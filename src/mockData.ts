@@ -297,7 +297,7 @@ export const INITIAL_ELEMENTS: Record<string, CanvasElement> = {
     id: 'mobile-app-view',
     name: 'Mobile App View',
     type: 'frame',
-    x: 1600,
+    x: 0,
     y: 0,
     width: 390,
     height: 844,

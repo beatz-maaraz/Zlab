@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sliders } from 'lucide-react';
+import { Sliders, PanelLeft } from 'lucide-react';
 import { AppView, Collaborator } from '../../types';
 import { ProjectTitle } from './ProjectTitle';
 import { FileMenu } from './FileMenu';
@@ -81,6 +81,21 @@ export const Header: React.FC<HeaderProps> = ({
     >
       {/* Left side: Branding & Project Title & File Menu */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+        {onToggleLeftSidebar && currentView === 'editor' && (
+          <button
+            id="btn-toggle-left-sidebar"
+            onClick={onToggleLeftSidebar}
+            className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors shrink-0 md:hidden ${
+              !isLeftSidebarCollapsed
+                ? 'bg-[#201f1f] text-[#0d99ff] border-[#0d99ff]/40 shadow-sm'
+                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] border-[#353534]/50'
+            }`}
+            title={!isLeftSidebarCollapsed ? 'Hide Sidebar (Layers & Pages)' : 'Show Sidebar (Layers & Pages)'}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
+
         <ProjectTitle
           projectTitle={projectTitle}
           onUpdateTitle={setProjectTitle}

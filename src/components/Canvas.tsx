@@ -146,19 +146,30 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Initial centering logic for the absolute world layer
   const [hasCentered, setHasCentered] = useState(false);
+  const prevDeviceRef = useRef(devicePreview);
+
   useEffect(() => {
     if (!hasCentered && containerSize.width > 0 && containerSize.height > 0) {
-      const initialPanX = (containerSize.width - artboardWidth * previewScale) / 2;
-      const initialPanY = (containerSize.height - artboardHeight * previewScale) / 2;
-      setPan({ x: initialPanX, y: initialPanY });
+      const extraBezel = devicePreview === 'mobile' ? 24 : 0;
+      const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
+      const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
+      setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
       setHasCentered(true);
     }
-  }, [containerSize, artboardWidth, artboardHeight, previewScale, hasCentered]);
+  }, [containerSize, artboardWidth, artboardHeight, previewScale, hasCentered, devicePreview]);
 
-  // Reset pan when switching device preview so artboard centers cleanly
+  // Recenter when switching device preview (Desktop <-> Mobile) so artboard centers cleanly
   useEffect(() => {
-    setPan({ x: 0, y: 0 });
-  }, [devicePreview]);
+    if (prevDeviceRef.current !== devicePreview) {
+      prevDeviceRef.current = devicePreview;
+      if (containerSize.width > 0 && containerSize.height > 0) {
+        const extraBezel = devicePreview === 'mobile' ? 24 : 0;
+        const targetPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
+        const targetPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
+        setPan({ x: Math.max(16, Math.round(targetPanX)), y: Math.max(16, Math.round(targetPanY)) });
+      }
+    }
+  }, [devicePreview, containerSize, artboardWidth, artboardHeight, previewScale]);
 
   // Dragging element state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -346,20 +357,21 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       const touch = e.touches[0];
-      if (currentTool === 'hand') {
+      const target = e.target as HTMLElement;
+      const isCanvasBackground =
+        target === containerRef.current ||
+        target.id === 'canvas-viewport' ||
+        target.id === 'preview-stage' ||
+        target.classList?.contains('canvas-viewport') ||
+        target.classList?.contains('preview-stage');
+
+      if (currentTool === 'hand' || isCanvasBackground) {
         setIsPanning(true);
         setStartPan({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
-      } else if (currentTool === 'move') {
-        if (
-          e.target === containerRef.current ||
-          (e.target as HTMLElement).id === 'canvas-viewport' ||
-          (e.target as HTMLElement).id === 'preview-stage'
-        ) {
-          const rootId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
-          setSelectedElementId(rootId);
-          if (setSelectedElementIds) setSelectedElementIds([rootId]);
-          setEditingTextId(null);
-        }
+        const rootId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+        setSelectedElementId(rootId);
+        if (setSelectedElementIds) setSelectedElementIds([rootId]);
+        setEditingTextId(null);
       }
     }
   };
@@ -1052,26 +1064,16 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (e.changedTouches.length === 1) {
-        const touch = e.changedTouches[0];
-        handleMouseUp({
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-          shiftKey: false,
-          altKey: false,
-        } as MouseEvent);
-      } else {
-        handleMouseUp(e as any);
-      }
+      handleMouseUp(e as any);
     };
 
-    window.addEventListener('pointermove', handleMouseMove as any);
-    window.addEventListener('pointerup', handleMouseUp as any);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
     return () => {
-      window.removeEventListener('pointermove', handleMouseMove as any);
-      window.removeEventListener('pointerup', handleMouseUp as any);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
@@ -2510,10 +2512,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           id="btn-desktop-zoom-fit"
           onClick={() => {
             setZoom?.(1);
-            if (containerSize.width > 0) {
-                const initialPanX = (containerSize.width - artboardWidth * previewScale) / 2;
-                const initialPanY = (containerSize.height - artboardHeight * previewScale) / 2;
-                setPan({ x: initialPanX, y: initialPanY });
+            if (containerSize.width > 0 && containerSize.height > 0) {
+              const extraBezel = devicePreview === 'mobile' ? 24 : 0;
+              const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
+              const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
+              setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
             }
           }}
           title="Reset zoom to 100% and center artboard"

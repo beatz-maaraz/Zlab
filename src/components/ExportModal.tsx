@@ -663,6 +663,35 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             )}
 
+            {/* Prototype Specific Controls */}
+            {format === 'prototype' && (
+              <div className="bg-[#121214] p-4 rounded-xl border border-[#27272a] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-medium text-white block">Interactive Prototype Player</span>
+                    <span className="text-[10px] text-[#89919e]">Self-contained offline HTML simulation</span>
+                  </div>
+                  <span className="text-[10px] bg-[#0d99ff]/20 text-[#0d99ff] px-2 py-0.5 rounded font-mono font-medium">
+                    Dual Device
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#a1a1aa] leading-relaxed space-y-1.5 pt-1 border-t border-[#27272a]/60">
+                  <div className="flex items-center gap-2 text-[#e5e2e1]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shrink-0" />
+                    <span>Includes both Desktop 1440 and Mobile iOS frames</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[#e5e2e1]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0d99ff] shrink-0" />
+                    <span>Clickable hotspots with feedback toasts & tactile feedback</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[#e5e2e1]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] shrink-0" />
+                    <span>Dynamic island, status bars, zoom & fullscreen controls</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* File Details Summary Card */}
             <div className="bg-[#1a1a1e] p-3.5 rounded-xl border border-[#27272a] space-y-2">
               <div className="flex items-center justify-between text-[11px]">
@@ -877,6 +906,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <div className="absolute top-4 right-4 z-20 bg-[#121214]/90 backdrop-blur border border-[#27272a] px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
                   <RefreshCw className="w-3 h-3 text-[#0d99ff] animate-spin" />
                   <span className="text-[10px] text-white font-medium">Updating {format.toUpperCase()} preview...</span>
+                </div>
+              )}
+
+              {/* Prototype Format Active Indicator Badge */}
+              {format === 'prototype' && !isPreviewLoading && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#0d99ff]/95 text-[#002544] px-3.5 py-1 rounded-full text-[11px] font-bold shadow-xl flex items-center gap-1.5 backdrop-blur-sm">
+                  <span>✦ Interactive Prototype HTML</span>
+                  <span className="opacity-75 font-medium text-[10px]">• Desktop 1440 & Mobile iOS Included</span>
                 </div>
               )}
 
