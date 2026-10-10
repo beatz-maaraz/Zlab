@@ -10,6 +10,7 @@ interface AlignmentGuidelinesProps {
 export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
   guides,
   distanceMarkers = [],
+  zoom = 1,
 }) => {
   if (guides.length === 0 && distanceMarkers.length === 0) {
     return null;
@@ -23,13 +24,8 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
       {/* 1. Alignment Guides (Horizontal and Vertical) */}
       {guides.map((guide) => {
         const isVertical = guide.orientation === 'vertical';
-        const isCenter = guide.type === 'center';
         const isArtboard = guide.type === 'artboard';
 
-        // Color coding:
-        // Magenta (#ff007a) for neighbor edge/center alignment (industry standard)
-        // Cyan (#00f0ff) for artboard bounds/centers
-        // Emerald (#10b981) for equal gap alignment
         let lineColor = '#ff007a';
         let glowColor = 'rgba(255, 0, 122, 0.45)';
         if (isArtboard) {
@@ -39,6 +35,16 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
           lineColor = '#10b981';
           glowColor = 'rgba(16, 185, 129, 0.45)';
         }
+
+        // Adjust line width and tick size based on zoom to keep them visually thin
+        const strokeWidth = 1 / zoom;
+        const tickSize = 8 / zoom;
+        const tickOffset = 3.5 / zoom;
+        const badgeOffset = 6 / zoom;
+        const borderRadius = 4 / zoom;
+        const fontSize = 9 / zoom;
+        const paddingX = 4 / zoom;
+        const paddingY = 2 / zoom;
 
         if (isVertical) {
           const height = Math.max(8, guide.end - guide.start);
@@ -52,46 +58,54 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
                   left: `${guide.position}px`,
                   top: `${guide.start}px`,
                   height: `${height}px`,
+                  width: `${strokeWidth}px`,
                   backgroundColor: lineColor,
-                  boxShadow: `0 0 8px ${glowColor}`,
+                  boxShadow: `0 0 ${8/zoom}px ${glowColor}`,
                 }}
-                className="absolute w-[1px] pointer-events-none transform -translate-x-[0.5px]"
+                className="absolute pointer-events-none transform -translate-x-1/2"
               />
 
               {/* Start Tick Marker */}
               <div
                 style={{
-                  left: `${guide.position - 3.5}px`,
+                  left: `${guide.position - tickOffset}px`,
                   top: `${guide.start}px`,
+                  width: `${tickSize}px`,
+                  height: `${strokeWidth}px`,
                   backgroundColor: lineColor,
                 }}
-                className="absolute w-[8px] h-[1px] pointer-events-none"
+                className="absolute pointer-events-none"
               />
 
               {/* End Tick Marker */}
               <div
                 style={{
-                  left: `${guide.position - 3.5}px`,
+                  left: `${guide.position - tickOffset}px`,
                   top: `${guide.end}px`,
+                  width: `${tickSize}px`,
+                  height: `${strokeWidth}px`,
                   backgroundColor: lineColor,
                 }}
-                className="absolute w-[8px] h-[1px] pointer-events-none"
+                className="absolute pointer-events-none"
               />
 
               {/* Real-Time Smart Alignment Badge */}
               {guide.label && (
                 <div
                   style={{
-                    left: `${guide.position + 6}px`,
+                    left: `${guide.position + badgeOffset}px`,
                     top: `${midY}px`,
                     backgroundColor: lineColor,
-                    boxShadow: `0 2px 6px ${glowColor}`,
+                    boxShadow: `0 ${2/zoom}px ${6/zoom}px ${glowColor}`,
+                    borderRadius: `${borderRadius}px`,
+                    padding: `${paddingY}px ${paddingX}px`,
+                    fontSize: `${fontSize}px`,
                   }}
-                  className="absolute -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold text-white whitespace-nowrap select-none pointer-events-none flex items-center gap-1 z-[65] tracking-tight"
+                  className="absolute -translate-y-1/2 font-mono font-bold text-white whitespace-nowrap select-none pointer-events-none flex items-center gap-1 z-[65] tracking-tight"
                 >
                   <span>{guide.label}</span>
                   {guide.sourceTarget && (
-                    <span className="opacity-85 font-normal text-[8px] max-w-[90px] truncate">
+                    <span style={{ fontSize: `${8/zoom}px` }} className="opacity-85 font-normal max-w-[90px] truncate">
                       ({guide.sourceTarget})
                     </span>
                   )}
@@ -113,46 +127,54 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
                 top: `${guide.position}px`,
                 left: `${guide.start}px`,
                 width: `${width}px`,
+                height: `${strokeWidth}px`,
                 backgroundColor: lineColor,
-                boxShadow: `0 0 8px ${glowColor}`,
+                boxShadow: `0 0 ${8/zoom}px ${glowColor}`,
               }}
-              className="absolute h-[1px] pointer-events-none transform -translate-y-[0.5px]"
+              className="absolute pointer-events-none transform -translate-y-1/2"
             />
 
             {/* Start Tick Marker */}
             <div
               style={{
-                top: `${guide.position - 3.5}px`,
+                top: `${guide.position - tickOffset}px`,
                 left: `${guide.start}px`,
+                height: `${tickSize}px`,
+                width: `${strokeWidth}px`,
                 backgroundColor: lineColor,
               }}
-              className="absolute h-[8px] w-[1px] pointer-events-none"
+              className="absolute pointer-events-none"
             />
 
             {/* End Tick Marker */}
             <div
               style={{
-                top: `${guide.position - 3.5}px`,
+                top: `${guide.position - tickOffset}px`,
                 left: `${guide.end}px`,
+                height: `${tickSize}px`,
+                width: `${strokeWidth}px`,
                 backgroundColor: lineColor,
               }}
-              className="absolute h-[8px] w-[1px] pointer-events-none"
+              className="absolute pointer-events-none"
             />
 
             {/* Real-Time Smart Alignment Badge */}
             {guide.label && (
               <div
                 style={{
-                  top: `${guide.position + 6}px`,
+                  top: `${guide.position + badgeOffset}px`,
                   left: `${midX}px`,
                   backgroundColor: lineColor,
-                  boxShadow: `0 2px 6px ${glowColor}`,
+                  boxShadow: `0 ${2/zoom}px ${6/zoom}px ${glowColor}`,
+                  borderRadius: `${borderRadius}px`,
+                  padding: `${paddingY}px ${paddingX}px`,
+                  fontSize: `${fontSize}px`,
                 }}
-                className="absolute -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold text-white whitespace-nowrap select-none pointer-events-none flex items-center gap-1 z-[65] tracking-tight"
+                className="absolute -translate-x-1/2 font-mono font-bold text-white whitespace-nowrap select-none pointer-events-none flex items-center gap-1 z-[65] tracking-tight"
               >
                 <span>{guide.label}</span>
                 {guide.sourceTarget && (
-                  <span className="opacity-85 font-normal text-[8px] max-w-[90px] truncate">
+                  <span style={{ fontSize: `${8/zoom}px` }} className="opacity-85 font-normal max-w-[90px] truncate">
                     ({guide.sourceTarget})
                   </span>
                 )}
@@ -165,6 +187,11 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
       {/* 2. Dynamic Distance Markers / Gap Spacing Indicators */}
       {distanceMarkers.map((marker) => {
         const isHorizontal = marker.orientation === 'horizontal';
+        const strokeWidth = 1.5 / zoom;
+        const tickSize = 2.5 / zoom;
+        const fontSize = 9 / zoom;
+        const paddingX = 4 / zoom;
+        const borderRadius = 2 / zoom;
 
         if (isHorizontal) {
           const xMin = Math.min(marker.x1, marker.x2);
@@ -184,14 +211,21 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
               className="absolute -translate-y-1/2 pointer-events-none flex items-center justify-center"
             >
               {/* Distance Spanning Line */}
-              <div className="absolute inset-x-0 h-[1.5px] bg-[#10b981]" />
+              <div style={{ height: `${strokeWidth}px` }} className="absolute inset-x-0 bg-[#10b981]" />
 
               {/* Left & Right End Ticks */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-2.5 w-[1.5px] bg-[#10b981]" />
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 h-2.5 w-[1.5px] bg-[#10b981]" />
+              <div style={{ width: `${strokeWidth}px`, height: `${tickSize * 4}px` }} className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#10b981]" />
+              <div style={{ width: `${strokeWidth}px`, height: `${tickSize * 4}px` }} className="absolute right-0 top-1/2 -translate-y-1/2 bg-[#10b981]" />
 
               {/* Distance Numerical Badge */}
-              <div className="relative px-1.5 py-0.2 bg-[#10b981] text-white text-[9px] font-mono font-bold rounded shadow-sm whitespace-nowrap z-10 leading-none">
+              <div
+                style={{
+                  fontSize: `${fontSize}px`,
+                  padding: `0 ${paddingX}px`,
+                  borderRadius: `${borderRadius}px`,
+                }}
+                className="relative bg-[#10b981] text-white font-mono font-bold shadow-sm whitespace-nowrap z-10 leading-none"
+              >
                 {marker.distance}
               </div>
             </div>
@@ -215,14 +249,21 @@ export const AlignmentGuidelines: React.FC<AlignmentGuidelinesProps> = ({
             className="absolute -translate-x-1/2 pointer-events-none flex flex-col items-center justify-center"
           >
             {/* Distance Spanning Line */}
-            <div className="absolute inset-y-0 w-[1.5px] bg-[#10b981]" />
+            <div style={{ width: `${strokeWidth}px` }} className="absolute inset-y-0 bg-[#10b981]" />
 
             {/* Top & Bottom End Ticks */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] bg-[#10b981]" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] bg-[#10b981]" />
+            <div style={{ height: `${strokeWidth}px`, width: `${tickSize * 4}px` }} className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#10b981]" />
+            <div style={{ height: `${strokeWidth}px`, width: `${tickSize * 4}px` }} className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-[#10b981]" />
 
             {/* Distance Numerical Badge */}
-            <div className="relative px-1.5 py-0.5 bg-[#10b981] text-white text-[9px] font-mono font-bold rounded shadow-sm whitespace-nowrap z-10 leading-none">
+            <div
+              style={{
+                fontSize: `${fontSize}px`,
+                padding: `${paddingX/2}px ${paddingX}px`,
+                borderRadius: `${borderRadius}px`,
+              }}
+              className="relative bg-[#10b981] text-white font-mono font-bold shadow-sm whitespace-nowrap z-10 leading-none"
+            >
               {marker.distance}
             </div>
           </div>

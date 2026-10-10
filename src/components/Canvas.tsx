@@ -800,11 +800,31 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
-      // 5. Drawing Preview
+      // 5. Drawing Preview with Smart Snapping
       if (drawingState && artboardRef.current) {
         const rect = artboardRef.current.getBoundingClientRect();
-        const currX = Math.round((e.clientX - rect.left) / totalScale);
-        const currY = Math.round((e.clientY - rect.top) / totalScale);
+        let currX = Math.round((e.clientX - rect.left) / totalScale);
+        let currY = Math.round((e.clientY - rect.top) / totalScale);
+
+        if (isSnapEnabled && !e.altKey) {
+            const candidateNeighbors = (Object.values(elements) as CanvasElement[]).filter(
+                (item) => item.id !== 'desktop-1440' && item.id !== 'mobile-app-view' && item.visible !== false
+            );
+            
+            // For drawing, we treat the current cursor as a 1x1 box to snap its position
+            const snapResult = computeSmartSnapping(
+                { x: currX, y: currY, width: 0, height: 0 },
+                candidateNeighbors,
+                { artboardWidth, artboardHeight, threshold: 6, snapToArtboard: true, snapToNeighbors: true, snapToEqualGaps: false }
+            );
+            
+            currX = snapResult.x;
+            currY = snapResult.y;
+            setActiveGuides(snapResult.guides);
+        } else {
+            setActiveGuides([]);
+        }
+
         setDrawingState((prev) => (prev ? { ...prev, currentX: currX, currentY: currY } : null));
         return;
       }
@@ -1087,6 +1107,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         if (onUpdateElementWithHistory) onUpdateElementWithHistory(updated);
         setSelectedElementId(newEl.id);
         setDrawingState(null);
+        setActiveGuides([]);
         if (setCurrentTool) setCurrentTool('move');
       }
     };
@@ -2472,8 +2493,25 @@ export const Canvas: React.FC<CanvasProps> = ({
       const partial: Partial<CanvasElement> = JSON.parse(raw);
       if (!artboardRef.current) return;
       const rect = artboardRef.current.getBoundingClientRect();
-      const dropX = Math.round((e.clientX - rect.left) / totalScale);
-      const dropY = Math.round((e.clientY - rect.top) / totalScale);
+      let dropX = Math.round((e.clientX - rect.left) / totalScale);
+      let dropY = Math.round((e.clientY - rect.top) / totalScale);
+
+      const dropW = partial.width || 200;
+      const dropH = partial.height || 48;
+
+      if (isSnapEnabled) {
+          const candidateNeighbors = (Object.values(elements) as CanvasElement[]).filter(
+              (item) => item.id !== 'desktop-1440' && item.id !== 'mobile-app-view' && item.visible !== false
+          );
+          const snapResult = computeSmartSnapping(
+              { x: dropX, y: dropY, width: dropW, height: dropH },
+              candidateNeighbors,
+              { artboardWidth, artboardHeight, threshold: 8, snapToArtboard: true, snapToNeighbors: true, snapToEqualGaps: true }
+          );
+          dropX = snapResult.x;
+          dropY = snapResult.y;
+      }
+
       const timestamp = Date.now();
       const dropParentId = devicePreview === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
       const newEl: CanvasElement = {
@@ -2490,8 +2528,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         type: (partial.type || 'rectangle') as CanvasElement['type'],
         x: dropX,
         y: dropY,
-        width: partial.width || 200,
-        height: partial.height || 48,
+        width: dropW,
+        height: dropH,
         borderRadius: partial.borderRadius ?? 8,
         fill: partial.fill || '#0d99ff',
         fillOpacity: partial.fillOpacity ?? 100,
