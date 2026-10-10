@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { CanvasElement, Project, ProjectPage } from '../types';
 import { INITIAL_ELEMENTS } from '../mockData';
 import { computeAutoLayouts } from '../utils/layoutEngine';
+import { getCyberpunkCursorKitElements } from '../data/cyberpunkCursors';
+import { getMaterial3KitElements } from '../data/designKits';
 import {
   syncProjectToFirestore,
   fetchUserProjectsFromFirestore,
@@ -40,6 +42,17 @@ const loadInitialProjects = (): Record<string, Project> => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        // Heal any legacy projects stored with the out-of-bounds startX offset bug
+        Object.values(parsed as Record<string, Project>).forEach((p) => {
+          if (p.elements && (p.elements['hud-header-bar']?.x ?? 0) >= 2000) {
+            const fresh = getCyberpunkCursorKitElements();
+            p.elements = { ...p.elements, ...fresh };
+          }
+          if (p.elements && (p.elements['m3-kit-header']?.x ?? 0) >= 2000) {
+            const fresh = getMaterial3KitElements();
+            p.elements = { ...p.elements, ...fresh };
+          }
+        });
         return parsed;
       }
     }

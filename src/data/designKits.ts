@@ -5,7 +5,7 @@ import { CanvasElement } from '../types';
  * Provides complete pre-assembled design system frames with components, tokens, and controls.
  */
 
-export function getMaterial3KitElements(startX = 2860, startY = 0): Record<string, CanvasElement> {
+export function getMaterial3KitElements(startX = 0, startY = 0): Record<string, CanvasElement> {
   const elements: Record<string, CanvasElement> = {};
 
   // Master M3 Artboard Frame
@@ -860,7 +860,7 @@ export function getMaterial3KitElements(startX = 2860, startY = 0): Record<strin
   return elements;
 }
 
-export function getIOSKitElements(startX = 3880, startY = 0): Record<string, CanvasElement> {
+export function getIOSKitElements(startX = 0, startY = 0): Record<string, CanvasElement> {
   const elements: Record<string, CanvasElement> = {};
 
   // Master iOS Artboard Frame
@@ -1529,7 +1529,7 @@ export function getIOSKitElements(startX = 3880, startY = 0): Record<string, Can
 /**
  * Returns BOTH complete design systems side-by-side!
  */
-export function getAllMaterialsElements(startX = 2860, startY = 0): Record<string, CanvasElement> {
+export function getAllMaterialsElements(startX = 0, startY = 0): Record<string, CanvasElement> {
   const m3Kit = getMaterial3KitElements(startX, startY);
   const iosKit = getIOSKitElements(startX + 1040, startY);
   return {

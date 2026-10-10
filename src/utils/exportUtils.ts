@@ -1237,32 +1237,41 @@ export function downloadHtmlCode(
     : `canvas-el-${targetId}`;
 
   const domElement = document.getElementById(domId);
-  if (!domElement) {
-    console.error(`Export failed: DOM node for element ${targetId} not found.`);
-    return;
+  let htmlContent = '';
+
+  if (domElement) {
+    // Clone to avoid mutating the live DOM
+    const clone = domElement.cloneNode(true) as HTMLElement;
+    
+    // Clean up selection rings or UI overlays if present
+    const uiOverlays = clone.querySelectorAll('.pointer-events-none.border-2, .ring-2, [class*="bg-[#0d99ff]"]');
+    uiOverlays.forEach(node => {
+      if (
+        node.classList.contains('absolute') && 
+        (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap'))
+      ) {
+        node.remove();
+      }
+    });
+
+    // Force the root element to be relatively positioned so it renders correctly inline
+    clone.style.position = 'relative';
+    clone.style.left = '0';
+    clone.style.top = '0';
+    clone.style.transform = 'none';
+
+    htmlContent = clone.outerHTML;
+  } else {
+    // Graceful fallback when the requested artboard is not actively mounted in current viewport
+    const isMobileTarget = targetId === 'mobile-app-view';
+    const innerNodes = renderArtboardElementsToHtml(targetId, elements, isMobileTarget);
+    const bg = target.fill || (isMobileTarget ? '#000000' : '#131313');
+    const w = target.width || (isMobileTarget ? 390 : 1440);
+    const h = target.height || (isMobileTarget ? 844 : 900);
+    const r = target.borderRadius || (isMobileTarget ? 48 : 8);
+
+    htmlContent = `<div style="position: relative; width: ${w}px; height: ${h}px; background-color: ${bg}; border-radius: ${r}px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">${innerNodes}</div>`;
   }
-
-  // Clone to avoid mutating the live DOM
-  const clone = domElement.cloneNode(true) as HTMLElement;
-  
-  // Clean up selection rings or UI overlays if present
-  const uiOverlays = clone.querySelectorAll('.pointer-events-none.border-2, .ring-2, [class*="bg-[#0d99ff]"]');
-  uiOverlays.forEach(node => {
-        if (
-            node.classList.contains('absolute') && 
-            (node.classList.contains('cursor-grab') || node.classList.contains('z-50') || node.classList.contains('whitespace-nowrap'))
-        ) {
-            node.remove();
-        }
-  });
-
-  // Force the root element to be relatively positioned so it renders correctly inline
-  clone.style.position = 'relative';
-  clone.style.left = '0';
-  clone.style.top = '0';
-  clone.style.transform = 'none';
-
-  const htmlContent = clone.outerHTML;
 
   // Capture all current styles from the document to ensure Tailwind classes and custom styles work
   const documentStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))

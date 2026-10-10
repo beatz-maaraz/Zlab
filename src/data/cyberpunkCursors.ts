@@ -614,13 +614,13 @@ CYBERPUNK_CURSORS.forEach((c) => {
 
 /**
  * Generate Canvas Elements for the ZLAB Cyberpunk HUD Cursor Design System Sheet
- * This inserts a full-fledged 16:9 master artboard on the canvas.
+ * This inserts a full-fledged master artboard on the canvas.
  */
-export function getCyberpunkCursorKitElements(startX = 2860, startY = 0): Record<string, CanvasElement> {
+export function getCyberpunkCursorKitElements(startX = 0, startY = 0): Record<string, CanvasElement> {
   const elements: Record<string, CanvasElement> = {};
 
-  const masterFrameId = 'zlab-cyberpunk-cursor-sheet';
-  // Master 16:9 8K-styled Console Sheet Canvas Frame
+  const masterFrameId = 'desktop-1440';
+  // Master Desktop Artboard Frame (1440x900)
   elements[masterFrameId] = {
     id: masterFrameId,
     name: 'ZLAB // Cyberpunk HUD Cursor System (8K Master)',
@@ -628,9 +628,9 @@ export function getCyberpunkCursorKitElements(startX = 2860, startY = 0): Record
     x: startX,
     y: startY,
     width: 1440,
-    height: 1080,
+    height: 900,
     rotation: 0,
-    borderRadius: 20,
+    borderRadius: 8,
     fill: '#06090e',
     fillOpacity: 100,
     stroke: '#00f0ff',
@@ -642,15 +642,37 @@ export function getCyberpunkCursorKitElements(startX = 2860, startY = 0): Record
     locked: false,
   };
 
-  // Top Cyberpunk HUD Header Banner
+  // Mobile App View Frame (390x844) for seamless mobile preview switching
+  elements['mobile-app-view'] = {
+    id: 'mobile-app-view',
+    name: 'Cyberpunk Mobile HUD',
+    type: 'frame',
+    x: 0,
+    y: 0,
+    width: 390,
+    height: 844,
+    rotation: 0,
+    borderRadius: 44,
+    fill: '#06090e',
+    fillOpacity: 100,
+    stroke: '#00f0ff',
+    strokeWidth: 2,
+    shadowBlur: 32,
+    shadowY: 12,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+  };
+
+  // Top Cyberpunk HUD Header Banner (Desktop)
   elements['hud-header-bar'] = {
     id: 'hud-header-bar',
     name: 'Console Header & Telemetry Bar',
     type: 'component',
     x: startX + 32,
-    y: startY + 32,
+    y: startY + 24,
     width: 1376,
-    height: 100,
+    height: 72,
     rotation: 0,
     borderRadius: 14,
     fill: '#0c121d',
@@ -666,17 +688,17 @@ export function getCyberpunkCursorKitElements(startX = 2860, startY = 0): Record
     textContent: 'ZLAB // CYBERPUNK HUD CURSOR DESIGN SYSTEM [v4.2]',
     subText: 'Obsidian Metallic Matrix • Glowing Cyan Neon (#00f0ff) • 8K Sub-Pixel Calibration • Glassmorphic Depth',
     textColor: '#00f0ff',
-    fontSize: 18,
+    fontSize: 16,
   };
 
-  // 6 Category Bento Panels inside the Artboard
+  // 6 Category Bento Panels inside the 1440x900 Artboard (Row 1: y=112, Row 2: y=485)
   const categories = [
-    { title: '01. DIRECTIONAL DEFAULT POINTERS', desc: 'Angled Chevrons & Stealth Darts with Glowing Plasma Tips', x: 32, y: 156, w: 432, h: 420 },
-    { title: '02. SELECTION CURSORS', desc: 'Cybernetic Robotic Hands with Glowing Index Emitters', x: 496, y: 156, w: 432, h: 420 },
-    { title: '03. TEXT INPUT CURSORS', desc: 'Laser Plasma I-Beams & Precision Optical Vernier Calipers', x: 960, y: 156, w: 432, h: 420 },
-    { title: '04. WAIT & PROGRESS INDICATORS', desc: 'Rotating Quantum Data Rings & Chroniton Particle Hourglasses', x: 32, y: 600, w: 432, h: 430 },
-    { title: '05. RESIZE ARROWS', desc: 'Bi-Directional Expansion Spears & Omnidirectional Thrusters', x: 496, y: 600, w: 432, h: 430 },
-    { title: '06. PRECISION & EDITING CROSSHAIRS', desc: 'Tactical Reticles, Vector Pen Emitters & Magnetic Snap Calipers', x: 960, y: 600, w: 432, h: 430 },
+    { title: '01. DIRECTIONAL DEFAULT POINTERS', desc: 'Angled Chevrons & Stealth Darts with Glowing Plasma Tips', x: 32, y: 112, w: 432, h: 350 },
+    { title: '02. SELECTION CURSORS', desc: 'Cybernetic Robotic Hands with Glowing Index Emitters', x: 496, y: 112, w: 432, h: 350 },
+    { title: '03. TEXT INPUT CURSORS', desc: 'Laser Plasma I-Beams & Precision Optical Vernier Calipers', x: 960, y: 112, w: 432, h: 350 },
+    { title: '04. WAIT & PROGRESS INDICATORS', desc: 'Rotating Quantum Data Rings & Chroniton Particle Hourglasses', x: 32, y: 485, w: 432, h: 385 },
+    { title: '05. RESIZE ARROWS', desc: 'Bi-Directional Expansion Spears & Omnidirectional Thrusters', x: 496, y: 485, w: 432, h: 385 },
+    { title: '06. PRECISION & EDITING CROSSHAIRS', desc: 'Tactical Reticles, Vector Pen Emitters & Magnetic Snap Calipers', x: 960, y: 485, w: 432, h: 385 },
   ];
 
   categories.forEach((cat, index) => {
@@ -704,9 +726,140 @@ export function getCyberpunkCursorKitElements(startX = 2860, startY = 0): Record
       textContent: cat.title,
       subText: cat.desc,
       textColor: '#e5e2e1',
-      fontSize: 14,
+      fontSize: 13,
     };
   });
+
+  // Mobile elements for mobile-app-view preview
+  elements['mobile-hud-header'] = {
+    id: 'mobile-hud-header',
+    name: 'Mobile Cyberpunk Header',
+    type: 'component',
+    x: 20,
+    y: 56,
+    width: 350,
+    height: 60,
+    rotation: 0,
+    borderRadius: 14,
+    fill: '#0c121d',
+    fillOpacity: 95,
+    stroke: '#00f0ff',
+    strokeWidth: 1,
+    shadowBlur: 14,
+    shadowY: 4,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+    parentId: 'mobile-app-view',
+    textContent: 'ZLAB // CYBERPUNK HUD [v4.2]',
+    subText: 'Tactical Mobile Matrix Console',
+    textColor: '#00f0ff',
+    fontSize: 13,
+  };
+
+  elements['mobile-hud-card-1'] = {
+    id: 'mobile-hud-card-1',
+    name: '01. Directional Pointers',
+    type: 'card',
+    x: 20,
+    y: 132,
+    width: 350,
+    height: 155,
+    rotation: 0,
+    borderRadius: 14,
+    fill: '#080d15',
+    fillOpacity: 92,
+    stroke: '#00f0ff',
+    strokeWidth: 1,
+    shadowBlur: 12,
+    shadowY: 4,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+    parentId: 'mobile-app-view',
+    textContent: '01. DIRECTIONAL CHEVRONS',
+    subText: 'Angled Chevrons & Stealth Darts with Glowing Plasma Tips',
+    textColor: '#00f0ff',
+    fontSize: 13,
+  };
+
+  elements['mobile-hud-card-2'] = {
+    id: 'mobile-hud-card-2',
+    name: '02. Selection Hands',
+    type: 'card',
+    x: 20,
+    y: 302,
+    width: 350,
+    height: 155,
+    rotation: 0,
+    borderRadius: 14,
+    fill: '#080d15',
+    fillOpacity: 92,
+    stroke: '#00f0ff',
+    strokeWidth: 1,
+    shadowBlur: 12,
+    shadowY: 4,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+    parentId: 'mobile-app-view',
+    textContent: '02. ROBOTIC SELECTION HANDS',
+    subText: 'Cybernetic Hands with Glowing Index Emitters',
+    textColor: '#00f0ff',
+    fontSize: 13,
+  };
+
+  elements['mobile-hud-card-3'] = {
+    id: 'mobile-hud-card-3',
+    name: '03. Tactical Reticles',
+    type: 'card',
+    x: 20,
+    y: 472,
+    width: 350,
+    height: 155,
+    rotation: 0,
+    borderRadius: 14,
+    fill: '#080d15',
+    fillOpacity: 92,
+    stroke: '#00f0ff',
+    strokeWidth: 1,
+    shadowBlur: 12,
+    shadowY: 4,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+    parentId: 'mobile-app-view',
+    textContent: '03. TACTICAL RETICLES',
+    subText: 'Precision Vernier Crosshairs & Optical Sensors',
+    textColor: '#00f0ff',
+    fontSize: 13,
+  };
+
+  elements['mobile-hud-card-4'] = {
+    id: 'mobile-hud-card-4',
+    name: '04. Quantum Rings',
+    type: 'card',
+    x: 20,
+    y: 642,
+    width: 350,
+    height: 155,
+    rotation: 0,
+    borderRadius: 14,
+    fill: '#080d15',
+    fillOpacity: 92,
+    stroke: '#00f0ff',
+    strokeWidth: 1,
+    shadowBlur: 12,
+    shadowY: 4,
+    shadowSpread: 0,
+    visible: true,
+    locked: false,
+    parentId: 'mobile-app-view',
+    textContent: '04. WAIT & PROGRESS RINGS',
+    subText: 'Rotating Quantum Data Rings & Chroniton Particle Hourglasses',
+    textColor: '#00f0ff',
+    fontSize: 13,
+  };
 
   return elements;
 }

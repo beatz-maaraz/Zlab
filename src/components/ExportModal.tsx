@@ -106,9 +106,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const effectiveTargetId =
     exportScope === 'selection' && hasSelection
       ? selectedElementId!
-      : (selectedElementId && (selectedElementId === 'desktop-1440' || selectedElementId === 'mobile-app-view')
-          ? selectedElementId
-          : fallbackArtboardId);
+      : fallbackArtboardId;
 
   const effectiveElement = effectiveTargetId ? elements[effectiveTargetId] : artboardElement;
   const targetName = effectiveElement?.name || (exportScope === 'selection' && hasSelection ? 'Selected Element' : 'Artboard');

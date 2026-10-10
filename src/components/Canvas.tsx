@@ -113,6 +113,43 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // Global Spacebar listener for temporary pan mode (Figma-style Space+Drag)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        (target.closest && target.closest('[contenteditable="true"]'))
+      ) {
+        return;
+      }
+
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+        if (currentTool !== 'hand') {
+          setIsPanning(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [currentTool]);
 
   // Smart snapping toggle state
   const [internalSnapEnabled, setInternalSnapEnabled] = useState(true);
@@ -336,9 +373,10 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Canvas background panning
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (currentTool === 'hand' || e.button === 1) {
+    if (currentTool === 'hand' || isSpacePressed || e.button === 1) {
       setIsPanning(true);
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
     } else if (currentTool === 'move') {
       // Clicking empty canvas space deselects elements
       if (
@@ -1104,6 +1142,12 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Artboard mouse down for tool operations
   const handleArtboardMouseDown = (e: React.MouseEvent) => {
+    if (currentTool === 'hand' || isSpacePressed || e.button === 1) {
+      setIsPanning(true);
+      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
     if (!artboardRef.current) return;
     const rect = artboardRef.current.getBoundingClientRect();
     const clickX = Math.round((e.clientX - rect.left) / totalScale);
@@ -1195,6 +1239,13 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Start dragging an element
   const handleElementPointerDown = (e: React.PointerEvent, el: CanvasElement) => {
+    // If in hand pan mode, space pressed, or middle mouse: Pan the canvas directly
+    if (currentTool === 'hand' || isSpacePressed || e.button === 1) {
+      setIsPanning(true);
+      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
     e.stopPropagation();
     
     // Capture pointer to prevent loss during rapid movement
@@ -1215,7 +1266,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       setSelectedElementId(el.id);
     }
 
-    if (el.locked || currentTool === 'hand' || currentTool !== 'move') return;
+    if (el.locked || currentTool !== 'move') return;
 
     setDraggingId(el.id);
     setDragStart({
@@ -1306,21 +1357,40 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const artboardChildren = useMemo(() => {
     const allEls = Object.values(elements) as CanvasElement[];
+    const isMobileMode = devicePreview === 'mobile';
 
-    // 1. Elements directly parented to this active artboard
+    // 1. Elements parented or matching this active artboard
     // Note: Do not include items that belong to a group container, as their parent group renders them
-    const matching = allEls.filter(
-      (el) =>
-        el.id !== 'desktop-1440' &&
-        el.id !== 'mobile-app-view' &&
-        el.id !== 'default-artboard-frame' &&
-        el.id !== 'hero-bg' &&
-        (!el.parentId || !elements[el.parentId] || elements[el.parentId].type !== 'group') &&
-        (el.parentId === artboardId || (!el.parentId && (devicePreview === 'desktop' || !allEls.some((e) => e.parentId === 'mobile-app-view'))))
-    );
+    const matching = allEls.filter((el) => {
+      if (
+        el.id === 'desktop-1440' ||
+        el.id === 'mobile-app-view' ||
+        el.id === 'default-artboard-frame' ||
+        el.id === 'hero-bg'
+      ) {
+        return false;
+      }
+
+      // If child belongs to a group, the group container renders it
+      if (el.parentId && elements[el.parentId]?.type === 'group') {
+        return false;
+      }
+
+      if (isMobileMode) {
+        return (
+          el.parentId === 'mobile-app-view' ||
+          (el.parentId && elements[el.parentId]?.parentId === 'mobile-app-view')
+        );
+      } else {
+        return (
+          el.parentId !== 'mobile-app-view' &&
+          (!el.parentId || elements[el.parentId]?.parentId !== 'mobile-app-view')
+        );
+      }
+    });
 
     let result = matching;
-    // If no specific children exist for this mode, show all top-level design elements
+    // Fallback: if no specific children exist for this mode, show all top-level design elements
     if (result.length === 0) {
       result = allEls.filter(
         (el) =>
@@ -2367,7 +2437,13 @@ export const Canvas: React.FC<CanvasProps> = ({
           pointerEvents: 'auto',
         }}
         className={`group transition-shadow select-none ${
-          el.locked ? 'cursor-not-allowed' : 'cursor-move'
+          isPanning
+            ? 'cursor-grabbing'
+            : isSpacePressed || currentTool === 'hand'
+            ? 'cursor-grab'
+            : el.locked
+            ? 'cursor-not-allowed'
+            : 'cursor-move'
         } ${
           isSelected
             ? 'ring-2 ring-[#0d99ff] ring-offset-1 ring-offset-[#131313]'
@@ -2438,38 +2514,47 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey || e.metaKey) {
+  // Native non-passive wheel event listener for trackpad pinch zoom & pan
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
 
-      // Mouse position relative to container
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      if (e.ctrlKey || e.metaKey) {
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-      // Canvas coordinate currently under the cursor (in unscaled artboard space)
-      const canvasPointX = (mouseX - pan.x) / totalScale;
-      const canvasPointY = (mouseY - pan.y) / totalScale;
+        const canvasPointX = (mouseX - pan.x) / totalScale;
+        const canvasPointY = (mouseY - pan.y) / totalScale;
 
-      // Zoom multiplier
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-      const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 3.0);
-      const newTotalScale = previewScale * newZoom;
+        const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+        const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.15), 3.0);
+        const newTotalScale = previewScale * newZoom;
 
-      // Reposition pan so the canvas point remains exactly under the cursor
-      const newPanX = mouseX - canvasPointX * newTotalScale;
-      const newPanY = mouseY - canvasPointY * newTotalScale;
+        const newPanX = mouseX - canvasPointX * newTotalScale;
+        const newPanY = mouseY - canvasPointY * newTotalScale;
 
-      setZoom?.(newZoom);
-      setPan({ x: newPanX, y: newPanY });
-    } else {
-      setPan((p) => ({
-        x: p.x - e.deltaX,
-        y: p.y - e.deltaY,
-      }));
-    }
+        setZoom?.(newZoom);
+        setPan({ x: Math.round(newPanX), y: Math.round(newPanY) });
+      } else {
+        setPan((p) => ({
+          x: Math.round(p.x - e.deltaX),
+          y: Math.round(p.y - e.deltaY),
+        }));
+      }
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+    };
+  }, [containerRef, pan, totalScale, zoom, previewScale, setZoom]);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    // Handled by native non-passive listener above
   };
 
   return (
@@ -2477,6 +2562,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       ref={containerRef}
       currentTool={currentTool}
       isPanning={isPanning}
+      isSpacePressed={isSpacePressed}
       showGrid={showGrid}
       zoom={zoom}
       onMouseDown={handleCanvasMouseDown}

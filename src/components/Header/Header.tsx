@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sliders, PanelLeft } from 'lucide-react';
+import { Sliders, PanelLeft, Sparkles } from 'lucide-react';
 import { AppView, Collaborator } from '../../types';
 import { ProjectTitle } from './ProjectTitle';
 import { FileMenu } from './FileMenu';
@@ -31,6 +31,7 @@ export interface HeaderProps {
   onImportAllMaterials?: () => void;
   onOpenCyberpunkKit?: () => void;
   onImportCyberpunkKit?: () => void;
+  onOpenM3Studio?: () => void;
   collaborators?: Collaborator[];
   onNewDesign?: () => void;
   isSaving?: boolean;
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   onImportAllMaterials,
   onOpenCyberpunkKit,
   onImportCyberpunkKit,
+  onOpenM3Studio,
   collaborators,
   onNewDesign,
   isSaving,
@@ -185,6 +187,18 @@ export const Header: React.FC<HeaderProps> = ({
                 title={!isInspectorCollapsed ? 'Collapse Inspector (Right Panel)' : 'Expand Inspector (Right Panel)'}
               >
                 <Sliders className="w-4 h-4" />
+              </button>
+            )}
+
+            {onOpenM3Studio && (
+              <button
+                id="btn-header-m3-studio"
+                onClick={onOpenM3Studio}
+                className="h-8 px-2.5 rounded-lg bg-[#381e72]/50 hover:bg-[#4f378b]/60 border border-[#d0bcff]/40 text-[#d0bcff] hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                title="Open Material 3 Component Studio (MUI v5/v6)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
+                <span className="hidden sm:inline">M3 Studio</span>
               </button>
             )}
 

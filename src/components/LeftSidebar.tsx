@@ -80,6 +80,7 @@ interface LeftSidebarProps {
   onImportAllMaterials?: () => void;
   onOpenCyberpunkKit?: () => void;
   onImportCyberpunkKit?: () => void;
+  onOpenM3Studio?: () => void;
   devicePreview?: 'desktop' | 'mobile';
   width?: number;
   onStartResize?: (e: React.MouseEvent) => void;
@@ -116,6 +117,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onImportAllMaterials,
   onOpenCyberpunkKit,
   onImportCyberpunkKit,
+  onOpenM3Studio,
   devicePreview = 'desktop',
   width = 300,
   onStartResize,
@@ -1586,6 +1588,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <span>✦ iOS Material</span>
                     </button>
                   </div>
+                  <button
+                    id="btn-sidebar-m3-studio"
+                    onClick={() => onOpenM3Studio?.()}
+                    className="w-full py-1.5 px-2 rounded-lg bg-[#381e72]/50 hover:bg-[#4f378b]/60 border border-[#d0bcff]/50 text-[10px] text-[#eaddff] font-bold transition-all flex items-center justify-between shadow-[0_0_12px_rgba(208,188,255,0.18)] cursor-pointer"
+                    title="Open Material 3 Component Studio (Sidebar + DesignCanvas + html-to-image)"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
+                      <span>✦ Material 3 Studio (MUI v5/v6)</span>
+                    </span>
+                    <span className="text-[9px] px-1 bg-[#d0bcff]/20 text-[#d0bcff] rounded border border-[#d0bcff]/40 font-mono">6 CATS</span>
+                  </button>
                   <button
                     id="btn-sidebar-cyberpunk-kit"
                     onClick={() => onOpenCyberpunkKit?.()}

@@ -18,8 +18,8 @@ import { PrototypeModal } from './components/PrototypeModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
 import { CyberpunkCursorModal } from './components/CyberpunkCursorModal';
+import { M3StudioModal } from './components/M3StudioModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import ZLabEditor from './components/ZLabEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react';
 
@@ -163,6 +163,7 @@ export default function App() {
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCyberpunkModalOpen, setIsCyberpunkModalOpen] = useState(false);
+  const [isM3StudioOpen, setIsM3StudioOpen] = useState(false);
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 1500);
@@ -527,7 +528,7 @@ export default function App() {
     const cyberKit = getCyberpunkCursorKitElements();
     const updated = { ...elements, ...cyberKit };
     updateElementsWithHistory(updated);
-    setSelectedElementId('zlab-cyberpunk-cursor-sheet');
+    setSelectedElementId('desktop-1440');
     updateProject(activeProject.id, { name: 'ZLAB Cyberpunk HUD Cursor System' });
     showToast('ZLAB Cyberpunk Cursor System imported successfully!', 'success');
   }, [elements, updateElementsWithHistory, setSelectedElementId, updateProject, activeProject.id, showToast]);
@@ -564,28 +565,32 @@ export default function App() {
         const proj = createProject('ZLAB Cyberpunk HUD Cursor System', getCyberpunkCursorKitElements(), 'desktop');
         setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
-        setSelectedElementId('zlab-cyberpunk-cursor-sheet');
+        setDevicePreview('desktop');
+        setSelectedElementId('desktop-1440');
         return;
       }
       if (template.id === 'm3-full-kit') {
         const proj = createProject('Material 3 Design System', getMaterial3KitElements(), 'desktop');
         setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
-        setSelectedElementId('m3-kit-frame');
+        setDevicePreview('desktop');
+        setSelectedElementId('desktop-1440');
         return;
       }
       if (template.id === 'ios-full-kit') {
         const proj = createProject('iOS 18 Design System', getIOSKitElements(), 'mobile');
         setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
-        setSelectedElementId('ios-kit-frame');
+        setDevicePreview('mobile');
+        setSelectedElementId('mobile-app-view');
         return;
       }
       if (template.id === 'all-materials-kit') {
         const proj = createProject('Complete Design Systems', getAllMaterialsElements(), 'desktop');
         setActiveProject(proj.id);
         navigate({ type: 'editor', projectId: proj.id });
-        setSelectedElementId('m3-kit-frame');
+        setDevicePreview('desktop');
+        setSelectedElementId('desktop-1440');
         return;
       }
 
@@ -1058,6 +1063,7 @@ export default function App() {
             onImportAllMaterials={handleImportAllMaterials}
             onOpenCyberpunkKit={() => setIsCyberpunkModalOpen(true)}
             onImportCyberpunkKit={handleImportCyberpunkKit}
+            onOpenM3Studio={() => setIsM3StudioOpen(true)}
             collaborators={collaborators}
             onNewDesign={handleNewDesign}
             isSaving={isSaving}
@@ -1070,9 +1076,7 @@ export default function App() {
         )}
 
         {/* Main View: Editor Workspace or Dashboard Browser or Auth */}
-        {route.type === 'simplified' ? (
-          <ZLabEditor />
-        ) : ['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) ? (
+        {['login', 'signup', 'forgot-password', 'verify-email'].includes(route.type) ? (
           <AuthView initialMode={route.type as 'login' | 'signup' | 'forgot-password' | 'verify-email'} />
         ) : !isAuthenticated ? (
           <div className="flex-1 bg-[#131313]" /> // Blank loading state while redirecting
@@ -1106,6 +1110,7 @@ export default function App() {
               onImportAllMaterials={handleImportAllMaterials}
               onOpenCyberpunkKit={() => setIsCyberpunkModalOpen(true)}
               onImportCyberpunkKit={handleImportCyberpunkKit}
+              onOpenM3Studio={() => setIsM3StudioOpen(true)}
               devicePreview={devicePreview}
               width={leftSidebarWidth}
               onStartResize={handleStartResizeLeft}
@@ -1313,6 +1318,16 @@ export default function App() {
             }
             document.body.style.cursor = `url("${cursorDataUri}") 4 4, auto`;
             showToast('ZLAB Cyberpunk Cursor activated in workspace!', 'info');
+          }}
+        />
+
+        {/* Material 3 Component Studio Modal */}
+        <M3StudioModal
+          isOpen={isM3StudioOpen}
+          onClose={() => setIsM3StudioOpen(false)}
+          onImportFullSuiteToMainCanvas={() => {
+            handleImportMaterialKit();
+            showToast('Imported Material 3 System Suite to Canvas', 'success');
           }}
         />
 

@@ -5,6 +5,7 @@ import { CanvasGrid } from '../../../components/Canvas/CanvasGrid';
 export interface CanvasViewportProps {
   currentTool: ToolMode;
   isPanning: boolean;
+  isSpacePressed?: boolean;
   showGrid: boolean;
   zoom: number;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -14,7 +15,7 @@ export interface CanvasViewportProps {
   onTouchMove?: (e: React.TouchEvent<HTMLDivElement>) => void;
   onTouchEnd?: (e: React.TouchEvent<HTMLDivElement>) => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
+  onWheel?: (e: React.WheelEvent<HTMLDivElement>) => void;
   onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
   onDrop?: (e: React.DragEvent<HTMLDivElement>) => void;
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
     {
       currentTool,
       isPanning,
+      isSpacePressed = false,
       showGrid,
       zoom,
       onMouseDown,
@@ -57,18 +59,19 @@ export const CanvasViewport = forwardRef<HTMLDivElement, CanvasViewportProps>(
         onDragOver={onDragOver}
         onDrop={onDrop}
         style={{
-          cursor:
-            isPanning || currentTool === 'hand'
-              ? 'grab'
-              : currentTool === 'rect' || currentTool === 'frame'
-              ? 'crosshair'
-              : currentTool === 'pen'
-              ? 'crosshair'
-              : currentTool === 'text'
-              ? 'text'
-              : currentTool === 'comment'
-              ? 'cell'
-              : 'default',
+          cursor: isPanning
+            ? 'grabbing'
+            : isSpacePressed || currentTool === 'hand'
+            ? 'grab'
+            : currentTool === 'rect' || currentTool === 'frame'
+            ? 'crosshair'
+            : currentTool === 'pen'
+            ? 'crosshair'
+            : currentTool === 'text'
+            ? 'text'
+            : currentTool === 'comment'
+            ? 'cell'
+            : 'default',
         }}
         className="canvas-viewport w-full h-full relative overflow-hidden select-none bg-[#0e0e0e] outline-none touch-none"
       >
