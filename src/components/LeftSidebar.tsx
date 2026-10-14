@@ -58,6 +58,8 @@ import {
 import { DynamicIcon } from './DynamicIcon';
 import { ZLabLogo } from './ZLabLogo';
 import { ContextMenu, ContextMenuState, ContextMenuItem } from './ContextMenu';
+import { M3StudioPanel } from './M3StudioPanel';
+import { createM3CanvasElement } from '../data/m3ComponentMapper';
 
 interface LeftSidebarProps {
   currentView: AppView;
@@ -133,6 +135,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 }) => {
   // Navigation tabs: 'layers' | 'components' | 'assets'
   const [activeNavTab, setActiveNavTab] = useState<'layers' | 'components' | 'assets'>('layers');
+  const [componentLibraryTab, setComponentLibraryTab] = useState<'library' | 'm3'>('m3');
 
   // Search queries
   const [componentSearch, setComponentSearch] = useState('');
@@ -528,6 +531,60 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     };
     onInsertElement(newElement);
     triggerNotice(comp.name);
+  };
+
+  // Insert an authentic M3 component onto the canvas
+  const handleInsertM3Component = (comp: any) => {
+    const isSuite = comp.variant === 'suite';
+    const w = isSuite ? 380 : 260;
+    const h = isSuite ? 220 : 54;
+    const placement = getTargetPlacement(w, h);
+    const newElement = createM3CanvasElement(
+      comp.type,
+      comp.name,
+      comp.categoryId || 'actions',
+      { x: placement.x, y: placement.y },
+      placement.parentId
+    );
+    onInsertElement(newElement);
+    triggerNotice(comp.name);
+  };
+
+  // Insert all 6 M3 Suites neatly arranged on the canvas
+  const handleInsertAllM3Suites = () => {
+    const suites = [
+      { type: 'M3ActionsGroup', name: 'Actions Suite', category: 'actions', w: 380, h: 220 },
+      { type: 'M3CommunicationGroup', name: 'Communication Suite', category: 'communication', w: 380, h: 220 },
+      { type: 'M3ContainmentGroup', name: 'Containment Suite', category: 'containment', w: 380, h: 220 },
+      { type: 'M3NavigationGroup', name: 'Navigation Suite', category: 'navigation', w: 380, h: 220 },
+      { type: 'M3SelectionGroup', name: 'Selection Suite', category: 'selection', w: 380, h: 220 },
+      { type: 'M3TextInputsGroup', name: 'Text Inputs Suite', category: 'text-inputs', w: 400, h: 220 },
+    ];
+
+    const isMobile = devicePreview === 'mobile';
+    const parentId = isMobile ? 'mobile-app-view' : 'desktop-1440';
+    const startX = isMobile ? 16 : 80;
+    const startY = isMobile ? 80 : 120;
+    const colWidth = isMobile ? 350 : 420;
+    const rowHeight = 250;
+
+    suites.forEach((suite, index) => {
+      const col = isMobile ? 0 : index % 2;
+      const row = isMobile ? index : Math.floor(index / 2);
+      const x = startX + col * colWidth;
+      const y = startY + row * rowHeight;
+
+      const element = createM3CanvasElement(
+        suite.type,
+        suite.name,
+        suite.category,
+        { x, y },
+        parentId
+      );
+      onInsertElement(element);
+    });
+
+    triggerNotice('Full Material 3 Suite (6 Suites)');
   };
 
   // Insert a Vector Icon onto the canvas
@@ -1101,8 +1158,17 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="flex items-center justify-between border-b border-[#353534] px-3 py-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium pb-0.5 text-[#e5e2e1] capitalize">
-                {activeNavTab}
+                {activeNavTab === 'components'
+                  ? componentLibraryTab === 'm3'
+                    ? 'Components • Material 3 Studio'
+                    : 'Components'
+                  : activeNavTab}
               </span>
+              {activeNavTab === 'components' && componentLibraryTab === 'm3' && (
+                <span className="text-[9px] bg-[#d0bcff]/20 text-[#d0bcff] border border-[#d0bcff]/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                  MUI v5/v6
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1">
@@ -1528,36 +1594,80 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           {/* TAB 2: COMPONENT LIBRARY */}
           {activeNavTab === 'components' && (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Search & Category filter */}
-              <div className="p-3 border-b border-[#353534]/50 space-y-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#89919e]" />
-                  <input
-                    type="text"
-                    value={componentSearch}
-                    onChange={(e) => setComponentSearch(e.target.value)}
-                    placeholder="Search UI components..."
-                    className="w-full bg-[#201f1f] border border-[#353534] rounded px-8 py-1.5 text-xs text-[#e5e2e1] placeholder-[#89919e] outline-none focus:border-[#0d99ff]"
-                  />
-                </div>
-
-                {/* Categories horizontal scroll pills */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
-                  {COMPONENT_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedComponentCat(cat.id)}
-                      className={`px-2 py-1 rounded text-[10px] whitespace-nowrap transition-colors ${
-                        selectedComponentCat === cat.id
-                          ? 'bg-[#0d99ff] text-[#002f55] font-semibold'
-                          : 'bg-[#201f1f] text-[#bfc7d5] hover:bg-[#2a2a2a] hover:text-[#e5e2e1]'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
+              {/* Sub-Tabs: Material 3 Studio vs Standard UI */}
+              <div className="flex items-center border-b border-[#353534] px-2.5 py-1.5 gap-1.5 bg-[#17151c]">
+                <button
+                  id="tab-components-m3-studio"
+                  onClick={() => setComponentLibraryTab('m3')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    componentLibraryTab === 'm3'
+                      ? 'bg-gradient-to-r from-[#381e72] to-[#4f378b] text-[#d0bcff] border border-[#d0bcff]/40 shadow-sm'
+                      : 'text-[#cac4d0] hover:text-white hover:bg-[#201f1f]'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
+                  <span>Material 3 Studio</span>
+                  <span className="text-[9px] px-1 bg-[#d0bcff]/20 text-[#d0bcff] rounded font-mono font-bold">MUI</span>
+                </button>
+                <button
+                  id="tab-components-standard"
+                  onClick={() => setComponentLibraryTab('library')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    componentLibraryTab === 'library'
+                      ? 'bg-[#2a2a2a] text-[#9fcaff] border border-[#9fcaff]/30 shadow-sm'
+                      : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+                  }`}
+                >
+                  <Component className="w-3.5 h-3.5" />
+                  <span>Standard UI</span>
+                </button>
               </div>
+
+              {/* VIEW 1: MATERIAL 3 STUDIO DIRECTLY INSIDE COMPONENTS */}
+              {componentLibraryTab === 'm3' && (
+                <M3StudioPanel
+                  onInsertComponent={handleInsertM3Component}
+                  onInsertSuite={handleInsertAllM3Suites}
+                  onOpenFullScreenStudio={onOpenM3Studio}
+                />
+              )}
+
+              {/* VIEW 2: STANDARD COMPONENT LIBRARY */}
+              {componentLibraryTab === 'library' && (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {/* Search & Category filter */}
+                  <div className="p-3 border-b border-[#353534]/50 space-y-2">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#89919e]" />
+                      <input
+                        type="text"
+                        value={componentSearch}
+                        onChange={(e) => setComponentSearch(e.target.value)}
+                        placeholder="Search UI components..."
+                        className="w-full bg-[#201f1f] border border-[#353534] rounded px-8 py-1.5 text-xs text-[#e5e2e1] placeholder-[#89919e] outline-none focus:border-[#0d99ff]"
+                      />
+                    </div>
+
+                    {/* Categories horizontal scroll pills */}
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
+                      {COMPONENT_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            setSelectedComponentCat(cat.id);
+                            if (cat.id === 'material3') setComponentLibraryTab('m3');
+                          }}
+                          className={`px-2 py-1 rounded text-[10px] whitespace-nowrap transition-colors ${
+                            selectedComponentCat === cat.id
+                              ? 'bg-[#0d99ff] text-[#002f55] font-semibold'
+                              : 'bg-[#201f1f] text-[#bfc7d5] hover:bg-[#2a2a2a] hover:text-[#e5e2e1]'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
               {/* Component Cards List */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
@@ -1590,9 +1700,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   </div>
                   <button
                     id="btn-sidebar-m3-studio"
-                    onClick={() => onOpenM3Studio?.()}
+                    onClick={() => setComponentLibraryTab('m3')}
                     className="w-full py-1.5 px-2 rounded-lg bg-[#381e72]/50 hover:bg-[#4f378b]/60 border border-[#d0bcff]/50 text-[10px] text-[#eaddff] font-bold transition-all flex items-center justify-between shadow-[0_0_12px_rgba(208,188,255,0.18)] cursor-pointer"
-                    title="Open Material 3 Component Studio (Sidebar + DesignCanvas + html-to-image)"
+                    title="Open Material 3 Component Studio inside Components Tab"
                   >
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
@@ -1816,6 +1926,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
 
           {/* TAB 3: ASSET LIBRARY */}
           {activeNavTab === 'assets' && (

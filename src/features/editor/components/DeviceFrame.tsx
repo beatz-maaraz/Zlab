@@ -30,16 +30,20 @@ export const DeviceFrame: React.FC<DeviceFrameProps> = ({
       }}
     >
       {devicePreview === 'mobile' ? (
-        /* Mobile Device Bezel Wrapper */
+        /* Mobile Device Bezel Wrapper - Refined for premium look */
         <div
           id="mobile-frame-wrapper"
-          className="relative p-3 bg-[#1e1e20] rounded-[52px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border border-[#3f4753]/80 ring-1 ring-white/5"
+          className="relative p-3 bg-gradient-to-b from-[#252528] to-[#121214] rounded-[52px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)_inset] border border-[#3f4753]/60 ring-1 ring-black/40"
         >
-          {/* Side phone buttons styling */}
-          <div className="absolute -left-[3px] top-28 w-[3px] h-10 bg-[#353534] rounded-l-sm" />
-          <div className="absolute -left-[3px] top-42 w-[3px] h-12 bg-[#353534] rounded-l-sm" />
-          <div className="absolute -left-[3px] top-58 w-[3px] h-12 bg-[#353534] rounded-l-sm" />
-          <div className="absolute -right-[3px] top-36 w-[3px] h-16 bg-[#353534] rounded-r-sm" />
+          {/* Side phone buttons styling - Refined with subtle depth */}
+          {/* Silence Switch / Action Button */}
+          <div className="absolute -left-[1.5px] top-24 w-[2.5px] h-6 bg-[#353534] rounded-l-[1px] border-r border-white/5 shadow-sm" />
+          {/* Volume Up */}
+          <div className="absolute -left-[1.5px] top-36 w-[2.5px] h-12 bg-[#353534] rounded-l-[1px] border-r border-white/5 shadow-sm" />
+          {/* Volume Down */}
+          <div className="absolute -left-[1.5px] top-52 w-[2.5px] h-12 bg-[#353534] rounded-l-[1px] border-r border-white/5 shadow-sm" />
+          {/* Side / Power Button */}
+          <div className="absolute -right-[1.5px] top-40 w-[2.5px] h-20 bg-[#353534] rounded-r-[1px] border-l border-white/5 shadow-sm" />
 
           {/* The Actual 390x844 Artboard */}
           {children}
