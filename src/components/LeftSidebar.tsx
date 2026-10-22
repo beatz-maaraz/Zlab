@@ -867,6 +867,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             }
           }}
           onDoubleClick={() => {
+            window.dispatchEvent(new CustomEvent('zlab:focus-element', { detail: { id: el.id } }));
             setRenamingId(el.id);
             setTempName(el.name);
           }}
@@ -1458,11 +1459,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div
                       onClick={() => {
                         setSelectedElementId('desktop-1440');
+                        setSelectedElementIds?.(['desktop-1440']);
                         toggleExpand('desktop-1440');
+                      }}
+                      onDoubleClick={() => {
+                        window.dispatchEvent(new CustomEvent('zlab:focus-element', { detail: { id: 'desktop-1440' } }));
                       }}
                       className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors ${
                         selectedElementId === 'desktop-1440'
-                          ? 'bg-[#201f1f] text-[#9fcaff] font-medium ring-1 ring-[#0d99ff]/50'
+                          ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
                           : 'hover:bg-[#2a2a2a] text-[#e5e2e1]'
                       }`}
                     >
@@ -1523,11 +1528,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div
                       onClick={() => {
                         setSelectedElementId('mobile-app-view');
+                        setSelectedElementIds?.(['mobile-app-view']);
                         toggleExpand('mobile-app-view');
+                      }}
+                      onDoubleClick={() => {
+                        window.dispatchEvent(new CustomEvent('zlab:focus-element', { detail: { id: 'mobile-app-view' } }));
                       }}
                       className={`flex items-center justify-between px-2 py-1.5 rounded group cursor-pointer transition-colors mt-2 ${
                         selectedElementId === 'mobile-app-view'
-                          ? 'bg-[#201f1f] text-[#9fcaff] font-medium'
+                          ? 'bg-[#0d99ff]/20 text-[#9fcaff] font-medium'
                           : 'text-[#e5e2e1] hover:bg-[#2a2a2a]'
                       }`}
                     >
@@ -1542,16 +1551,30 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         <Smartphone className="w-3.5 h-3.5 text-[#bfc7d5] shrink-0" />
                         <span className="truncate">Mobile App View</span>
                       </div>
-                      <button
-                        onClick={(e) => toggleVisibility('mobile-app-view', e)}
-                        className="text-[#bfc7d5] hover:text-[#e5e2e1]"
-                      >
-                        {elements['mobile-app-view']?.visible !== false ? (
-                          <Eye className="w-3 h-3" />
-                        ) : (
-                          <EyeOff className="w-3 h-3 text-[#89919e]" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                        <button
+                          onClick={(e) => toggleVisibility('mobile-app-view', e)}
+                          className="text-[#bfc7d5] hover:text-[#e5e2e1]"
+                          title="Toggle Visibility"
+                        >
+                          {elements['mobile-app-view']?.visible !== false ? (
+                            <Eye className="w-3 h-3" />
+                          ) : (
+                            <EyeOff className="w-3 h-3 text-[#89919e]" />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => toggleLock('mobile-app-view', e)}
+                          className="text-[#bfc7d5] hover:text-[#e5e2e1]"
+                          title="Toggle Lock"
+                        >
+                          {elements['mobile-app-view']?.locked ? (
+                            <Lock className="w-3 h-3 text-[#f59e0b]" />
+                          ) : (
+                            <Unlock className="w-3 h-3 text-[#89919e]" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Children of Mobile View Frame */}

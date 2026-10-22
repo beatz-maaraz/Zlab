@@ -177,15 +177,17 @@ export default function App() {
       setDevicePreview(mode);
       updateProject(activeProject.id, { previewType: mode });
 
-      // If the old artboard itself was selected, switch to the new artboard
-      if (mode === 'desktop' && selectedElementId === 'mobile-app-view') {
-        setSelectedElementId('desktop-1440');
-      } else if (mode === 'mobile' && selectedElementId === 'desktop-1440') {
-        setSelectedElementId('mobile-app-view');
+      const newArtboardId = mode === 'desktop' ? 'desktop-1440' : 'mobile-app-view';
+      const oldArtboardId = mode === 'desktop' ? 'mobile-app-view' : 'desktop-1440';
+
+      // If the old artboard itself was selected or no valid element selected, switch to the new artboard
+      if (!selectedElementId || selectedElementId === oldArtboardId || !elements[selectedElementId]) {
+        setSelectedElementId(newArtboardId);
+        setSelectedElementIds([newArtboardId]);
       }
       // If an actual design element is selected, preserve it untouched
     },
-    [activeProject.id, selectedElementId, setDevicePreview, setSelectedElementId, updateProject]
+    [activeProject.id, selectedElementId, elements, setDevicePreview, setSelectedElementId, setSelectedElementIds, updateProject]
   );
 
   // Update elements with Undo/Redo history tracking
@@ -495,6 +497,132 @@ export default function App() {
     },
     [selectedElementId, elements, handleUpdateSelectedElement]
   );
+
+  // Global Figma-like keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        Boolean(target.closest && target.closest('[contenteditable="true"]'))
+      ) {
+        return;
+      }
+
+      const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo / Redo
+      if (modKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      if ((modKey && e.shiftKey && e.key.toLowerCase() === 'z') || (modKey && e.key.toLowerCase() === 'y')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Duplicate
+      if (modKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (selectedElementId && selectedElementId !== 'desktop-1440' && selectedElementId !== 'mobile-app-view') {
+          handleDuplicateElement(selectedElementId);
+        }
+        return;
+      }
+
+      // Group / Ungroup
+      if (modKey && !e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleGroupElements();
+        return;
+      }
+      if (modKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (selectedElementId && elements[selectedElementId]?.type === 'group') {
+          handleUngroupElements(selectedElementId);
+        }
+        return;
+      }
+
+      // Fit to Screen (Cmd+0 or Shift+1)
+      if ((modKey && e.key === '0') || (e.shiftKey && (e.key === '!' || e.code === 'Digit1'))) {
+        e.preventDefault();
+        setZoom(1);
+        window.dispatchEvent(new CustomEvent('zlab:fit-view'));
+        setToastMessage('Fit to Screen (100%)');
+        return;
+      }
+
+      // Zoom to Selection (Shift+2)
+      if (e.shiftKey && (e.key === '@' || e.code === 'Digit2')) {
+        e.preventDefault();
+        if (selectedElementId) {
+          window.dispatchEvent(new CustomEvent('zlab:focus-element', { detail: { id: selectedElementId } }));
+          setToastMessage('Zoom to Selection');
+        }
+        return;
+      }
+
+      // Delete / Backspace
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedElementId && selectedElementId !== 'desktop-1440' && selectedElementId !== 'mobile-app-view' && selectedElementId !== 'hero-bg') {
+          e.preventDefault();
+          handleDeleteElement(selectedElementId);
+          return;
+        }
+      }
+
+      // Tool shortcuts (V, F, R, T, H)
+      if (!modKey && !e.altKey) {
+        if (e.key.toLowerCase() === 'v') {
+          setCurrentTool('move');
+        } else if (e.key.toLowerCase() === 'f') {
+          setCurrentTool('frame');
+        } else if (e.key.toLowerCase() === 'r') {
+          setCurrentTool('rect');
+        } else if (e.key.toLowerCase() === 't') {
+          setCurrentTool('text');
+        } else if (e.key.toLowerCase() === 'h') {
+          setCurrentTool('hand');
+        }
+      }
+
+      // Arrow keys nudging
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        if (selectedElementId && selectedElementId !== 'desktop-1440' && selectedElementId !== 'mobile-app-view' && elements[selectedElementId]) {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          const current = elements[selectedElementId];
+          const deltaX = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+          const deltaY = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+          handleUpdateSelectedElement({
+            x: current.x + deltaX,
+            y: current.y + deltaY,
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selectedElementId,
+    elements,
+    handleUndo,
+    handleRedo,
+    handleDuplicateElement,
+    handleDeleteElement,
+    handleGroupElements,
+    handleUngroupElements,
+    handleUpdateSelectedElement,
+    setCurrentTool,
+    setZoom,
+  ]);
 
   // Design kits import
   const handleImportMaterialKit = useCallback(() => {
@@ -994,7 +1122,12 @@ export default function App() {
     }));
   }, [projects, getRecentProjectsList]);
 
-  const activeElement = elements[selectedElementId] || elements['desktop-1440'] || Object.values(elements)[0];
+  const activeArtboardId = devicePreview === 'mobile' ? 'mobile-app-view' : 'desktop-1440';
+  const activeElement =
+    elements[selectedElementId] ||
+    elements[activeArtboardId] ||
+    elements['desktop-1440'] ||
+    Object.values(elements)[0];
   const isEditorView = route.type === 'editor' || route.type === 'prototype';
 
   const { isAuthenticated: uiAuth } = useUIStore();

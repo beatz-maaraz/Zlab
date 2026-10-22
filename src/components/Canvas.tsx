@@ -209,7 +209,77 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [devicePreview, containerSize, artboardWidth, artboardHeight, previewScale]);
 
-  // Dragging element state
+  // Fit to screen (Figma Shift+1 / Cmd+0)
+  const fitToScreen = React.useCallback(() => {
+    setZoom?.(1);
+    if (containerSize.width > 0 && containerSize.height > 0) {
+      const extraBezel = devicePreview === 'mobile' ? 24 : 0;
+      const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
+      const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
+      setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
+    }
+  }, [containerSize, artboardWidth, artboardHeight, previewScale, devicePreview, setZoom]);
+
+  // Zoom to selection / center canvas on target element (Figma Shift+2)
+  const zoomToSelection = React.useCallback((targetId?: string) => {
+    const id = targetId || selectedElementId;
+    if (!id || id === 'desktop-1440' || id === 'mobile-app-view') {
+      fitToScreen();
+      return;
+    }
+    const el = elements[id];
+    if (!el || containerSize.width <= 0 || containerSize.height <= 0) return;
+
+    const elCenterX = el.x + (el.width || 100) / 2;
+    const elCenterY = el.y + (el.height || 100) / 2;
+
+    const targetPanX = containerSize.width / 2 - elCenterX * totalScale;
+    const targetPanY = containerSize.height / 2 - elCenterY * totalScale;
+    setPan({ x: Math.round(targetPanX), y: Math.round(targetPanY) });
+  }, [selectedElementId, elements, containerSize, totalScale, fitToScreen]);
+
+  // Global listeners for fit-view and focus-element custom events
+  useEffect(() => {
+    const handleFitView = () => fitToScreen();
+    const handleFocusElement = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string }>;
+      if (customEvent.detail?.id) {
+        zoomToSelection(customEvent.detail.id);
+      }
+    };
+
+    window.addEventListener('zlab:fit-view', handleFitView);
+    window.addEventListener('zlab:focus-element', handleFocusElement as EventListener);
+    return () => {
+      window.removeEventListener('zlab:fit-view', handleFitView);
+      window.removeEventListener('zlab:focus-element', handleFocusElement as EventListener);
+    };
+  }, [fitToScreen, zoomToSelection]);
+
+  // Canvas-level keyboard shortcuts for Shift+1 (Fit) and Shift+2 (Focus)
+  useEffect(() => {
+    const handleShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        Boolean(target.closest && target.closest('[contenteditable="true"]'))
+      ) {
+        return;
+      }
+      if (e.shiftKey && (e.key === '!' || e.code === 'Digit1')) {
+        e.preventDefault();
+        fitToScreen();
+      }
+      if (e.shiftKey && (e.key === '@' || e.code === 'Digit2')) {
+        e.preventDefault();
+        zoomToSelection();
+      }
+    };
+    window.addEventListener('keydown', handleShortcuts);
+    return () => window.removeEventListener('keydown', handleShortcuts);
+  }, [fitToScreen, zoomToSelection]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{
     mouseX: number;
@@ -2828,16 +2898,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         {/* Fit / Reset button */}
         <button
           id="btn-desktop-zoom-fit"
-          onClick={() => {
-            setZoom?.(1);
-            if (containerSize.width > 0 && containerSize.height > 0) {
-              const extraBezel = devicePreview === 'mobile' ? 24 : 0;
-              const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
-              const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
-              setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
-            }
-          }}
-          title="Reset zoom to 100% and center artboard"
+          onClick={fitToScreen}
+          title="Reset zoom to 100% and center artboard (Shift+1 / ⌘0)"
           className="px-2 py-1 bg-[#1c1b1b] border border-[#353534]/60 rounded-lg text-[10px] font-mono text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50 transition-all shadow"
         >
           Fit View
@@ -2921,23 +2983,47 @@ export const Canvas: React.FC<CanvasProps> = ({
           totalScale={totalScale}
           isInteracting={isPanning || !!draggingId || !!resizingId}
         >
-          {/* Artboard (Renders fixed 1440x900 or 390x844 surface) */}
-          <Artboard
-            ref={artboardRef}
-            id={artboardId}
-            devicePreview={devicePreview}
-            width={artboardWidth}
-            height={artboardHeight}
-            backgroundColor={activeArtboardBg}
-            isSelected={selectedElementId === artboardId}
-            onMouseDown={handleArtboardMouseDown}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedElementId(artboardId);
-            }}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            showGrid={showGrid}
+          <div className="relative">
+            {/* Interactive Figma-style Artboard Frame Header Chip */}
+            <div
+              id="artboard-header-chip"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedElementId(artboardId);
+                if (setSelectedElementIds) setSelectedElementIds([artboardId]);
+              }}
+              className={`absolute -top-7 left-0 flex items-center gap-1.5 px-2.5 py-0.5 rounded cursor-pointer transition-all text-xs select-none z-30 ${
+                selectedElementId === artboardId
+                  ? 'bg-[#0d99ff] text-white shadow-sm ring-1 ring-[#0d99ff]/50 font-semibold'
+                  : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+              }`}
+              title="Click to select Artboard Frame"
+            >
+              <span className="text-[10px] opacity-75 font-mono">#</span>
+              <span>{devicePreview === 'desktop' ? 'Desktop - 1440' : 'Mobile - 390'}</span>
+              <span className="text-[10px] opacity-60 font-mono">
+                {artboardWidth}×{artboardHeight}
+              </span>
+            </div>
+
+            {/* Artboard (Renders fixed 1440x900 or 390x844 surface) */}
+            <Artboard
+              ref={artboardRef}
+              id={artboardId}
+              devicePreview={devicePreview}
+              width={artboardWidth}
+              height={artboardHeight}
+              backgroundColor={activeArtboardBg}
+              isSelected={selectedElementId === artboardId}
+              onMouseDown={handleArtboardMouseDown}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedElementId(artboardId);
+                if (setSelectedElementIds) setSelectedElementIds([artboardId]);
+              }}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              showGrid={showGrid}
             overlayGuides={
               <>
                 {/* Dynamic Alignment Guidelines & Equal Gap Distance Indicators */}
@@ -3086,6 +3172,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               </div>
             ))}
           </Artboard>
+          </div>
         </DeviceFrame>
       </PreviewStage>
       {/* Context Menu */}

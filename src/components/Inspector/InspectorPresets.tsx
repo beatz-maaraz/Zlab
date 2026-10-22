@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { Style as PresetIcon } from '@mui/icons-material';
-import { M3_TOKENS, IOS_TOKENS, GLASS_TOKENS, CanvasElement } from './applyM3Preset';
+import { M3_TOKENS, IOS_TOKENS, GLASS_TOKENS, PresetThemeTokens, CanvasElement } from './applyM3Preset';
 
 interface InspectorPresetsProps {
   element: CanvasElement;
@@ -32,7 +32,7 @@ export const InspectorPresets: React.FC<InspectorPresetsProps> = ({
   ) => {
     if (!newPreset) return;
 
-    let tokens = M3_TOKENS;
+    let tokens: PresetThemeTokens = M3_TOKENS;
     if (newPreset === 'ios') tokens = IOS_TOKENS;
     if (newPreset === 'glass') tokens = GLASS_TOKENS;
 
