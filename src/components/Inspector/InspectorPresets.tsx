@@ -67,13 +67,16 @@ export const InspectorPresets: React.FC<InspectorPresetsProps> = ({
   return (
     <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
       {/* Header & Segmented Pill Switch */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 1.5 }}
+      {/* Header & Segmented Pill Switch */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 1.5,
+        }}
       >
-        <Stack direction="row" spacing={0.75} alignItems="center">
+        <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
           <PresetIcon sx={{ fontSize: 15, color: '#9CA3AF' }} />
           <Typography
             variant="caption"
@@ -81,7 +84,7 @@ export const InspectorPresets: React.FC<InspectorPresetsProps> = ({
           >
             PRESETS
           </Typography>
-        </Stack>
+        </Box>
 
         <ToggleButtonGroup
           value={currentPreset}
@@ -110,7 +113,7 @@ export const InspectorPresets: React.FC<InspectorPresetsProps> = ({
           <ToggleButton value="ios">iOS</ToggleButton>
           <ToggleButton value="glass">Glass</ToggleButton>
         </ToggleButtonGroup>
-      </Stack>
+      </Box>
 
       {/* Dynamic Token Palette Swatches */}
       <Box
@@ -127,6 +130,9 @@ export const InspectorPresets: React.FC<InspectorPresetsProps> = ({
           return (
             <Tooltip title={color} key={`${currentPreset}-${index}`}>
               <Box
+                aria-label={color}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSwatchClick(color)}
                 sx={{
                   height: 30,

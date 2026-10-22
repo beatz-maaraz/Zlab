@@ -171,7 +171,7 @@ describe('Inspector Component', () => {
     });
 
     // Clicking an individual palette swatch updates fill
-    const swatch = screen.getByTitle('#D0BCFF');
+    const swatch = screen.getByLabelText('#D0BCFF');
     fireEvent.click(swatch);
     expect(handleUpdate).toHaveBeenCalledWith({ fill: '#D0BCFF' });
   });
