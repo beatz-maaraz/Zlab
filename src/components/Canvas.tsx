@@ -40,6 +40,7 @@ import {
   Mail,
   ChevronRight,
   Magnet,
+  Bell,
 } from 'lucide-react';
 import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
 import { DynamicIcon } from './DynamicIcon';
@@ -2278,15 +2279,208 @@ export const Canvas: React.FC<CanvasProps> = ({
               <span className="text-[#007aff] text-xs font-normal">‹ Back</span>
               <span className="text-white text-sm font-bold tracking-tight">Settings</span>
             </div>
-          ) : el.variant === 'm3-nav' ? (
-            <div className="flex items-center justify-around w-full px-2 text-[11px] text-[#cac4d0]">
-              <div className="flex flex-col items-center">
-                <span className="px-3 py-0.5 rounded-full bg-[#4a4458] text-[#d0bcff] font-semibold">★ Home</span>
+          ) : el.variant === 'm3-nav' || el.variant === 'm3-nav-bar' ? (
+            <div className="flex items-center justify-around w-full px-2 text-[10px] text-[#cac4d0]">
+              <div className="flex flex-col items-center gap-0.5">
+                <div className="px-3.5 py-0.5 rounded-full bg-[#d0bcff] text-[#381e72] font-bold">★</div>
+                <span className="text-[#d0bcff] font-bold">Home</span>
               </div>
-              <span>Explore</span>
-              <span>Library</span>
-              <span>Tokens</span>
-              <span>Settings</span>
+              <div className="flex flex-col items-center gap-0.5">
+                <span>✦</span>
+                <span>Explore</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span>📦</span>
+                <span>Library</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span>⚙</span>
+                <span>Settings</span>
+              </div>
+            </div>
+          ) : el.variant === 'm3-checkbox' ? (
+            <div className="flex items-center gap-2.5 w-full px-2">
+              <div className="w-5 h-5 rounded-md bg-[#d0bcff] flex items-center justify-center text-[#381e72] font-bold text-xs shadow-sm">
+                ✓
+              </div>
+              <span className="text-[#e6e0e9] font-medium text-xs truncate">{el.textContent || el.name}</span>
+            </div>
+          ) : el.variant === 'm3-radio' ? (
+            <div className="flex items-center gap-2.5 w-full px-2">
+              <div className="w-5 h-5 rounded-full border-2 border-[#d0bcff] flex items-center justify-center p-0.5 shadow-sm">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#d0bcff]" />
+              </div>
+              <span className="text-[#e6e0e9] font-medium text-xs truncate">{el.textContent || el.name}</span>
+            </div>
+          ) : el.variant === 'm3-progress' ? (
+            <div className="flex flex-col gap-1.5 w-full px-3">
+              <div className="flex justify-between text-[10px] text-[#cac4d0]">
+                <span>{el.textContent || 'Progress Indicator'}</span>
+                <span className="font-mono text-[#d0bcff]">65%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-[#36343b] overflow-hidden">
+                <div className="w-[65%] h-full rounded-full bg-[#d0bcff] shadow-[0_0_8px_#d0bcff]" />
+              </div>
+            </div>
+          ) : el.variant === 'm3-circular-progress' ? (
+            <div className="flex items-center justify-center gap-2.5 w-full">
+              <div className="w-6 h-6 rounded-full border-2 border-[#49454f] border-t-[#d0bcff] animate-spin" />
+              <span className="text-[#e6e0e9] text-xs font-medium">{el.textContent || 'Loading...'}</span>
+            </div>
+          ) : el.variant === 'm3-snackbar' ? (
+            <div className="flex items-center justify-between w-full px-3 py-1 bg-[#313033] rounded-lg text-xs shadow-lg border border-[#49454f]">
+              <span className="text-[#f4eff4] truncate">{el.textContent || 'Action recorded successfully'}</span>
+              <span className="text-[#d0bcff] font-bold text-[11px] ml-2 hover:underline uppercase tracking-wide cursor-pointer">Dismiss</span>
+            </div>
+          ) : el.variant === 'm3-search' ? (
+            <div className="flex items-center justify-between w-full px-3 py-1.5 bg-[#211f26] rounded-full border border-[#49454f] text-xs shadow-sm">
+              <div className="flex items-center gap-2 truncate text-[#cac4d0]">
+                <Search className="w-3.5 h-3.5 text-[#938f99]" />
+                <span className="text-[#cac4d0] truncate">{el.textContent || 'Search design tokens...'}</span>
+              </div>
+              <span className="w-5 h-5 rounded-full bg-[#4a4458] text-[#e8def8] flex items-center justify-center text-[10px]">🎙</span>
+            </div>
+          ) : el.variant === 'm3-top-app-bar' ? (
+            <div className="flex items-center justify-between w-full px-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[#e6e0e9] text-base cursor-pointer">☰</span>
+                <span className="text-[#e6e0e9] font-medium text-xs truncate">{el.textContent || 'Material 3 Top App Bar'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[#cac4d0]">
+                <Search className="w-3.5 h-3.5" />
+                <div className="w-5 h-5 rounded-full bg-[#4a4458] text-[#d0bcff] text-[9px] font-bold flex items-center justify-center">Z</div>
+              </div>
+            </div>
+          ) : el.variant === 'm3-tabs' ? (
+            <div className="flex items-center justify-around w-full border-b border-[#49454f] text-xs">
+              <div className="flex-1 text-center py-2 relative text-[#d0bcff] font-bold">
+                <span>Primary</span>
+                <div className="absolute bottom-0 inset-x-4 h-0.5 bg-[#d0bcff] rounded-t-full" />
+              </div>
+              <div className="flex-1 text-center py-2 text-[#938f99]">
+                <span>Secondary</span>
+              </div>
+              <div className="flex-1 text-center py-2 text-[#938f99]">
+                <span>Tertiary</span>
+              </div>
+            </div>
+          ) : el.variant === 'm3-card-elevated' || el.variant === 'm3-card-filled' || el.variant === 'm3-card-outlined' ? (
+            <div className="flex flex-col justify-between w-full h-full p-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#d0bcff]">{el.tag || 'M3 CARD'}</span>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-[#4a4458] text-[#e8def8] font-mono">{el.variant.replace('m3-card-', '')}</span>
+              </div>
+              <div>
+                <h3 className="text-[#e6e0e9] font-bold text-sm tracking-tight">{el.textContent || 'Elevated Surface'}</h3>
+                <p className="text-[#938f99] text-xs mt-1 leading-snug">{el.subText || 'Material 3 surface container elevation token.'}</p>
+              </div>
+              <div className="flex items-center gap-2 pt-2 border-t border-[#49454f]/40">
+                <span className="px-3 py-1 rounded-full bg-[#d0bcff] text-[#381e72] font-bold text-[10px] shadow-sm">Explore</span>
+                <span className="px-3 py-1 rounded-full border border-[#49454f] text-[#cac4d0] text-[10px]">Cancel</span>
+              </div>
+            </div>
+          ) : el.variant?.startsWith('m3-suite-') ? (
+            <div className="w-full h-full p-3.5 flex flex-col justify-between text-left select-none">
+              <div className="flex items-center justify-between border-b border-[#36343b] pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
+                  <span className="font-bold text-xs text-[#e6e0e9]">{el.textContent}</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#381e72] text-[#d0bcff] font-mono font-bold">
+                  M3 SUITE
+                </span>
+              </div>
+              <div className="py-2 flex-1 flex flex-col justify-center gap-2">
+                {el.variant === 'm3-suite-actions' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-[#d0bcff] text-[#381e72] text-[10px] font-bold shadow">Filled</span>
+                    <span className="px-3 py-1 rounded-full bg-[#4a4458] text-[#e8def8] text-[10px] font-medium">Tonal</span>
+                    <span className="px-3 py-1 rounded-full border border-[#938f99] text-[#d0bcff] text-[10px]">Outlined</span>
+                    <span className="text-[#d0bcff] text-[11px] underline">Text</span>
+                    <span className="w-7 h-7 rounded-xl bg-[#d0bcff] text-[#381e72] flex items-center justify-center font-bold text-xs shadow">+</span>
+                  </div>
+                )}
+                {el.variant === 'm3-suite-comm' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Bell className="w-4 h-4 text-[#e6e0e9]" />
+                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#d0bcff] text-[#381e72] text-[8px] font-bold flex items-center justify-center">3</span>
+                      </div>
+                      <div className="flex-1 h-1.5 rounded-full bg-[#36343b] overflow-hidden">
+                        <div className="w-2/3 h-full bg-[#d0bcff]" />
+                      </div>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#313033] text-[10px] text-[#f4eff4] flex justify-between">
+                      <span>Notification banner active</span>
+                      <span className="text-[#d0bcff] font-bold">UNDO</span>
+                    </div>
+                  </div>
+                )}
+                {el.variant === 'm3-suite-containment' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 rounded-xl bg-[#211f26] border border-[#36343b] text-[10px]">
+                      <span className="font-bold text-[#e6e0e9] block">Elevated Card</span>
+                      <span className="text-[#938f99] text-[9px]">Surface high</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-[#1d1b20] border border-[#49454f] text-[10px]">
+                      <span className="font-bold text-[#e6e0e9] block">Outlined Card</span>
+                      <span className="text-[#938f99] text-[9px]">Stroke variant</span>
+                    </div>
+                  </div>
+                )}
+                {el.variant === 'm3-suite-navigation' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-2 py-1 rounded bg-[#211f26] text-[10px] text-[#e6e0e9]">
+                      <span>☰ Material 3 App Bar</span>
+                      <span>🔍</span>
+                    </div>
+                    <div className="flex items-center justify-around py-1 bg-[#1d1b20] rounded text-[10px] text-[#cac4d0]">
+                      <span className="text-[#d0bcff] font-bold">★ Home</span>
+                      <span>✦ Explore</span>
+                      <span>⚙ Settings</span>
+                    </div>
+                  </div>
+                )}
+                {el.variant === 'm3-suite-selection' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-[#e6e0e9]">
+                      <span>Switch & Checkbox</span>
+                      <div className="w-8 h-4 rounded-full bg-[#d0bcff] p-0.5 flex justify-end">
+                        <div className="w-3 h-3 rounded-full bg-[#381e72]" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-[#cac4d0]">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3.5 h-3.5 rounded bg-[#d0bcff] flex items-center justify-center text-[#381e72] font-bold text-[8px]">✓</div>
+                        <span>Active</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3.5 h-3.5 rounded-full border border-[#d0bcff] flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#d0bcff]" />
+                        </div>
+                        <span>Radio</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {el.variant === 'm3-suite-inputs' && (
+                  <div className="space-y-2">
+                    <div className="p-1.5 rounded-lg border border-[#49454f] bg-[#141218] text-[10px] text-[#cac4d0] flex justify-between">
+                      <span>Outlined Input Field</span>
+                      <span className="text-[#938f99]">✏</span>
+                    </div>
+                    <div className="px-2.5 py-1 rounded-full bg-[#211f26] border border-[#36343b] text-[10px] text-[#938f99] flex items-center gap-1.5">
+                      <span>🔍</span>
+                      <span>Search tokens...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="text-[10px] text-[#938f99] font-mono flex items-center justify-between border-t border-[#36343b] pt-1.5">
+                <span>{el.subText || 'M3 Multi-token bundle'}</span>
+                <span className="text-[#d0bcff]">Ready</span>
+              </div>
             </div>
           ) : el.variant === 'ios-tabbar' ? (
             <div className="flex items-center justify-around w-full px-2 text-[11px] text-[#8e8e93]">

@@ -83,6 +83,7 @@ export interface CanvasElement {
   backdropBlur?: number;
   glassEffect?: 'frosted' | 'neon' | 'smoke' | 'prism' | 'none';
   materialPreset?: 'm3' | 'ios' | 'glass' | 'none';
+  m3WidgetType?: string;
   prototype?: InteractionPrototype;
   // Dynamic Header & Input & Tab & Data Grid Properties
   placeholder?: string;
