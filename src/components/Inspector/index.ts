@@ -1,4 +1,10 @@
 export * from './Inspector';
+export * from './TransformSection';
+export * from './AppearanceSection';
+export * from './TokenPresetsSection';
+export * from './AutoLayoutSection';
+export * from './ColorPickerPopover';
+export * from './ExportFooter';
 export * from './PositionSection';
 export * from './LayoutSection';
 export * from './FillSection';
@@ -10,3 +16,6 @@ export * from './ExportSection';
 export * from './InspectTab';
 export * from './PrototypeTab';
 export * from './NumberAdjustInput';
+export * from './InspectorPresets';
+export * from './applyM3Preset';
+

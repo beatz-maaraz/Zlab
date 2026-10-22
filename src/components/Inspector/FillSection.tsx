@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
-import { Sparkles, Plus } from 'lucide-react';
+import React from 'react';
+import { Plus } from 'lucide-react';
 import { CanvasElement } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { NumberAdjustInput } from './NumberAdjustInput';
-import {
-  MATERIAL_3_PRESETS,
-  IOS_MATERIAL_PRESETS,
-  GLASS_EFFECT_PRESETS,
-} from '../../data/materialPresets';
 
 interface FillSectionProps {
   element: CanvasElement;
@@ -20,8 +15,6 @@ export const FillSection: React.FC<FillSectionProps> = ({
   onUpdate,
   disabled = false,
 }) => {
-  const [materialTab, setMaterialTab] = useState<'m3' | 'ios' | 'glass'>('m3');
-
   const { documentColors, addDocumentColor } = useEditorStore();
 
   const currentColor = element.fill || '#0D99FF';
@@ -103,88 +96,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
           ))}
         </div>
       </div>
-
-      {/* Design System Preset Tokens Swatches */}
-      <div className="pt-1 border-t border-[#201f1f] mt-1">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] text-[#89919e] uppercase font-bold tracking-wider flex items-center gap-1">
-            <Sparkles className="w-2.5 h-2.5 text-[#9fcaff]" /> Presets
-          </span>
-          <div className="flex items-center gap-1 text-[10px]">
-            <button
-              onClick={() => setMaterialTab('m3')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                materialTab === 'm3' ? 'text-[#9fcaff] bg-[#0d99ff]/15 font-semibold' : 'text-[#89919e]'
-              }`}
-            >
-              M3
-            </button>
-            <button
-              onClick={() => setMaterialTab('ios')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                materialTab === 'ios' ? 'text-[#9fcaff] bg-[#0d99ff]/15 font-semibold' : 'text-[#89919e]'
-              }`}
-            >
-              iOS
-            </button>
-            <button
-              onClick={() => setMaterialTab('glass')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                materialTab === 'glass' ? 'text-[#9fcaff] bg-[#0d99ff]/15 font-semibold' : 'text-[#89919e]'
-              }`}
-            >
-              Glass
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-6 gap-1.5">
-          {materialTab === 'm3' &&
-            MATERIAL_3_PRESETS.slice(0, 12).map((p) => {
-              const bg = p.props.fill || '#d0bcff';
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => onUpdate(p.props)}
-                  disabled={disabled}
-                  className="w-full aspect-square rounded-md border border-[#353534] hover:scale-110 transition-transform"
-                  style={{ backgroundColor: bg }}
-                  title={`${p.name} (${bg})`}
-                />
-              );
-            })}
-
-          {materialTab === 'ios' &&
-            IOS_MATERIAL_PRESETS.slice(0, 12).map((p) => {
-              const bg = p.props.fill || '#007aff';
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => onUpdate(p.props)}
-                  disabled={disabled}
-                  className="w-full aspect-square rounded-md border border-[#353534] hover:scale-110 transition-transform"
-                  style={{ backgroundColor: bg }}
-                  title={`${p.name} (${bg})`}
-                />
-              );
-            })}
-
-          {materialTab === 'glass' &&
-            GLASS_EFFECT_PRESETS.map((p) => {
-              const bg = p.props.fill || 'rgba(255,255,255,0.1)';
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => onUpdate(p.props)}
-                  disabled={disabled}
-                  className="w-full aspect-square rounded-md border border-white/20 hover:scale-110 transition-transform"
-                  style={{ backgroundColor: bg }}
-                  title={p.name}
-                />
-              );
-            })}
-        </div>
-      </div>
     </div>
   );
 };
+

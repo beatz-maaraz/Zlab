@@ -55,13 +55,16 @@ export interface CanvasElement {
   height: number;
   rotation: number;
   borderRadius: number;
+  radius?: number;
   fill: string;
   fillOpacity: number;
   stroke: string;
+  strokeColor?: string;
   strokeWidth: number;
   shadowBlur: number;
   shadowY: number;
   shadowSpread: number;
+  presetTheme?: 'm3' | 'ios' | 'glass';
   visible: boolean;
   locked: boolean;
   fixed?: boolean;

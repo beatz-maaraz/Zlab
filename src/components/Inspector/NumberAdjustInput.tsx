@@ -14,6 +14,7 @@ export interface NumberAdjustInputProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  tabIndex?: number;
 }
 
 export const NumberAdjustInput: React.FC<NumberAdjustInputProps> = ({
@@ -29,6 +30,7 @@ export const NumberAdjustInput: React.FC<NumberAdjustInputProps> = ({
   disabled = false,
   className = '',
   id,
+  tabIndex,
 }) => {
   const [localValue, setLocalValue] = useState<string>(String(value ?? 0));
   const [isFocused, setIsFocused] = useState(false);
@@ -137,6 +139,7 @@ export const NumberAdjustInput: React.FC<NumberAdjustInputProps> = ({
       {/* Direct Input */}
       <input
         id={id}
+        tabIndex={tabIndex}
         type="text"
         inputMode="numeric"
         value={localValue}
