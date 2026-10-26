@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Collaborator } from '../types';
-import { Users, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Check, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 
 interface StatusBarProps {
   collaborators?: Collaborator[];
@@ -8,6 +8,8 @@ interface StatusBarProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   onOpenShortcuts?: () => void;
+  onOpenAnalysis?: () => void;
+  analysisScore?: number;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -16,6 +18,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   totalPages,
   onPageChange,
   onOpenShortcuts,
+  onOpenAnalysis,
+  analysisScore,
 }) => {
   const [showUsersPopup, setShowUsersPopup] = useState(false);
   const [showPageMenu, setShowPageMenu] = useState(false);
@@ -92,6 +96,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
       {/* Right multiplayer collaborator presence */}
       <div className="flex items-center gap-2 sm:gap-3 relative">
+        {onOpenAnalysis && (
+          <button
+            id="btn-status-bar-analysis"
+            onClick={onOpenAnalysis}
+            className="hidden sm:flex text-[11px] text-[#89919e] hover:text-[#e5e2e1] items-center gap-1.5 transition-colors mr-1 sm:mr-2 px-1.5 py-0.5 rounded hover:bg-[#201f1f] cursor-pointer"
+            title="Open Design System Health & WCAG Audit"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Health: {analysisScore ?? 96}%</span>
+          </button>
+        )}
+
         {onOpenShortcuts && (
           <button
             onClick={onOpenShortcuts}

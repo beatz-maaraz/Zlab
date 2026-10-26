@@ -19,6 +19,8 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { NewDesignModal } from './components/NewDesignModal';
 import { CyberpunkCursorModal } from './components/CyberpunkCursorModal';
 import { M3StudioModal } from './components/M3StudioModal';
+import { AnalysisModal } from './components/AnalysisModal';
+import { runProjectAudit } from './utils/analysisEngine';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react';
@@ -114,6 +116,8 @@ export default function App() {
     toggleInspector,
     toast,
     showToast,
+    showAuditOverlay,
+    toggleAuditOverlay,
   } = useUIStore();
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -164,6 +168,15 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCyberpunkModalOpen, setIsCyberpunkModalOpen] = useState(false);
   const [isM3StudioOpen, setIsM3StudioOpen] = useState(false);
+
+  // Real-time design system & WCAG audit score
+  const auditReport = useMemo(() => {
+    return runProjectAudit(
+      elements,
+      devicePreview === 'mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 }
+    );
+  }, [elements, devicePreview]);
+  const auditScore = auditReport.overallScore;
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 1500);
@@ -565,6 +578,13 @@ export default function App() {
           window.dispatchEvent(new CustomEvent('zlab:focus-element', { detail: { id: selectedElementId } }));
           setToastMessage('Zoom to Selection');
         }
+        return;
+      }
+
+      // Design System & WCAG Audit (Cmd+Option+A / Ctrl+Alt+A)
+      if (modKey && e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        openModal('analysis');
         return;
       }
 
@@ -1197,6 +1217,8 @@ export default function App() {
             onOpenCyberpunkKit={() => setIsCyberpunkModalOpen(true)}
             onImportCyberpunkKit={handleImportCyberpunkKit}
             onOpenM3Studio={() => setIsM3StudioOpen(true)}
+            onOpenAnalysis={() => openModal('analysis')}
+            analysisScore={auditScore}
             collaborators={collaborators}
             onNewDesign={handleNewDesign}
             isSaving={isSaving}
@@ -1276,6 +1298,7 @@ export default function App() {
                 setCurrentTool={setCurrentTool}
                 commentCount={1}
                 enableDragAndDrop={userSettings.enableToolbarDrag ?? true}
+                isMobile={isMobile}
               />
 
               <Canvas
@@ -1325,6 +1348,7 @@ export default function App() {
               onUpdateMultipleElements={handleUpdateMultipleElements}
               onExportSelected={() => openModal('export')}
               onOpenPrototype={() => openModal('prototype')}
+              onOpenAnalysisModal={() => openModal('analysis')}
               onDeleteElement={handleDeleteElement}
               onDuplicateElement={handleDuplicateElement}
               width={isInspectorCollapsed ? 0 : inspectorWidth}
@@ -1371,6 +1395,8 @@ export default function App() {
               useProjectStore.getState().setActivePage(pageId);
             }}
             onOpenShortcuts={() => openModal('shortcuts')}
+            onOpenAnalysis={() => openModal('analysis')}
+            analysisScore={auditScore}
           />
         )}
 
@@ -1462,6 +1488,25 @@ export default function App() {
             handleImportMaterialKit();
             showToast('Imported Material 3 System Suite to Canvas', 'success');
           }}
+        />
+
+        {/* Design System & WCAG Accessibility Audit Modal */}
+        <AnalysisModal
+          isOpen={activeModal === 'analysis'}
+          onClose={closeModal}
+          elements={elements}
+          onUpdateElement={(id, updates) => {
+            handleUpdateSelectedElement(updates);
+          }}
+          onUpdateMultipleElements={handleUpdateMultipleElements}
+          onSelectElement={(id) => {
+            setSelectedElementId(id);
+            setSelectedElementIds([id]);
+          }}
+          projectTitle={projectTitle}
+          showAuditOverlay={showAuditOverlay}
+          onToggleAuditOverlay={toggleAuditOverlay}
+          devicePreview={devicePreview}
         />
 
         {/* Toast Notification Alert */}

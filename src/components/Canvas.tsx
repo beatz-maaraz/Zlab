@@ -41,8 +41,12 @@ import {
   ChevronRight,
   Magnet,
   Bell,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { CanvasElement, Collaborator, ToolMode, CanvasComment, DevicePreview } from '../types';
+import { useUIStore } from '../store/uiStore';
+import { calculateContrastRatio } from '../utils/analysisEngine';
 import { DynamicIcon } from './DynamicIcon';
 import { usePreviewScale } from '../features/editor/hooks/usePreviewScale';
 import { CanvasViewport } from '../features/editor/components/CanvasViewport';
@@ -111,6 +115,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onDropElement,
 }) => {
   const artboardRef = useRef<HTMLDivElement>(null);
+  const { showAuditOverlay, toggleAuditOverlay, openModal } = useUIStore();
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
@@ -191,7 +196,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       const extraBezel = devicePreview === 'mobile' ? 24 : 0;
       const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
       const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
-      setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
+      setPan({ x: Math.round(initialPanX), y: Math.max(12, Math.round(initialPanY)) });
       setHasCentered(true);
     }
   }, [containerSize, artboardWidth, artboardHeight, previewScale, hasCentered, devicePreview]);
@@ -204,7 +209,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         const extraBezel = devicePreview === 'mobile' ? 24 : 0;
         const targetPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
         const targetPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
-        setPan({ x: Math.max(16, Math.round(targetPanX)), y: Math.max(16, Math.round(targetPanY)) });
+        setPan({ x: Math.round(targetPanX), y: Math.max(12, Math.round(targetPanY)) });
       }
     }
   }, [devicePreview, containerSize, artboardWidth, artboardHeight, previewScale]);
@@ -216,7 +221,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       const extraBezel = devicePreview === 'mobile' ? 24 : 0;
       const initialPanX = (containerSize.width - (artboardWidth + extraBezel) * previewScale) / 2;
       const initialPanY = (containerSize.height - (artboardHeight + extraBezel) * previewScale) / 2;
-      setPan({ x: Math.max(16, Math.round(initialPanX)), y: Math.max(16, Math.round(initialPanY)) });
+      setPan({ x: Math.round(initialPanX), y: Math.max(12, Math.round(initialPanY)) });
     }
   }, [containerSize, artboardWidth, artboardHeight, previewScale, devicePreview, setZoom]);
 
@@ -463,8 +468,35 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
+  // Touch pinch-to-zoom and two-finger pan gesture state
+  const pinchStateRef = useRef<{
+    initialDist: number;
+    initialMidX: number;
+    initialMidY: number;
+    initialZoom: number;
+    initialPan: { x: number; y: number };
+  } | null>(null);
+
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      pinchStateRef.current = {
+        initialDist: dist,
+        initialMidX: midX,
+        initialMidY: midY,
+        initialZoom: zoom,
+        initialPan: { ...pan },
+      };
+      setIsPanning(false);
+      return;
+    }
+
     if (e.touches.length === 1) {
+      pinchStateRef.current = null;
       const touch = e.touches[0];
       const target = e.target as HTMLElement;
       const isCanvasBackground =
@@ -1184,6 +1216,37 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchStateRef.current && containerRef.current) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const currentMidX = (t1.clientX + t2.clientX) / 2;
+        const currentMidY = (t1.clientY + t2.clientY) / 2;
+
+        const { initialDist, initialMidX, initialMidY, initialZoom, initialPan } = pinchStateRef.current;
+        if (initialDist > 10) {
+          const scaleDelta = currentDist / initialDist;
+          const newZoom = Math.min(Math.max(initialZoom * scaleDelta, 0.2), 3.0);
+
+          const rect = containerRef.current.getBoundingClientRect();
+          const anchorX = initialMidX - rect.left;
+          const anchorY = initialMidY - rect.top;
+
+          const canvasAnchorX = (anchorX - initialPan.x) / (previewScale * initialZoom);
+          const canvasAnchorY = (anchorY - initialPan.y) / (previewScale * initialZoom);
+
+          const panDeltaX = currentMidX - initialMidX;
+          const panDeltaY = currentMidY - initialMidY;
+
+          const newPanX = anchorX - canvasAnchorX * (previewScale * newZoom) + panDeltaX;
+          const newPanY = anchorY - canvasAnchorY * (previewScale * newZoom) + panDeltaY;
+
+          setZoom?.(Number(newZoom.toFixed(2)));
+          setPan({ x: Math.round(newPanX), y: Math.round(newPanY) });
+        }
+        return;
+      }
+
       if (e.touches.length === 1) {
         const touch = e.touches[0];
         handleMouseMove({
@@ -1194,6 +1257,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        pinchStateRef.current = null;
+      }
       handleMouseUp(e as any);
     };
 
@@ -1222,6 +1288,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     rotateStart,
     drawingState,
     totalScale,
+    previewScale,
+    setZoom,
     artboardWidth,
     artboardHeight,
     elements,
@@ -2938,6 +3006,21 @@ export const Canvas: React.FC<CanvasProps> = ({
           </svg>
         </button>
 
+        {/* Audit Overlay Mode Toggle */}
+        <button
+          id="btn-desktop-audit-toggle"
+          onClick={toggleAuditOverlay}
+          title={showAuditOverlay ? "Hide visual accessibility & audit overlay" : "Show visual accessibility & audit overlay"}
+          className={`p-1 sm:p-1.5 rounded-lg border text-[11px] font-medium transition-all shadow flex items-center gap-1 ${
+            showAuditOverlay
+              ? 'bg-emerald-500/25 border-emerald-500/60 text-emerald-300'
+              : 'bg-[#1c1b1b] border-[#353534]/60 text-[#89919e] hover:text-[#e5e2e1] hover:border-[#9fcaff]/50'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span className="hidden xl:inline text-[10px]">Audit</span>
+        </button>
+
         {/* Zoom out */}
         <button
           id="btn-desktop-zoom-out"
@@ -2992,7 +3075,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 setSelectedElementId(artboardId);
                 if (setSelectedElementIds) setSelectedElementIds([artboardId]);
               }}
-              className={`absolute -top-7 left-0 flex items-center gap-1.5 px-2.5 py-0.5 rounded cursor-pointer transition-all text-xs select-none z-30 ${
+              className={`absolute -top-7 ${devicePreview === 'mobile' ? 'left-3' : 'left-0'} flex items-center gap-1.5 px-2.5 py-0.5 rounded cursor-pointer transition-all text-xs select-none z-30 ${
                 selectedElementId === artboardId
                   ? 'bg-[#0d99ff] text-white shadow-sm ring-1 ring-[#0d99ff]/50 font-semibold'
                   : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
@@ -3101,6 +3184,76 @@ export const Canvas: React.FC<CanvasProps> = ({
           >
             {/* Unified Artboard Child Elements */}
             {artboardChildren.map(renderArtboardItem)}
+
+            {/* Visual Design & Accessibility Audit Heatmap Badges */}
+            {showAuditOverlay &&
+              artboardChildren.map((el) => {
+                if (!el || el.visible === false) return null;
+                const isTextOrBtn = el.type === 'text' || el.type === 'button' || Boolean(el.textContent);
+                const isInteractive =
+                  el.type === 'button' ||
+                  el.type === 'input' ||
+                  el.type === 'icon' ||
+                  Boolean(el.variant?.includes('btn'));
+
+                let contrastBadge = null;
+                if (isTextOrBtn) {
+                  const parent = el.parentId ? elements[el.parentId] : null;
+                  const bg =
+                    el.type === 'button'
+                      ? el.fill && el.fill !== 'none'
+                        ? el.fill
+                        : '#0D99FF'
+                      : parent && parent.fill && parent.fill !== 'none'
+                      ? parent.fill
+                      : '#141218';
+                  const fg = el.textColor || (el.type === 'text' ? el.fill : '#FFFFFF');
+                  contrastBadge = calculateContrastRatio(fg, bg);
+                }
+
+                const isTouchUndersized = isInteractive && (el.width < 48 || el.height < 48);
+
+                if (!contrastBadge && !isTouchUndersized) return null;
+
+                return (
+                  <div
+                    key={`audit-chip-${el.id}`}
+                    style={{
+                      position: 'absolute',
+                      left: `${el.x}px`,
+                      top: `${Math.max(0, el.y - 18)}px`,
+                      zIndex: 48,
+                      pointerEvents: 'auto',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedElementId(el.id);
+                      if (setSelectedElementIds) setSelectedElementIds([el.id]);
+                    }}
+                    className="flex items-center gap-1 select-none cursor-pointer transform -translate-y-1 transition-transform hover:scale-110"
+                    title={`Audit tag for ${el.name}. Click to select & analyze.`}
+                  >
+                    {contrastBadge && (
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold flex items-center gap-0.5 shadow-md ${
+                          contrastBadge.normalTextAAA
+                            ? 'bg-emerald-500/90 text-white'
+                            : contrastBadge.normalTextAA
+                            ? 'bg-sky-500/90 text-white'
+                            : 'bg-rose-500 text-white ring-1 ring-rose-400 animate-pulse'
+                        }`}
+                      >
+                        {contrastBadge.normalTextAA ? '✓' : '✗'} {contrastBadge.ratio}:1
+                      </span>
+                    )}
+                    {isTouchUndersized && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500 text-black shadow-md flex items-center gap-0.5">
+                        <span className="text-[8px]">📱</span> &lt;48px
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
 
             {/* Live Multiplayer Collaborator Cursors inside Artboard */}
             {collaborators.map((c) => (

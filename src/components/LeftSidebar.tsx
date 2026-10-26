@@ -1030,7 +1030,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       {/* Mobile Backdrop when Left Sidebar is open */}
       {!isCollapsed && onToggleCollapse && (
         <div
-          id="sidebar-mobile-backdrop"
+          id="left-sidebar-mobile-backdrop"
+          data-testid="sidebar-mobile-backdrop"
           onClick={onToggleCollapse}
           className="md:hidden fixed inset-0 top-16 bottom-8 bg-black/60 backdrop-blur-xs z-30 animate-fadeIn"
         />

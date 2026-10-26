@@ -95,10 +95,12 @@ describe('Inspector Component', () => {
     const designTab = screen.getByRole('button', { name: /design/i });
     const prototypeTab = screen.getByRole('button', { name: /prototype/i });
     const inspectTab = screen.getByRole('button', { name: /inspect/i });
+    const analysisTab = screen.getByRole('button', { name: /analysis/i });
 
     expect(designTab).toBeDefined();
     expect(prototypeTab).toBeDefined();
     expect(inspectTab).toBeDefined();
+    expect(analysisTab).toBeDefined();
 
     // Switch to prototype
     fireEvent.click(prototypeTab);
@@ -107,6 +109,11 @@ describe('Inspector Component', () => {
     // Switch to inspect
     fireEvent.click(inspectTab);
     expect(screen.getByRole('button', { name: /^CSS$/i })).toBeDefined();
+
+    // Switch to analysis
+    fireEvent.click(analysisTab);
+    expect(screen.getByText(/Design & WCAG Analysis/i)).toBeDefined();
+    expect(screen.getByText(/WCAG 2.1 Contrast/i)).toBeDefined();
   });
 
   it('separates frame presets from component presets when artboard frame is selected', () => {

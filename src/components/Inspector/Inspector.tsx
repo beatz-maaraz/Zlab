@@ -23,6 +23,7 @@ import {
   AlignEndHorizontal,
   AlignHorizontalSpaceAround,
   AlignVerticalSpaceAround,
+  ShieldCheck,
 } from 'lucide-react';
 import { CanvasElement, InspectorTab } from '../../types';
 import { TransformSection } from './TransformSection';
@@ -35,6 +36,7 @@ import { IconSection } from './IconSection';
 import { ExportFooter } from './ExportFooter';
 import { PrototypeTab } from './PrototypeTab';
 import { InspectTab } from './InspectTab';
+import { AnalysisTab } from './AnalysisTab';
 
 export interface InspectorProps {
   selectedElement: CanvasElement;
@@ -44,6 +46,7 @@ export interface InspectorProps {
   onUpdateElement: (updates: Partial<CanvasElement>) => void;
   onExportSelected: () => void;
   onOpenPrototype?: () => void;
+  onOpenAnalysisModal?: () => void;
   onDeleteElement?: (id: string) => void;
   onDuplicateElement?: (id: string) => void;
   selectedElementIds?: string[];
@@ -65,6 +68,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   onUpdateElement,
   onExportSelected,
   onOpenPrototype,
+  onOpenAnalysisModal,
   onDeleteElement,
   onDuplicateElement,
   selectedElementIds = [],
@@ -196,21 +200,39 @@ export const Inspector: React.FC<InspectorProps> = ({
         <div
           id="inspector-mobile-backdrop"
           onClick={onClose}
-          className="md:hidden fixed inset-0 top-16 bottom-8 bg-black/60 backdrop-blur-xs z-40 animate-fadeIn"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 animate-fadeIn"
         />
       )}
 
       <aside
         id="inspector-sidebar"
-        style={{
-          width: isMobile ? (isShown ? 'min(88vw, 320px)' : 0) : (isShown ? width : 0),
-          transform: !isShown ? 'translateX(100%)' : 'translateX(0)',
-          pointerEvents: isShown ? 'auto' : 'none',
-        }}
-        className="fixed top-16 right-0 bottom-8 bg-[#171717] border-l border-[#201f1f] flex flex-col z-40 select-none shadow-xl transition-transform duration-200 ease-in-out overflow-hidden"
+        style={
+          isMobile
+            ? {
+                transform: !isShown ? 'translateY(100%)' : 'translateY(0)',
+                pointerEvents: isShown ? 'auto' : 'none',
+              }
+            : {
+                width: isShown ? width : 0,
+                transform: !isShown ? 'translateX(100%)' : 'translateX(0)',
+                pointerEvents: isShown ? 'auto' : 'none',
+              }
+        }
+        className={
+          isMobile
+            ? "fixed inset-x-0 bottom-0 max-h-[78vh] rounded-t-2xl bg-[#171717] border-t border-[#353534] flex flex-col z-50 select-none shadow-2xl transition-transform duration-250 ease-out overflow-hidden"
+            : "fixed top-16 right-0 bottom-8 bg-[#171717] border-l border-[#201f1f] flex flex-col z-40 select-none shadow-xl transition-transform duration-200 ease-in-out overflow-hidden"
+        }
       >
+        {/* Mobile Drag Handle Pill */}
+        {isMobile && isShown && (
+          <div className="flex items-center justify-center pt-2 pb-1 bg-[#131313]">
+            <div className="w-10 h-1 rounded-full bg-[#404040]" />
+          </div>
+        )}
+
         {/* Left resize handle (desktop only when panel is open) */}
-        {isShown && onStartResize && (
+        {!isMobile && isShown && onStartResize && (
           <div
             id="inspector-resize-handle"
             onMouseDown={onStartResize}
@@ -337,7 +359,7 @@ export const Inspector: React.FC<InspectorProps> = ({
         )}
 
         {/* 2. Navigation Mode Tabs with Active Indicator Line */}
-        <div className="flex items-center border-b border-[#201f1f] bg-[#141416] shrink-0">
+        <div className="flex items-center border-b border-[#201f1f] bg-[#141416] shrink-0 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('design')}
             className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 relative transition-colors ${
@@ -372,6 +394,19 @@ export const Inspector: React.FC<InspectorProps> = ({
           >
             <Code2 className="w-3.5 h-3.5" />
             <span>Inspect</span>
+          </button>
+
+          <button
+            id="tab-btn-analysis"
+            onClick={() => setActiveTab('analysis')}
+            className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 relative transition-colors ${
+              activeTab === 'analysis'
+                ? 'text-[#9fcaff] bg-[#1c1b1b] after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:bg-[#0d99ff] after:rounded-full'
+                : 'text-[#89919e] hover:text-[#e5e2e1]'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Analysis</span>
           </button>
         </div>
 
@@ -563,6 +598,15 @@ export const Inspector: React.FC<InspectorProps> = ({
           )}
 
           {activeTab === 'inspect' && <InspectTab element={selectedElement} />}
+
+          {activeTab === 'analysis' && (
+            <AnalysisTab
+              element={selectedElement}
+              allElements={allElements}
+              onUpdateElement={onUpdateElement}
+              onOpenFullAudit={onOpenAnalysisModal}
+            />
+          )}
         </div>
 
         {/* 6. Export Footer (Pinned Action) */}

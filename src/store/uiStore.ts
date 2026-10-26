@@ -17,9 +17,13 @@ const loadStoredSettings = (): UserSettings => {
 };
 
 interface UIStoreState {
-  activeModal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign' | null;
-  openModal: (modal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign') => void;
+  activeModal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign' | 'analysis' | null;
+  openModal: (modal: 'settings' | 'export' | 'prototype' | 'shortcuts' | 'newDesign' | 'analysis') => void;
   closeModal: () => void;
+
+  showAuditOverlay: boolean;
+  toggleAuditOverlay: () => void;
+  setShowAuditOverlay: (show: boolean) => void;
 
   settingsTab: SettingsTab;
   setSettingsTab: (tab: SettingsTab) => void;
@@ -49,6 +53,10 @@ export const useUIStore = create<UIStoreState>((set) => ({
   activeModal: null,
   openModal: (modal) => set({ activeModal: modal }),
   closeModal: () => set({ activeModal: null }),
+
+  showAuditOverlay: false,
+  toggleAuditOverlay: () => set((state) => ({ showAuditOverlay: !state.showAuditOverlay })),
+  setShowAuditOverlay: (show) => set({ showAuditOverlay: show }),
 
   settingsTab: 'general',
   setSettingsTab: (settingsTab) => set({ settingsTab }),

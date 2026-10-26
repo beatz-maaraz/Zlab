@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 import { ToolMode } from '../types';
 
-interface FloatingToolbarProps {
+export interface FloatingToolbarProps {
   currentTool: ToolMode;
   setCurrentTool: (tool: ToolMode) => void;
   commentCount?: number;
   enableDragAndDrop?: boolean;
+  isMobile?: boolean;
 }
 
 interface ToolDef {
@@ -46,6 +47,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   setCurrentTool,
   commentCount = 1,
   enableDragAndDrop = true,
+  isMobile = false,
 }) => {
   // Mutable tool order — users can drag to rearrange
   const [toolOrder, setToolOrder] = useState<ToolMode[]>(() =>
@@ -192,27 +194,38 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     <div
       id="floating-canvas-toolbar"
       ref={containerRef}
-      className="absolute top-3 sm:top-6 left-3 sm:left-6 z-30 flex items-center gap-0.5 sm:gap-1 bg-[#2a2a2a]/95 backdrop-blur-md px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl shadow-2xl border border-[#353534] max-w-[calc(100vw-24px)] overflow-x-auto no-scrollbar"
-      style={{
-        transform: `translate(${position.x}px, ${position.y}px) scale(0.8)`,
-        transformOrigin: 'top left',
-        transition: isDraggingContainer ? 'none' : 'transform 0.1s ease-out',
-      }}
+      className={
+        isMobile
+          ? "fixed bottom-12 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 bg-[#18181b]/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-2xl border border-[#353534] max-w-[calc(100vw-32px)] overflow-x-auto no-scrollbar"
+          : "absolute top-3 sm:top-6 left-3 sm:left-6 z-30 flex items-center gap-0.5 sm:gap-1 bg-[#2a2a2a]/95 backdrop-blur-md px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl shadow-2xl border border-[#353534] max-w-[calc(100vw-24px)] overflow-x-auto no-scrollbar"
+      }
+      style={
+        !isMobile
+          ? {
+              transform: `translate(${position.x}px, ${position.y}px) scale(0.8)`,
+              transformOrigin: 'top left',
+              transition: isDraggingContainer ? 'none' : 'transform 0.1s ease-out',
+            }
+          : undefined
+      }
     >
-      {/* Container Drag Handle */}
-      <div
-        className="flex items-center justify-center p-1 cursor-grab active:cursor-grabbing text-[#89919e] hover:text-[#e5e2e1] transition-colors"
-        onPointerDown={handleContainerPointerDown}
-        onPointerMove={handleContainerPointerMove}
-        onPointerUp={handleContainerPointerUp}
-        onPointerCancel={handleContainerPointerUp}
-        title="Drag toolbar"
-      >
-        <GripVertical className="w-4 h-4" />
-      </div>
-
-      {/* Divider */}
-      <div className="w-[1px] h-6 bg-[#353534] mx-1" />
+      {/* Container Drag Handle (Desktop only) */}
+      {!isMobile && (
+        <>
+          <div
+            className="flex items-center justify-center p-1 cursor-grab active:cursor-grabbing text-[#89919e] hover:text-[#e5e2e1] transition-colors"
+            onPointerDown={handleContainerPointerDown}
+            onPointerMove={handleContainerPointerMove}
+            onPointerUp={handleContainerPointerUp}
+            onPointerCancel={handleContainerPointerUp}
+            title="Drag toolbar"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          {/* Divider */}
+          <div className="w-[1px] h-6 bg-[#353534] mx-1" />
+        </>
+      )}
 
       {toolOrder.map((toolId, idx) => {
         const t = toolMap.current.get(toolId);
@@ -226,29 +239,29 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           <div
             key={t.id}
             className="relative"
-            draggable={enableDragAndDrop}
-            onDragStart={enableDragAndDrop ? (e) => handleDragStart(e, t.id) : undefined}
-            onDragEnd={enableDragAndDrop ? handleDragEnd : undefined}
-            onDragOver={enableDragAndDrop ? (e) => handleDragOver(e, idx) : undefined}
+            draggable={enableDragAndDrop && !isMobile}
+            onDragStart={enableDragAndDrop && !isMobile ? (e) => handleDragStart(e, t.id) : undefined}
+            onDragEnd={enableDragAndDrop && !isMobile ? handleDragEnd : undefined}
+            onDragOver={enableDragAndDrop && !isMobile ? (e) => handleDragOver(e, idx) : undefined}
             onDragEnter={
-              enableDragAndDrop
+              enableDragAndDrop && !isMobile
                 ? (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }
                 : undefined
             }
-            onDrop={enableDragAndDrop ? (e) => handleDrop(e, idx) : undefined}
+            onDrop={enableDragAndDrop && !isMobile ? (e) => handleDrop(e, idx) : undefined}
           >
             {/* Left-side drop indicator */}
-            {isDropTarget && currentDragIdx !== -1 && currentDragIdx > idx && (
+            {!isMobile && isDropTarget && currentDragIdx !== -1 && currentDragIdx > idx && (
               <span
                 className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full z-10"
                 style={{ backgroundColor: '#0d99ff', transform: 'translateX(-3px)' }}
               />
             )}
             {/* Right-side drop indicator */}
-            {isDropTarget && currentDragIdx !== -1 && currentDragIdx < idx && (
+            {!isMobile && isDropTarget && currentDragIdx !== -1 && currentDragIdx < idx && (
               <span
                 className="absolute right-0 top-1 bottom-1 w-[2px] rounded-full z-10"
                 style={{ backgroundColor: '#0d99ff', transform: 'translateX(3px)' }}
@@ -258,21 +271,24 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <button
               id={`tool-btn-${t.id}`}
               onClick={() => setCurrentTool(t.id)}
-              className={`group relative p-2 rounded-lg flex items-center justify-center transition-all ${
+              className={`group relative ${isMobile ? 'p-2.5 min-w-[40px] min-h-[40px]' : 'p-2'} rounded-xl flex items-center justify-center transition-all ${
                 isActive
-                  ? 'bg-[#0d99ff] text-[#002f55] shadow-md scale-105 font-medium'
+                  ? 'bg-[#0d99ff] text-[#002f55] shadow-md scale-105 font-medium ring-1 ring-sky-300/40'
                   : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#353534]'
               } ${isBeingDragged ? 'opacity-30 scale-90' : ''}`}
-              style={{ cursor: enableDragAndDrop ? 'grab' : 'pointer' }}
+              style={{ cursor: enableDragAndDrop && !isMobile ? 'grab' : 'pointer' }}
+              title={`${t.label} (${t.shortcut})`}
             >
               {t.icon}
               
-              {/* Custom Tooltip with 300ms Delay */}
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-300 duration-200 z-50">
-                <div className="bg-[#131313] text-[#e5e2e1] text-[10px] font-medium px-2 py-1 rounded border border-[#353534] whitespace-nowrap shadow-xl">
-                  {t.label} ({t.shortcut})
+              {/* Custom Tooltip on desktop */}
+              {!isMobile && (
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-300 duration-200 z-50">
+                  <div className="bg-[#131313] text-[#e5e2e1] text-[10px] font-medium px-2 py-1 rounded border border-[#353534] whitespace-nowrap shadow-xl">
+                    {t.label} ({t.shortcut})
+                  </div>
                 </div>
-              </div>
+              )}
             </button>
           </div>
         );

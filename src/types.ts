@@ -2,7 +2,7 @@ export type ToolMode = 'move' | 'frame' | 'rect' | 'pen' | 'text' | 'hand' | 'co
 
 export type AppView = 'editor' | 'dashboard';
 
-export type InspectorTab = 'design' | 'prototype' | 'inspect';
+export type InspectorTab = 'design' | 'prototype' | 'inspect' | 'analysis';
 
 export type DevicePreview = 'desktop' | 'mobile';
 

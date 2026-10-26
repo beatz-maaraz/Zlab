@@ -1,5 +1,19 @@
-import React from 'react';
-import { Sliders, PanelLeft, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Sliders,
+  PanelLeft,
+  Sparkles,
+  ShieldCheck,
+  MoreVertical,
+  Monitor,
+  Smartphone,
+  Undo,
+  Redo,
+  Download,
+  Play,
+  Keyboard,
+  Settings,
+} from 'lucide-react';
 import { AppView, Collaborator } from '../../types';
 import { ProjectTitle } from './ProjectTitle';
 import { FileMenu } from './FileMenu';
@@ -32,6 +46,8 @@ export interface HeaderProps {
   onOpenCyberpunkKit?: () => void;
   onImportCyberpunkKit?: () => void;
   onOpenM3Studio?: () => void;
+  onOpenAnalysis?: () => void;
+  analysisScore?: number;
   collaborators?: Collaborator[];
   onNewDesign?: () => void;
   isSaving?: boolean;
@@ -67,6 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCyberpunkKit,
   onImportCyberpunkKit,
   onOpenM3Studio,
+  onOpenAnalysis,
+  analysisScore,
   collaborators,
   onNewDesign,
   isSaving,
@@ -76,6 +94,18 @@ export const Header: React.FC<HeaderProps> = ({
   isInspectorCollapsed = false,
   onToggleInspector,
 }) => {
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   return (
     <header
       id="app-header"
@@ -160,8 +190,206 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Right side: ViewControls, Inspector toggle, ExportButton, CollaborationControls */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      {/* Mobile Right Controls: Inspector Toggle & Overflow Dropdown Menu */}
+      <div className="flex md:hidden items-center gap-1.5 shrink-0" ref={overflowRef}>
+        {onToggleInspector && currentView === 'editor' && (
+          <button
+            id="btn-toggle-inspector-mobile"
+            onClick={onToggleInspector}
+            className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors shrink-0 ${
+              !isInspectorCollapsed
+                ? 'bg-[#201f1f] text-[#0d99ff] border-[#0d99ff]/40 shadow-sm'
+                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] border-[#353534]/50'
+            }`}
+            title={!isInspectorCollapsed ? 'Close Inspector' : 'Open Inspector'}
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Mobile Overflow Menu Button */}
+        <div className="relative">
+          <button
+            id="btn-header-overflow-menu"
+            onClick={() => setOverflowOpen(!overflowOpen)}
+            className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors ${
+              overflowOpen
+                ? 'bg-[#201f1f] text-white border-[#0d99ff]/50'
+                : 'text-[#89919e] hover:text-[#e5e2e1] hover:bg-[#201f1f] border-[#353534]/50'
+            }`}
+            title="More Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {overflowOpen && (
+            <div
+              id="header-mobile-overflow-dropdown"
+              className="absolute right-0 top-full mt-2 w-56 bg-[#1a1a1c] border border-[#353534] rounded-xl shadow-2xl py-2 z-50 text-xs flex flex-col gap-1 backdrop-blur-xl divide-y divide-[#2a2a2c]"
+            >
+              {/* Artboard Toggle */}
+              {currentView === 'editor' && (
+                <div className="px-2 pb-2">
+                  <div className="text-[10px] uppercase font-bold text-[#89919e] px-2 py-1 tracking-wider">
+                    Artboard View
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 mt-0.5">
+                    <button
+                      id="btn-mobile-overflow-desktop"
+                      onClick={() => {
+                        setDevicePreview('desktop');
+                        setOverflowOpen(false);
+                      }}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        devicePreview === 'desktop'
+                          ? 'bg-[#0d99ff] text-[#002f55] font-bold shadow'
+                          : 'bg-[#242426] text-[#bfc7d5] hover:text-white'
+                      }`}
+                    >
+                      <Monitor className="w-3.5 h-3.5" />
+                      Desktop
+                    </button>
+                    <button
+                      id="btn-mobile-overflow-mobile"
+                      onClick={() => {
+                        setDevicePreview('mobile');
+                        setOverflowOpen(false);
+                      }}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        devicePreview === 'mobile'
+                          ? 'bg-[#0d99ff] text-[#002f55] font-bold shadow'
+                          : 'bg-[#242426] text-[#bfc7d5] hover:text-white'
+                      }`}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      Mobile
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Undo / Redo */}
+              {currentView === 'editor' && (
+                <div className="px-2 py-1.5 flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      onUndo();
+                      setOverflowOpen(false);
+                    }}
+                    disabled={!canUndo}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-[#bfc7d5] hover:bg-[#252528] disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <Undo className="w-3.5 h-3.5" />
+                    Undo
+                  </button>
+                  <button
+                    onClick={() => {
+                      onRedo();
+                      setOverflowOpen(false);
+                    }}
+                    disabled={!canRedo}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-[#bfc7d5] hover:bg-[#252528] disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <Redo className="w-3.5 h-3.5" />
+                    Redo
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Actions (Audit, M3 Studio, Export, Prototype) */}
+              <div className="px-1.5 py-1 flex flex-col gap-0.5">
+                {currentView === 'editor' && onOpenAnalysis && (
+                  <button
+                    onClick={() => {
+                      onOpenAnalysis();
+                      setOverflowOpen(false);
+                    }}
+                    className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-emerald-300 flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      Design & A11y Audit
+                    </span>
+                    {typeof analysisScore === 'number' && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                        {analysisScore}%
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {currentView === 'editor' && onOpenM3Studio && (
+                  <button
+                    onClick={() => {
+                      onOpenM3Studio();
+                      setOverflowOpen(false);
+                    }}
+                    className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-[#d0bcff] flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#d0bcff]" />
+                    M3 Studio
+                  </button>
+                )}
+
+                {currentView === 'editor' && (
+                  <button
+                    onClick={() => {
+                      onExport();
+                      setOverflowOpen(false);
+                    }}
+                    className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-[#e5e2e1] flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4 text-[#89919e]" />
+                    Export Canvas
+                  </button>
+                )}
+
+                {currentView === 'editor' && onOpenPrototype && (
+                  <button
+                    onClick={() => {
+                      onOpenPrototype();
+                      setOverflowOpen(false);
+                    }}
+                    className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-[#e5e2e1] flex items-center gap-2"
+                  >
+                    <Play className="w-4 h-4 text-[#89919e]" />
+                    Interactive Prototype
+                  </button>
+                )}
+              </div>
+
+              {/* System & Settings */}
+              <div className="px-1.5 pt-1 flex flex-col gap-0.5">
+                {onOpenShortcuts && (
+                  <button
+                    onClick={() => {
+                      onOpenShortcuts();
+                      setOverflowOpen(false);
+                    }}
+                    className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-[#89919e] hover:text-[#e5e2e1] flex items-center gap-2"
+                  >
+                    <Keyboard className="w-4 h-4" />
+                    Shortcuts (?)
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    onOpenSettings();
+                    setOverflowOpen(false);
+                  }}
+                  className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-[#252528] text-[#89919e] hover:text-[#e5e2e1] flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Right side: ViewControls, Inspector toggle, ExportButton, CollaborationControls */}
+      <div className="hidden md:flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {currentView === 'editor' && (
           <>
             <ViewControls
@@ -199,6 +427,23 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#d0bcff]" />
                 <span className="hidden sm:inline">M3 Studio</span>
+              </button>
+            )}
+
+            {onOpenAnalysis && (
+              <button
+                id="btn-header-analysis"
+                onClick={onOpenAnalysis}
+                className="h-8 px-2.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                title="Design System & Accessibility Analysis"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Audit</span>
+                {typeof analysisScore === 'number' && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                    {analysisScore}%
+                  </span>
+                )}
               </button>
             )}
 

@@ -18,4 +18,5 @@ export * from './PrototypeTab';
 export * from './NumberAdjustInput';
 export * from './InspectorPresets';
 export * from './applyM3Preset';
+export * from './AnalysisTab';
 
