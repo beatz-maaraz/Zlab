@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Collaborator, ToolMode } from '../types';
+import { Collaborator, ToolMode, WorkspaceMode } from '../types';
 import { INITIAL_COLLABORATORS } from '../mockData';
 
 interface EditorStoreState {
@@ -8,6 +8,9 @@ interface EditorStoreState {
   resetZoom: () => void;
   currentTool: ToolMode;
   setCurrentTool: (tool: ToolMode) => void;
+  workspaceMode: WorkspaceMode;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
+  toggleWorkspaceMode: () => void;
   devicePreview: 'desktop' | 'mobile';
   setDevicePreview: (mode: 'desktop' | 'mobile') => void;
   selectedElementId: string;
@@ -48,6 +51,11 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
 
   currentTool: 'move',
   setCurrentTool: (tool) => set({ currentTool: tool }),
+
+  workspaceMode: 'edit',
+  setWorkspaceMode: (workspaceMode) => set({ workspaceMode }),
+  toggleWorkspaceMode: () =>
+    set((state) => ({ workspaceMode: state.workspaceMode === 'edit' ? 'view' : 'edit' })),
 
   devicePreview: 'desktop',
   setDevicePreview: (devicePreview) => set({ devicePreview }),

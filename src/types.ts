@@ -1,5 +1,7 @@
 export type ToolMode = 'move' | 'frame' | 'rect' | 'pen' | 'text' | 'hand' | 'comment';
 
+export type WorkspaceMode = 'view' | 'edit';
+
 export type AppView = 'editor' | 'dashboard';
 
 export type InspectorTab = 'design' | 'prototype' | 'inspect' | 'analysis';

@@ -13,8 +13,9 @@ import {
   Play,
   Keyboard,
   Settings,
+  PenTool,
 } from 'lucide-react';
-import { AppView, Collaborator } from '../../types';
+import { AppView, Collaborator, WorkspaceMode } from '../../types';
 import { ProjectTitle } from './ProjectTitle';
 import { FileMenu } from './FileMenu';
 import { ViewControls } from './ViewControls';
@@ -28,6 +29,8 @@ export interface HeaderProps {
   setZoom: (zoom: number | ((prev: number) => number)) => void;
   devicePreview: 'desktop' | 'mobile';
   setDevicePreview: (mode: 'desktop' | 'mobile') => void;
+  workspaceMode?: WorkspaceMode;
+  setWorkspaceMode?: (mode: WorkspaceMode) => void;
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
   onOpenSettings: (tab?: string) => void;
@@ -65,6 +68,8 @@ export const Header: React.FC<HeaderProps> = ({
   setZoom,
   devicePreview,
   setDevicePreview,
+  workspaceMode = 'edit',
+  setWorkspaceMode,
   currentView,
   setCurrentView,
   onOpenSettings,
@@ -268,6 +273,47 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
 
+              {/* Workspace Mode (Edit / View) */}
+              {currentView === 'editor' && (
+                <div className="px-2 pb-2">
+                  <div className="text-[10px] uppercase font-bold text-[#89919e] px-2 py-1 tracking-wider">
+                    Workspace Mode
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 mt-0.5">
+                    <button
+                      id="btn-mobile-overflow-edit-mode"
+                      onClick={() => {
+                        setWorkspaceMode?.('edit');
+                        setOverflowOpen(false);
+                      }}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        workspaceMode === 'edit'
+                          ? 'bg-[#0d99ff] text-[#002f55] font-bold shadow'
+                          : 'bg-[#242426] text-[#bfc7d5] hover:text-white'
+                      }`}
+                    >
+                      <PenTool className="w-3.5 h-3.5" />
+                      Edit Mode
+                    </button>
+                    <button
+                      id="btn-mobile-overflow-view-mode"
+                      onClick={() => {
+                        setWorkspaceMode?.('view');
+                        setOverflowOpen(false);
+                      }}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        workspaceMode === 'view'
+                          ? 'bg-[#0d99ff] text-[#002f55] font-bold shadow'
+                          : 'bg-[#242426] text-[#bfc7d5] hover:text-white'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View Mode
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Undo / Redo */}
               {currentView === 'editor' && (
                 <div className="px-2 py-1.5 flex items-center justify-between">
@@ -401,6 +447,8 @@ export const Header: React.FC<HeaderProps> = ({
               setZoom={setZoom}
               devicePreview={devicePreview}
               setDevicePreview={setDevicePreview}
+              workspaceMode={workspaceMode}
+              setWorkspaceMode={setWorkspaceMode}
             />
 
             {onToggleInspector && (

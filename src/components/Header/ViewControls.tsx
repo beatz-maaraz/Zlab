@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Undo, Redo, ZoomIn, Check, Monitor, Smartphone, Plus, Minus } from 'lucide-react';
+import { Undo, Redo, ZoomIn, Check, Monitor, Smartphone, Plus, Minus, PenTool, Eye } from 'lucide-react';
+import { WorkspaceMode } from '../../types';
 
 interface ViewControlsProps {
   canUndo: boolean;
@@ -10,6 +11,8 @@ interface ViewControlsProps {
   setZoom: (zoom: number | ((prev: number) => number)) => void;
   devicePreview: 'desktop' | 'mobile';
   setDevicePreview: (mode: 'desktop' | 'mobile') => void;
+  workspaceMode?: WorkspaceMode;
+  setWorkspaceMode?: (mode: WorkspaceMode) => void;
 }
 
 export const ViewControls: React.FC<ViewControlsProps> = ({
@@ -21,6 +24,8 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
   setZoom,
   devicePreview,
   setDevicePreview,
+  workspaceMode = 'edit',
+  setWorkspaceMode,
 }) => {
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const zoomRef = useRef<HTMLDivElement>(null);
@@ -167,6 +172,42 @@ export const ViewControls: React.FC<ViewControlsProps> = ({
         >
           <Smartphone className="w-3.5 h-3.5" />
           <span className="hidden xl:inline">Mobile</span>
+        </button>
+      </div>
+
+      <div className="hidden lg:block h-4 w-[1px] bg-[#3f4753] mx-0.5" />
+
+      {/* Workspace Mode Switcher (Edit / View) */}
+      <div
+        id="control-workspace-mode"
+        className="hidden sm:flex items-center bg-[#141416] p-0.5 rounded-lg border border-[#353534]"
+        title="Workspace Mode: Toggle between Edit and View mode"
+      >
+        <button
+          id="btn-workspace-mode-edit"
+          onClick={() => setWorkspaceMode?.('edit')}
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs transition-all ${
+            workspaceMode === 'edit'
+              ? 'bg-[#0d99ff] text-[#002f55] font-semibold shadow-sm'
+              : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+          }`}
+          title="Edit Mode: Access all drawing and shape tools"
+        >
+          <PenTool className="w-3.5 h-3.5" />
+          <span className="hidden xl:inline">Edit</span>
+        </button>
+        <button
+          id="btn-workspace-mode-view"
+          onClick={() => setWorkspaceMode?.('view')}
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs transition-all ${
+            workspaceMode === 'view'
+              ? 'bg-[#0d99ff] text-[#002f55] font-semibold shadow-sm'
+              : 'text-[#bfc7d5] hover:text-[#e5e2e1] hover:bg-[#201f1f]'
+          }`}
+          title="View Mode: Presentation & inspection preview (tools hidden)"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span className="hidden xl:inline">View</span>
         </button>
       </div>
     </div>
